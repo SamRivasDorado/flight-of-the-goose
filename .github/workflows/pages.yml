@@ -1,7 +1,8 @@
 name: Publish the site
 
 # Builds Goose and publishes it on GitHub Pages at
-# https://samrivasdorado.github.io/project-tracker/ on every push to main.
+# https://samrivasdorado.github.io/<repo-name>/ on every push to main.
+# The path follows the repository name, so renaming the repo keeps it working.
 on:
   push:
     branches: [main]
@@ -28,7 +29,7 @@ jobs:
       - run: npm ci
       - run: npm run build
         env:
-          BASE_PATH: /project-tracker/
+          BASE_PATH: /${{ github.event.repository.name }}/
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
