@@ -14,7 +14,7 @@ import { Team } from '../pages/Team';
 import { Strategy } from '../pages/Strategy';
 import { Timeline } from '../pages/Timeline';
 import { Review } from '../pages/Review';
-import { Placeholder } from '../pages/Placeholder';
+import { Insights } from '../pages/Insights';
 
 type Page = 'timeline' | 'strategy' | 'projects' | 'tasks' | 'review' | 'team' | 'insights';
 const NAV: [Page, string, Parameters<typeof Icon>[0]['name']][] = [
@@ -76,7 +76,7 @@ function Shell() {
         {page === 'timeline' && <Timeline />}
         {page === 'strategy' && <Strategy />}
         {page === 'review' && <Review />}
-        {page === 'insights' && <Placeholder title="Insights" what="The chart builder and dashboard come next." />}
+        {page === 'insights' && <Insights />}
       </main>
       <TaskSheet />
     </div>
@@ -84,7 +84,7 @@ function Shell() {
 }
 
 /** Pages that filter their own tasks by the search box; from any other page, searching opens Tasks. */
-const showsTasks = () => { const p = pageFromHash(); return p === 'tasks' || p === 'timeline' || p === 'project' || p === 'review'; };
+const showsTasks = () => { const p = pageFromHash(); return p === 'tasks' || p === 'timeline' || p === 'project' || p === 'review' || p === 'insights'; };
 
 /** Search box, New task button and colour palette, as in the prototype's top bar. */
 function TopTools() {

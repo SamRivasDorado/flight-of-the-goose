@@ -272,3 +272,17 @@ export async function saveGoal(ws: string, existing: Goal | null, d: GoalInput):
 export async function deleteGoal(id: string) {
   check(await db().from('goals').delete().eq('id', id));
 }
+
+// ---------- personal settings (saved dashboard charts, later palette and views) ----------
+
+export async function getMySettings(memberId: string): Promise<Record<string, unknown>> {
+  const { data, error } = await db().from('member_settings').select('settings').eq('member_id', memberId).maybeSingle();
+  if (error) throw new Error(error.message);
+  return (data?.settings as Record<string, unknown>) ?? {};
+}
+
+/** Merges the given keys into this person's settings. */
+export async function saveMySettings(memberId: string, patch: Record<string, unknown>) {
+  const cur = await getMySettings(memberId);
+  check(await db().from('member_settings').upsert({ member_id: memberId, settings: { ...cur, ...patch } }).select().single());
+}
