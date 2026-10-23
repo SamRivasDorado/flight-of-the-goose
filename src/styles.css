@@ -486,3 +486,27 @@ textarea.notes{width:100%;min-height:90px;border:1px solid var(--line);border-ra
 .gbar span{position:relative;padding:0 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lname a{display:flex;gap:8px;align-items:center;font-weight:600;min-width:0;text-decoration:none;color:inherit}.lname a span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.lname a:hover span:last-child{text-decoration:underline;text-underline-offset:3px}
 .legend .sw{display:inline-block;width:22px;height:10px;border-radius:2px;vertical-align:-1px;margin-right:5px}
+
+/* ===== Review (from the prototype) ===== */
+.rv{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:18px;align-items:start}
+.rv .colm{display:flex;flex-direction:column;gap:16px;min-width:0}
+.rvbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:16px}
+.rvbar .presets{display:flex;flex-wrap:wrap;gap:4px}
+.chipbtn{padding:5px 10px;border-radius:99px;border:1px solid var(--line);background:var(--surface);font-size:13px;color:var(--muted)}
+.chipbtn:hover{color:var(--fg)}
+.chipbtn.on{background:var(--accent-soft);border-color:var(--accent);color:var(--fg);font-weight:600}
+.rvdates{display:flex;gap:6px;align-items:center;font-size:13px;color:var(--muted)}
+.panel h2{margin:0;font-family:var(--f-display);font-weight:500;font-size:17px;display:flex;gap:8px;align-items:baseline}
+.panel h2 span{font-family:var(--f-body);font-size:12px;color:var(--muted);font-weight:400}
+.rrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:6px 0;border-top:1px solid var(--line)}
+.rrow:first-of-type{border-top:0}
+.rrow .t{flex:1;min-width:180px;text-align:left}
+.rrow .acts{display:flex;gap:4px;flex-wrap:wrap}
+.hbar{display:grid;grid-template-columns:minmax(0,170px) 1fr auto;gap:10px;align-items:center;font-size:13px}
+.hbar .b{height:10px;border-radius:99px;background:var(--surface-2);overflow:hidden}
+.hbar .b i{display:block;height:100%;background:var(--c)}
+.big{font-family:var(--f-display);font-size:30px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1}
+.bigrow{display:flex;gap:26px;flex-wrap:wrap}
+.bigrow div span{display:block;font-size:12px;color:var(--muted);margin-top:4px}
+.rv .panel{max-width:none}
+@media (max-width:860px){.rv{grid-template-columns:minmax(0,1fr)}}
