@@ -117,3 +117,21 @@ export interface TeamRef {
   name: string;
   color: string;
 }
+
+export interface Team {
+  id: string;
+  workspace_id: string;
+  name: string;
+  color: string;
+  image_path: string | null;
+  lead_member_id: string | null;
+  /** Member ids, filled in from team_members. */
+  member_ids: string[];
+}
+
+export const ACCESS_DESC: Record<Access, string> = {
+  admin: 'Everything, including inviting people and managing teams',
+  manager: 'Sees everything, creates goals and projects, and reviews anyone’s work',
+  member: 'Works on tasks in their projects; their review covers only their own tasks',
+  guest: 'Read-only, for example a client',
+};

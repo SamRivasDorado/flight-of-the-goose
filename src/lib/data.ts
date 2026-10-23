@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { db } from './supabase';
-import type { GoalRef, Member, Note, NoteKind, Project, ProjectFull, Subtask, Task, TaskFull, TeamRef } from './types';
+import type { GoalRef, Member, Note, NoteKind, Project, ProjectFull, Subtask, Task, Team, TaskFull, TeamRef } from './types';
 
 /** Loads data for the current screen and reloads after a change. */
 export function useLoad<T>(load: () => Promise<T>, deps: unknown[]) {
@@ -178,9 +178,68 @@ export async function updateTask(id: string, patch: Partial<Task>) {
   return check(await db().from('tasks').update(p).eq('id', id).select().single());
 }
 
-export async function inviteMember(ws: string, me: string, m: Pick<Member, 'email' | 'display_name' | 'title' | 'access' | 'color'>) {
-  // Phase 2 adds an email through a server function; until then the person
-  // joins by signing in with this address (on_login accepts the invitation).
-  return check(await db().from('workspace_members')
-    .insert({ workspace_id: ws, invited_by: me, status: 'invited', ...m }).select().single());
+
+// ---------- people ----------
+
+/** Friendlier wording for database errors people can run into on the Team page. */
+function friendly(msg: string) {
+  if (/workspace_members_workspace_id_email_key|duplicate key.*email/i.test(msg)) return 'Someone with that email is already in this workspace.';
+  return msg;
+}
+
+export async function updateMember(id: string, patch: Partial<Pick<Member, 'display_name' | 'title' | 'access' | 'email'>>) {
+  const { error } = await db().from('workspace_members').update(patch).eq('id', id);
+  if (error) throw new Error(friendly(error.message));
+}
+
+/** Removes a person from the workspace; projects they owned pass to `heir` (their tasks become unassigned). */
+export async function removeMember(ws: string, id: string, heir: string) {
+  check(await db().from('projects').update({ owner_member_id: heir }).eq('workspace_id', ws).eq('owner_member_id', id));
+  check(await db().from('workspace_members').delete().eq('id', id));
+}
+
+export async function inviteMemberChecked(ws: string, me: string, m: Pick<Member, 'email' | 'display_name' | 'title' | 'access' | 'color'>): Promise<Member> {
+  const { data, error } = await db().from('workspace_members').insert({ workspace_id: ws, invited_by: me, status: 'invited', ...m }).select().single();
+  if (error) throw new Error(friendly(error.message));
+  return data as Member;
+}
+
+// ---------- teams ----------
+
+export async function listTeams(ws: string): Promise<Team[]> {
+  const teams = check(await db().from('teams').select('*').eq('workspace_id', ws).order('name')) as Omit<Team, 'member_ids'>[];
+  if (!teams.length) return [];
+  const links = check(await db().from('team_members').select('team_id, member_id').in('team_id', teams.map(t => t.id))) as { team_id: string; member_id: string }[];
+  return teams.map(t => ({ ...t, member_ids: links.filter(l => l.team_id === t.id).map(l => l.member_id) }));
+}
+
+export type TeamInput = Pick<Team, 'name' | 'color' | 'lead_member_id' | 'member_ids'>;
+
+async function syncTeamMembers(teamId: string, before: string[], after: string[]) {
+  const add = after.filter(id => !before.includes(id)), drop = before.filter(id => !after.includes(id));
+  if (add.length) check(await db().from('team_members').insert(add.map(member_id => ({ team_id: teamId, member_id }))));
+  if (drop.length) check(await db().from('team_members').delete().eq('team_id', teamId).in('member_id', drop));
+}
+
+/** Creates a team (existing = null) or saves changes, including who is in it. */
+export async function saveTeam(ws: string, existing: Team | null, t: TeamInput): Promise<string> {
+  const { member_ids, ...row } = t;
+  const team = existing
+    ? check(await db().from('teams').update(row).eq('id', existing.id).select().single()) as Team
+    : check(await db().from('teams').insert({ workspace_id: ws, ...row }).select().single()) as Team;
+  await syncTeamMembers(team.id, existing?.member_ids ?? [], member_ids);
+  return team.id;
+}
+
+export async function deleteTeam(id: string) {
+  check(await db().from('teams').delete().eq('id', id));
+}
+
+/** Adds or removes one person from several teams at once (Edit person dialog). */
+export async function setPersonTeams(memberId: string, teams: Team[], wanted: string[]) {
+  for (const t of teams) {
+    const has = t.member_ids.includes(memberId), want = wanted.includes(t.id);
+    if (has && !want) check(await db().from('team_members').delete().eq('team_id', t.id).eq('member_id', memberId));
+    if (!has && want) check(await db().from('team_members').insert({ team_id: t.id, member_id: memberId }));
+  }
 }

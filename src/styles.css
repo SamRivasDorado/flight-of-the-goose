@@ -354,3 +354,62 @@ textarea.notes{width:100%;min-height:90px;border:1px solid var(--line);border-ra
 .modal .kindpick span{font-size:13px;line-height:1.45;color:var(--muted)}
 .modal .kindpick b{font-size:14px;color:var(--fg);margin-bottom:2px}
 .modal .pp{font-size:13px}
+
+/* ===== Team (from the prototype) ===== */
+.tav{--c:#888;display:inline-grid;place-items:center;width:24px;height:24px;border-radius:7px;background:var(--c);color:#fff;font-size:10px;font-weight:700;flex:none;overflow:hidden;text-shadow:0 1px 1px rgb(0 0 0 / .25)}
+.tav img{width:100%;height:100%;object-fit:contain;background:#fff;padding:8%}
+.tav.xs{width:16px;height:16px;border-radius:4px;font-size:7.5px}.tav.sm{width:22px;height:22px;font-size:9px}.tav.lg{width:44px;height:44px;border-radius:11px;font-size:15px}.tav.xl{width:72px;height:72px;border-radius:18px;font-size:24px;box-shadow:0 6px 18px -8px var(--c)}
+.thero{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:18px;align-items:center;padding:4px 0 18px;border-bottom:3px solid var(--c);position:relative}
+.thero::after{content:"";position:absolute;left:0;right:0;bottom:-3px;height:3px;background:linear-gradient(to right,var(--c),color-mix(in srgb,var(--c) 20%,transparent))}
+.thero .eyebrow{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.thero h2{margin:2px 0 8px;font-size:30px;font-weight:700;letter-spacing:-.02em;line-height:1.1}
+.thero-meta{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:13px;margin-top:4px}
+.thero-meta > span:first-child{color:var(--muted);min-width:110px}
+.sepdot{width:4px;height:4px;border-radius:50%;background:var(--faint)}
+.thero-acts{align-self:start}
+.tag.invited{border-color:var(--warn);color:var(--warn)}
+.pcmail{font-size:12px}
+@media (max-width:860px){.thero{grid-template-columns:auto minmax(0,1fr)}.thero-acts{grid-column:1/-1}}
+.teamgrid{display:grid;grid-template-columns:230px minmax(0,1fr);gap:20px;align-items:start}
+.tside{display:flex;flex-direction:column;gap:2px;position:sticky;top:0}
+.tsel{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;text-align:left;color:var(--fg)}
+.tsel .tn{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tsel:hover{background:var(--surface)}.tsel.on{background:var(--surface);box-shadow:inset 0 0 0 1px var(--line);font-weight:600}
+.tnote{margin-top:14px;font-size:12.5px;color:var(--muted);border:1px dashed var(--line);border-radius:10px;padding:10px}
+.tmain{min-width:0;display:flex;flex-direction:column;gap:14px}
+.tcard{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:flex-start;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--c);border-radius:12px;padding:14px 16px}
+.tcard h2{margin:0 0 4px;font-size:19px;display:flex;align-items:center;gap:8px}
+.pcgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,330px),1fr));gap:14px;align-items:start}
+.pc{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.pchead{display:flex;gap:12px;align-items:flex-start}
+.pcinfo{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.pcname{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.pcname b{font-size:16px}
+.pcbadges{display:flex;flex-wrap:wrap;gap:4px;margin-top:3px}
+.acc{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;padding:1px 7px;border-radius:5px;border:1px solid var(--line)}
+.acc-admin{color:var(--accent);border-color:var(--accent)}.acc-manager{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 60%,var(--line))}.acc-guest{color:var(--muted);border-style:dashed}
+.tchip{display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:1px 8px;border-radius:99px;background:var(--surface-2);color:var(--fg)}
+.pcstats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:10px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.pcstats div{display:flex;flex-direction:column}.pcstats b{font-size:19px;font-variant-numeric:tabular-nums}.pcstats b.od{color:var(--danger)}.pcstats span{font-size:11.5px;color:var(--muted)}
+.ownstar{color:var(--warn);margin-left:2px}
+.pcgoals{display:flex;flex-direction:column;gap:4px;align-items:flex-start;font-size:13px}
+.mxwrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.mx{border-collapse:collapse;min-width:100%}
+.mx th,.mx td{border-bottom:1px solid var(--line);padding:6px;text-align:center;vertical-align:middle}
+.mx thead th{background:var(--surface-2);font-weight:500;font-size:12px;vertical-align:bottom}
+.mx .mxp{text-align:left;position:sticky;left:0;background:var(--surface);z-index:1;min-width:210px;font-weight:500;font-size:13px;border-right:1px solid var(--line)}
+.mx thead .mxp{background:var(--surface-2)}
+.mxh{display:flex;flex-direction:column;align-items:center;gap:4px;width:92px;margin:auto;font-size:12px;line-height:1.2}
+.mxc{width:56px;height:34px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;gap:5px;background:color-mix(in srgb,var(--c) calc(12% + var(--k) * 45%),var(--surface));border:1px solid color-mix(in srgb,var(--c) 45%,var(--line))}
+.mxc.none{border-style:dashed}
+.mxc b{font-size:13px}.mxr{font-size:13px;color:var(--fg)}
+.mxc:hover{outline:2px solid var(--accent);outline-offset:1px}
+.mx-empty{background:transparent}
+.ro [data-act=addTask],.ro .quick,.ro [data-act=lineTask],.ro .composer,.ro [data-act=noteEdit],.ro [data-act=noteDel],.ro [data-act=delTask],.ro [data-act=rvDone],.ro [data-act=rvMove],.ro [data-act=imgFit]{display:none!important}
+.ro .sheet input,.ro .sheet select,.ro .sheet textarea,.ro .sheet .pp,.ro .sheet .circ,.ro .sheet [data-act=rmSub]{pointer-events:none}
+.ro .sheet input,.ro .sheet select,.ro .sheet textarea{opacity:.75}
+.nomgr [data-act=newProject],.nomgr .newcard,.nomgr [data-act=newGoal],.nomgr [data-act=backup],.nomgr [data-act=dimsModal],.nomgr [data-act=editProject]{display:none!important}
+.nomgr [data-act=editGoal]{pointer-events:none}
+@media (max-width:860px){.teamgrid{grid-template-columns:minmax(0,1fr)}.tside{position:static;flex-direction:row;flex-wrap:wrap}.tnote{display:none}}
+.drow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:13px}
+.gsect{margin-bottom:6px;display:flex;gap:6px;align-items:baseline}
+.links{display:flex;flex-wrap:wrap;gap:6px}
