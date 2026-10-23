@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { db } from './supabase';
-import type { GoalRef, Member, Note, NoteKind, Project, ProjectFull, Subtask, Task, Team, TaskFull, TeamRef } from './types';
+import type { Goal, GoalRef, Member, Note, NoteKind, Project, ProjectFull, Subtask, Task, Team, TaskFull, TeamRef } from './types';
 
 /** Loads data for the current screen and reloads after a change. */
 export function useLoad<T>(load: () => Promise<T>, deps: unknown[]) {
@@ -242,4 +242,33 @@ export async function setPersonTeams(memberId: string, teams: Team[], wanted: st
     if (has && !want) check(await db().from('team_members').delete().eq('team_id', t.id).eq('member_id', memberId));
     if (!has && want) check(await db().from('team_members').insert({ team_id: t.id, member_id: memberId }));
   }
+}
+
+// ---------- goals ----------
+
+export async function listGoals(ws: string): Promise<Goal[]> {
+  const goals = check(await db().from('goals').select('*').eq('workspace_id', ws).order('start_date').order('created_at')) as Omit<Goal, 'project_ids'>[];
+  if (!goals.length) return [];
+  const links = check(await db().from('goal_projects').select('goal_id, project_id').in('goal_id', goals.map(g => g.id))) as { goal_id: string; project_id: string }[];
+  return goals.map(g => ({ ...g, project_ids: links.filter(l => l.goal_id === g.id).map(l => l.project_id) }));
+}
+
+export type GoalInput = Pick<Goal, 'title' | 'start_date' | 'end_date' | 'status' | 'parent_id' | 'owner_member_id' | 'manual_progress' | 'notes' | 'project_ids'>;
+
+/** Creates a goal (existing = null) or saves changes, including its linked projects. */
+export async function saveGoal(ws: string, existing: Goal | null, d: GoalInput): Promise<string> {
+  const { project_ids, ...row } = d;
+  const g = existing
+    ? check(await db().from('goals').update(row).eq('id', existing.id).select().single()) as Goal
+    : check(await db().from('goals').insert({ workspace_id: ws, ...row }).select().single()) as Goal;
+  const before = existing?.project_ids ?? [];
+  const add = project_ids.filter(x => !before.includes(x)), drop = before.filter(x => !project_ids.includes(x));
+  if (add.length) check(await db().from('goal_projects').insert(add.map(project_id => ({ goal_id: g.id, project_id }))));
+  if (drop.length) check(await db().from('goal_projects').delete().eq('goal_id', g.id).in('project_id', drop));
+  return g.id;
+}
+
+/** Deletes a goal and its sub-goals; tasks linked to them stay, without a goal. */
+export async function deleteGoal(id: string) {
+  check(await db().from('goals').delete().eq('id', id));
 }

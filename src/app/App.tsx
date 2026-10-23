@@ -11,6 +11,7 @@ import { Projects } from '../pages/Projects';
 import { ProjectPage } from '../pages/ProjectPage';
 import { Tasks } from '../pages/Tasks';
 import { Team } from '../pages/Team';
+import { Strategy } from '../pages/Strategy';
 import { Placeholder } from '../pages/Placeholder';
 
 type Page = 'timeline' | 'strategy' | 'projects' | 'tasks' | 'review' | 'team' | 'insights';
@@ -71,7 +72,7 @@ function Shell() {
         {page === 'tasks' && <Tasks />}
         {page === 'team' && <Team />}
         {page === 'timeline' && <Placeholder title="Timeline" what="Project lanes, goal bands and Monday/Friday markers come next." />}
-        {page === 'strategy' && <Placeholder title="Strategy" what="Goals, sub-goals, owners and linked projects come next." />}
+        {page === 'strategy' && <Strategy />}
         {page === 'review' && <Placeholder title="Review" what="Date ranges, slipped/done/coming-up panels and the shareable summary come next." />}
         {page === 'insights' && <Placeholder title="Insights" what="The chart builder and dashboard come next." />}
       </main>

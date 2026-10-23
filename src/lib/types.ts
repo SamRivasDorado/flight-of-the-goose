@@ -135,3 +135,27 @@ export const ACCESS_DESC: Record<Access, string> = {
   member: 'Works on tasks in their projects; their review covers only their own tasks',
   guest: 'Read-only, for example a client',
 };
+
+export type GoalStatus = 'on_track' | 'at_risk' | 'off_track' | 'achieved';
+export const GOAL_STATUSES: { id: GoalStatus; label: string; color: string; tone: string; desc: string }[] = [
+  { id: 'on_track', label: 'On track', color: '#6B9160', tone: 'good', desc: 'You expect to reach the goal in its period.' },
+  { id: 'at_risk', label: 'At risk', color: '#E39A3E', tone: 'warn', desc: 'Reachable, but something needs attention.' },
+  { id: 'off_track', label: 'Off track', color: '#C8634A', tone: 'bad', desc: 'Unlikely to be reached without a change of plan.' },
+  { id: 'achieved', label: 'Achieved', color: '#5B83B5', tone: 'done', desc: 'Done. Progress shows 100%.' },
+];
+
+export interface Goal {
+  id: string;
+  workspace_id: string;
+  parent_id: string | null;
+  title: string;
+  start_date: string;
+  end_date: string | null;
+  status: GoalStatus;
+  manual_progress: number;
+  notes: string;
+  owner_member_id: string | null;
+  created_at: string;
+  /** Linked projects, filled in from goal_projects. */
+  project_ids: string[];
+}
