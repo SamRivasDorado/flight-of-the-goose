@@ -1,0 +1,668 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Goose Planning App</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Goose links your goals, projects and tasks so the whole team flies in the same direction. Timeline, tasks, project notebooks, strategy, team and weekly review in one place.">
+<link rel="icon" type="image/png" href="img/favicon-64.png">
+<link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500..700&family=Geologica:wght@300..700&display=swap">
+<style>
+/* Layout: dark top bar with tabs, one panel per tab; the goose stands on the left of Overview and Why Goose.
+   Colours are the goose's own: near-black outline, feather grey, warm white, beak orange, yolk yellow (the app's "Goose feather" palette). */
+:root{
+  --ink:#18191C;        /* outline, top bar */
+  --ink-fg:#F5F3EE;
+  --ink-muted:#ABA79F;
+  --ink-line:#34363B;
+  --ink-soft:#C9C6BE;  /* text on the dark band (same in both themes) */
+  --ink-faint:#55575E;
+  --ink-chip:#2A2C31;
+  --paper:#FAF8F3;      /* warm white page */
+  --surface:#FFFFFF;
+  --feather:#ECEAE4;    /* feather grey, quiet panels */
+  --feather-2:#DCDAD3;
+  --line:#E4DED2;
+  --fg:#1B1B1D;
+  --muted:#625D55;
+  --faint:#8F887C;
+  --beak:#F28C28;       /* actions */
+  --beak-hover:#E37A14;
+  --beak-fg:#1B1B1D;
+  --beak-text:#B9510C;  /* orange that reads as text on white */
+  --yolk:#F6C343;       /* highlights */
+  --yolk-soft:#FFEFC4;
+  --goose-body:#DCDCDA; --goose-beak:#F28C28; --goose-ink:#1B1B1D; --goose-disc:#F3EFE6;
+  --f-display:"Fraunces",ui-serif,Georgia,"Times New Roman",serif;
+  --f-body:"Geologica",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --gut-l:max(20px,env(safe-area-inset-left,0px));
+  --gut-r:max(20px,env(safe-area-inset-right,0px));
+  --shadow:0 1px 2px rgb(24 25 28 / .06),0 12px 32px -12px rgb(24 25 28 / .22);
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --ink:#0B0B0C;--ink-fg:#F5F3EE;--ink-muted:#9E9A91;--ink-line:#26282D;
+  --paper:#1C1D21;--surface:#25272C;--feather:#2A2C31;--feather-2:#3A3D44;--line:#3A3D44;
+  --fg:#F2F0EB;--muted:#ADA9A1;--faint:#7E7B74;
+  --beak:#F28C28;--beak-hover:#F7A04A;--beak-fg:#141517;--beak-text:#F6C343;--yolk:#F6C343;--yolk-soft:#3A2E12;
+  --goose-disc:#2D3035;
+  --shadow:0 1px 2px rgb(0 0 0 / .3),0 12px 32px -12px rgb(0 0 0 / .6);
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --ink:#0B0B0C;--ink-fg:#F5F3EE;--ink-muted:#9E9A91;--ink-line:#26282D;
+  --paper:#1C1D21;--surface:#25272C;--feather:#2A2C31;--feather-2:#3A3D44;--line:#3A3D44;
+  --fg:#F2F0EB;--muted:#ADA9A1;--faint:#7E7B74;
+  --beak:#F28C28;--beak-hover:#F7A04A;--beak-fg:#141517;--beak-text:#F6C343;--yolk:#F6C343;--yolk-soft:#3A2E12;
+  --goose-disc:#2D3035;
+  --shadow:0 1px 2px rgb(0 0 0 / .3),0 12px 32px -12px rgb(0 0 0 / .6);
+  color-scheme:dark}
+
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+body{margin:0;background:var(--paper);color:var(--fg);font-family:var(--f-body);font-size:16px;line-height:1.6;font-weight:350}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--ink)}
+img{max-width:100%;display:block}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--beak);outline-offset:3px;border-radius:6px}
+[hidden]{display:none!important}
+h1,h2,h3{font-family:var(--f-display);font-weight:600;line-height:1.12;text-wrap:balance;margin:0;letter-spacing:-.01em}
+p{margin:0}
+.wrap{max-width:1180px;margin-inline:auto;padding-left:var(--gut-l);padding-right:var(--gut-r)}
+.eyebrow{font-size:12.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--beak-text)}
+.lede{font-size:19px;color:var(--muted);max-width:60ch}
+
+/* ---------- top bar ---------- */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--ink);color:var(--ink-fg)}
+.top .wrap{display:flex;align-items:center;gap:18px;padding-block:12px}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;font-family:var(--f-display);font-weight:700;font-size:22px;flex:none}
+.brand img{width:34px;height:34px;border-radius:9px}
+.tabs{display:flex;gap:2px;flex:1 1 auto;min-width:0;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{font-family:var(--f-display);font-size:16px;font-weight:500;color:var(--ink-muted);text-decoration:none;padding:7px 12px;border-radius:9px;white-space:nowrap}
+.tab:hover{color:var(--ink-fg);background:rgb(255 255 255 / .07)}
+.tab[aria-current="page"]{background:var(--yolk);color:#18191C;font-weight:650}
+.btn{display:inline-flex;align-items:center;gap:8px;font:inherit;font-weight:550;font-size:15.5px;text-decoration:none;border-radius:11px;padding:11px 18px;border:1px solid transparent;cursor:pointer;white-space:nowrap}
+.btn-beak{background:var(--beak);color:var(--beak-fg)}
+.btn-beak:hover{background:var(--beak-hover)}
+.btn-line{border-color:var(--feather-2);color:var(--fg);background:var(--surface)}
+.btn-line:hover{border-color:var(--faint)}
+.top .btn{padding:8px 14px;font-size:15px;flex:none}
+.top .signin{color:var(--ink-muted);text-decoration:none;font-size:15px;flex:none}
+.top .signin:hover{color:var(--ink-fg)}
+.stripe{display:grid;grid-template-rows:3px 2px 1.5px 1.5px}
+.stripe i:nth-child(1){background:var(--yolk)}.stripe i:nth-child(2){background:var(--beak)}.stripe i:nth-child(3){background:var(--ink-chip)}.stripe i:nth-child(4){background:var(--paper)}
+@media (max-width:760px){
+  .top .wrap{flex-wrap:wrap;gap:10px 14px}
+  .tabs{order:3;flex-basis:100%;margin-inline:-6px}
+  .brand{margin-right:auto}
+}
+
+/* ---------- panels ---------- */
+.panel{padding-block:56px 88px}
+.js .panel:not(.on){display:none}
+.panel-head{display:grid;gap:14px;max-width:780px;margin-bottom:40px}
+.panel-head h2{font-size:clamp(32px,4.4vw,48px)}
+
+/* ---------- goose ---------- */
+.goose-stage{position:relative;display:grid;place-items:center;aspect-ratio:1;max-width:100%;background:var(--goose-disc);border-radius:50%;border:1px solid var(--line)}
+.goose-stage svg{width:66%;height:auto;overflow:visible}
+.goose-stage::after{content:"";position:absolute;left:18%;right:18%;bottom:13%;height:4%;border-radius:50%;background:var(--feather-2);opacity:.7;z-index:0}
+.goose-stage svg{position:relative;z-index:1;margin-top:-6%}
+
+/* ---------- overview ---------- */
+.hero{display:grid;grid-template-columns:minmax(0,400px) minmax(0,1fr);gap:64px;align-items:center}
+.hero h1{font-size:clamp(40px,6vw,68px);font-weight:650}
+.hero h1 em{font-style:italic;font-weight:550;color:var(--beak-text)}
+.hero-text{display:grid;gap:22px;min-width:0}
+.cta{display:flex;gap:12px;flex-wrap:wrap;margin-top:6px}
+.trio{display:flex;flex-wrap:wrap;gap:8px 10px;font-size:14px;color:var(--muted);align-items:center}
+.trio b{font-weight:600;color:var(--fg)}
+.trio .arr{color:var(--faint)}
+@media (max-width:860px){.hero{grid-template-columns:1fr;gap:32px}.hero .goose-stage{width:min(280px,70vw);justify-self:start}}
+
+.shot{margin:0;display:grid;gap:12px}
+.frame{border-radius:14px;overflow:hidden;border:1px solid var(--line);background:var(--surface);box-shadow:var(--shadow);cursor:zoom-in;padding:0;display:block;width:100%;text-align:left;font:inherit;color:inherit}
+.frame .chrome{display:flex;gap:6px;padding:9px 12px;background:var(--feather);border-bottom:1px solid var(--line)}
+.frame .chrome i{width:9px;height:9px;border-radius:50%;background:var(--feather-2)}
+.frame img{width:100%;height:auto;aspect-ratio:1600/965}
+.shot figcaption{font-size:14px;color:var(--muted)}
+.overview-shot{margin-top:72px}
+
+/* flight band: the one bold moment */
+.flight{background:var(--ink);color:var(--ink-fg);margin-top:88px;border-radius:22px;overflow:hidden}
+.flight-in{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:48px;padding:48px clamp(22px,4vw,56px)}
+.flight h2{font-size:clamp(30px,3.6vw,42px)}
+.flight .eyebrow{color:var(--yolk)}
+.flight-intro{display:grid;gap:16px;align-content:start}
+.flight-intro p{color:var(--ink-muted);max-width:46ch}
+.vee{width:100%;height:auto;margin-top:8px}
+.vee .bird{fill:var(--ink-soft)}
+.vee .lead{fill:var(--yolk)}
+.vee .air{stroke:var(--ink-faint);stroke-width:1.4;fill:none;stroke-dasharray:3 5}
+.vee text{fill:var(--ink-muted);font:500 12px var(--f-body)}
+.lessons{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.lessons li{display:grid;grid-template-columns:44px minmax(0,1fr);gap:16px;padding:18px 0;border-top:1px solid var(--ink-line)}
+.lessons li:first-child{border-top:0;padding-top:0}
+.lessons .ic{width:44px;height:44px;border-radius:12px;background:var(--ink-chip);display:grid;place-items:center;color:var(--yolk)}
+.lessons .ic svg{width:22px;height:22px}
+.lessons h3{font-family:var(--f-body);font-size:17px;font-weight:600;letter-spacing:0;margin-bottom:4px}
+.lessons p{color:var(--ink-soft);font-size:15px}
+.lessons .inapp{display:block;margin-top:8px;font-size:14px;color:var(--ink-fg)}
+.lessons .inapp b{color:var(--beak);font-weight:600}
+@media (max-width:900px){.flight-in{grid-template-columns:1fr;gap:32px}}
+
+.levels{margin-top:88px;display:grid;gap:28px}
+.levels h2{font-size:clamp(28px,3.4vw,38px)}
+.ladder{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--surface)}
+.rung{padding:26px 26px 28px;display:grid;gap:8px;align-content:start;position:relative}
+.rung + .rung{border-left:1px solid var(--line)}
+.rung .lvl{font-size:12.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+.rung h3{font-size:24px}
+.rung p{color:var(--muted);font-size:15px}
+.rung .ex{margin-top:6px;font-size:14px;padding:8px 11px;border-radius:9px;background:var(--feather);color:var(--fg)}
+@media (max-width:760px){.ladder{grid-template-columns:1fr}.rung + .rung{border-left:0;border-top:1px solid var(--line)}}
+
+/* ---------- features ---------- */
+.subnav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:48px}
+.chip{font-size:14.5px;text-decoration:none;padding:7px 14px;border-radius:999px;border:1px solid var(--feather-2);background:var(--surface);color:var(--fg)}
+.chip:hover{border-color:var(--beak)}
+.feature{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:48px;align-items:start;padding-block:48px;border-top:1px solid var(--line);scroll-margin-top:90px}
+.feature:first-of-type{border-top:0;padding-top:0}
+.feature-text{display:grid;gap:14px;position:sticky;top:110px}
+.feature h3{font-size:30px}
+.feature .what{color:var(--muted)}
+.ticks{list-style:none;padding:0;margin:4px 0 0;display:grid;gap:9px;font-size:15px}
+.ticks li{display:grid;grid-template-columns:18px minmax(0,1fr);gap:10px}
+.ticks li::before{content:"";width:8px;height:8px;margin-top:9px;border-radius:2px;background:var(--beak);transform:rotate(45deg)}
+.switch{display:inline-flex;gap:2px;padding:3px;border-radius:10px;background:var(--feather);justify-self:start}
+.switch button{font:inherit;font-size:14px;border:0;background:none;color:var(--muted);padding:6px 12px;border-radius:8px;cursor:pointer}
+.switch button[aria-pressed="true"]{background:var(--surface);color:var(--fg);font-weight:550;box-shadow:0 1px 2px rgb(0 0 0 / .12)}
+.soon{margin-top:24px;padding:28px;border-radius:16px;background:var(--yolk-soft);display:grid;gap:10px}
+.soon h3{font-size:22px}
+.soon ul{margin:0;padding-left:20px;color:var(--fg);display:grid;gap:4px;font-size:15px}
+@media (max-width:900px){.feature{grid-template-columns:1fr;gap:24px}.feature-text{position:static}}
+
+/* ---------- why ---------- */
+.why{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:64px;align-items:start}
+.why-side{position:sticky;top:110px;display:grid;gap:22px}
+.why-side .goose-stage{width:100%}
+.why-side blockquote{margin:0;font-family:var(--f-display);font-size:21px;line-height:1.35;font-weight:500;font-style:italic;color:var(--fg)}
+.why-side cite{display:block;margin-top:8px;font:normal 14px var(--f-body);color:var(--muted)}
+.reasons{display:grid;gap:0}
+.reason{display:grid;grid-template-columns:minmax(0,220px) minmax(0,1fr);gap:28px;padding:26px 0;border-top:1px solid var(--line)}
+.reason:first-child{border-top:0;padding-top:4px}
+.reason h3{font-size:22px}
+.reason p{color:var(--muted)}
+.reason p + p{margin-top:8px}
+.for{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.for span{font-size:14px;padding:5px 12px;border-radius:999px;background:var(--feather)}
+@media (max-width:900px){.why{grid-template-columns:1fr;gap:36px}.why-side{position:static;grid-template-columns:minmax(0,160px) minmax(0,1fr);align-items:center}}
+@media (max-width:640px){.reason{grid-template-columns:1fr;gap:8px}}
+@media (max-width:480px){.why-side{grid-template-columns:1fr}.why-side .goose-stage{width:180px}}
+
+/* ---------- security ---------- */
+.sec-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+.sec{padding:24px;border-radius:16px;border:1px solid var(--line);background:var(--surface);display:grid;gap:10px;align-content:start}
+.sec .ic{width:40px;height:40px;border-radius:11px;background:var(--yolk-soft);color:var(--beak-text);display:grid;place-items:center}
+.sec .ic svg{width:20px;height:20px}
+.sec h3{font-family:var(--f-body);font-size:17px;font-weight:600;letter-spacing:0}
+.sec p{color:var(--muted);font-size:15px}
+@media (max-width:900px){.sec-grid{grid-template-columns:1fr}}
+.access{margin-top:56px;display:grid;gap:18px}
+.access h2{font-size:clamp(26px,3vw,34px)}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:16px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:640px;font-size:15px}
+th,td{text-align:left;padding:14px 18px;border-top:1px solid var(--line);vertical-align:top}
+thead th{border-top:0;font-size:12.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);font-weight:600;background:var(--feather)}
+td:first-child{font-weight:600;white-space:nowrap}
+.lvlbadge{display:inline-block;font-size:12px;letter-spacing:.08em;text-transform:uppercase;padding:2px 8px;border-radius:6px;border:1px solid var(--beak-text);color:var(--beak-text)}
+.rules{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 32px;margin:0;padding:0;list-style:none;font-size:15px;color:var(--muted)}
+.rules b{color:var(--fg);font-weight:600}
+@media (max-width:760px){.rules{grid-template-columns:1fr}}
+
+/* ---------- faq ---------- */
+.faq{display:grid;gap:10px;max-width:820px}
+.faq details{border:1px solid var(--line);border-radius:14px;background:var(--surface)}
+.faq summary{cursor:pointer;list-style:none;padding:18px 22px;font-weight:550;font-size:17px;display:flex;justify-content:space-between;gap:16px}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:"+";font-family:var(--f-display);font-size:22px;line-height:1;color:var(--beak-text);flex:none}
+.faq details[open] summary::after{content:"–"}
+.faq details > div{padding:0 22px 20px;color:var(--muted);display:grid;gap:8px;max-width:68ch}
+
+/* ---------- footer ---------- */
+.foot{border-top:1px solid var(--line);padding-block:32px 40px;color:var(--muted);font-size:14px}
+.foot .wrap{display:flex;gap:16px 28px;flex-wrap:wrap;align-items:center}
+.foot .brand{font-size:18px;color:var(--fg)}
+.foot .brand img{width:28px;height:28px;border-radius:7px}
+.foot nav{display:flex;gap:18px;flex-wrap:wrap;margin-left:auto}
+.foot nav a{text-decoration:none}
+.foot nav a:hover{color:var(--fg)}
+
+/* ---------- zoom ---------- */
+dialog.zoom{border:0;padding:0;background:transparent;max-width:min(1500px,96vw);width:100%}
+dialog.zoom::backdrop{background:rgb(11 11 12 / .82)}
+dialog.zoom img{width:100%;height:auto;border-radius:12px}
+dialog.zoom form{position:absolute;top:10px;right:10px}
+dialog.zoom button{font:inherit;font-size:14px;border:0;border-radius:9px;padding:7px 12px;background:var(--ink);color:var(--ink-fg);cursor:pointer}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="goose-art" viewBox="391 295 1266 1452"><path transform="translate(0.000000,2048.000000) scale(0.100000,-0.100000)" style="fill:var(--goose-body,#DCDCDA)" d="M6855 17115 c-200 -32 -439 -122 -575 -216 -157 -109 -165 -122 -102 -163 106 -68 182 -206 182 -331 0 -46 -32 -179 -60 -250 -16 -43 -50 -211 -50 -252 0 -79 48 -207 101 -268 74 -87 86 -221 31 -359 -38 -96 -35 -103 50 -134 34 -13 86 -32 113 -43 28 -10 56 -19 63 -19 6 0 38 -8 69 -19 153 -50 285 -66 528 -65 225 1 232 2 315 30 145 48 216 36 264 -45 65 -112 -39 -244 -211 -268 -69 -9 -77 -19 -72 -99 18 -318 -13 -713 -77 -969 -9 -33 -20 -82 -25 -110 -5 -27 -18 -79 -28 -115 -10 -36 -31 -108 -46 -160 -33 -113 -77 -241 -140 -405 -87 -224 -99 -252 -166 -393 -27 -57 -49 -106 -49 -109 0 -12 -201 -405 -250 -488 -29 -49 -95 -164 -148 -255 -52 -91 -120 -208 -152 -260 -155 -259 -343 -647 -425 -880 -231 -658 -259 -1208 -89 -1775 27 -90 60 -190 74 -220 5 -11 27 -63 50 -115 208 -475 634 -994 1130 -1375 73 -57 58 -46 267 -186 215 -144 239 -159 513 -319 348 -204 432 -267 753 -568 182 -171 428 -387 483 -426 273 -189 491 -310 694 -385 266 -98 359 -126 371 -114 21 21 3 37 -94 85 -296 146 -521 376 -684 698 -67 134 -66 206 6 282 35 38 41 41 93 42 78 1 123 -32 167 -121 92 -190 148 -275 253 -384 386 -400 887 -421 1240 -51 105 110 225 313 252 426 23 96 142 155 226 111 88 -45 110 -139 61 -256 -111 -261 -290 -505 -461 -630 -46 -34 -63 -52 -69 -79 -12 -49 -13 -158 -1 -165 22 -13 405 36 550 70 408 97 621 172 945 331 250 122 434 232 620 368 22 17 65 48 95 70 440 322 972 919 1322 1483 202 327 240 392 336 573 90 171 97 180 246 272 399 248 613 467 787 805 73 142 77 137 -118 145 -289 12 -661 59 -777 98 -44 15 -61 -5 -39 -45 45 -84 46 -87 41 -155 -6 -86 -34 -144 -107 -222 -130 -141 -353 -255 -560 -287 -81 -13 -98 -35 -66 -84 14 -21 45 -176 45 -224 0 -35 -32 -92 -84 -150 -43 -48 -216 -201 -262 -233 -12 -8 -57 -42 -100 -75 -279 -213 -663 -424 -1009 -555 -33 -13 -80 -30 -105 -40 -25 -9 -92 -32 -150 -49 -58 -18 -130 -41 -160 -52 -30 -10 -73 -21 -95 -24 -22 -4 -60 -13 -85 -20 -25 -8 -108 -25 -185 -39 -677 -122 -1338 -107 -2010 46 -144 32 -164 38 -345 97 -174 56 -224 74 -310 111 -41 17 -86 35 -100 40 -14 4 -88 39 -165 78 -793 394 -1353 985 -1535 1619 -28 98 -20 142 35 198 101 100 211 52 266 -115 41 -127 157 -364 226 -464 179 -260 464 -537 722 -703 47 -31 97 -63 111 -73 46 -31 294 -167 355 -194 33 -15 78 -35 100 -46 211 -98 566 -212 825 -264 451 -91 1072 -119 1460 -66 36 5 115 16 175 25 464 67 1050 271 1425 498 41 25 110 66 152 91 147 87 490 358 511 403 14 31 -5 87 -85 248 -69 137 -73 176 -23 241 38 50 61 56 230 64 180 9 295 35 411 91 80 39 174 120 174 151 0 33 -179 173 -360 282 -19 12 -44 27 -55 34 -55 34 -176 84 -306 127 -79 26 -172 58 -206 71 -35 13 -93 36 -130 50 -136 51 -251 98 -383 156 -74 33 -162 71 -195 85 -33 14 -78 33 -100 43 -22 9 -56 24 -75 33 -19 8 -78 33 -130 55 -52 22 -122 52 -155 67 -99 45 -298 126 -330 134 -17 4 -41 13 -54 20 -12 7 -46 21 -74 31 -29 10 -104 37 -167 60 -152 56 -314 111 -425 144 -49 15 -117 36 -150 46 -33 11 -100 30 -150 43 -253 68 -237 64 -602 146 -50 12 -104 21 -120 21 -15 1 -57 7 -93 15 -58 13 -246 38 -495 65 -282 30 -898 31 -1190 1 -161 -17 -338 -41 -425 -57 l-85 -17 -50 26 c-83 42 -133 126 -194 327 -75 246 -61 706 34 1095 8 33 28 119 45 190 17 72 35 141 40 155 4 14 23 77 40 140 17 63 42 149 55 190 27 87 111 375 148 505 26 95 93 369 121 495 86 391 124 913 96 1305 -69 940 -526 1733 -1135 1968 -232 89 -559 122 -810 82z M5875 16487 c-11 -7 -60 -54 -110 -106 -278 -289 -635 -567 -925 -720 -96 -51 -198 -106 -257 -140 -40 -22 -75 -41 -78 -41 -7 0 -137 -89 -175 -119 -36 -29 -17 -44 35 -29 57 16 595 16 765 0 74 -7 223 -24 330 -37 172 -20 309 -35 475 -50 62 -6 88 10 106 62 6 20 20 51 31 68 21 37 18 50 -27 115 -138 197 -158 431 -65 745 53 178 50 199 -31 241 -56 28 -49 27 -74 11z M10791 4955 c-18 -9 -64 -16 -101 -16 -104 -2 -95 45 -85 -429 4 -197 -11 -392 -37 -470 -60 -183 -162 -311 -288 -360 -19 -7 -39 -17 -45 -21 -16 -11 -222 -85 -305 -109 -41 -12 -104 -30 -140 -40 -36 -10 -114 -31 -173 -46 -100 -25 -127 -37 -114 -51 12 -12 1441 -2 1455 10 20 16 11 165 -17 272 -69 272 -65 235 -68 769 -2 553 2 527 -82 491z M10037 4684 c-4 -4 -7 -39 -7 -79 0 -198 -69 -397 -177 -510 -89 -93 -209 -148 -558 -256 -33 -10 -125 -34 -204 -53 -137 -33 -173 -47 -158 -63 6 -5 90 -10 317 -16 19 0 82 16 140 36 104 36 188 61 370 111 478 133 489 145 497 541 6 254 13 235 -94 267 -88 26 -116 31 -126 22z"/><path transform="translate(0.000000,2048.000000) scale(0.100000,-0.100000)" style="fill:var(--goose-beak,#F28C28)" d="M5731 16336 c-161 -159 -441 -405 -490 -430 -15 -8 -84 -52 -152 -98 -137 -92 -235 -152 -349 -211 -41 -22 -105 -57 -142 -78 -36 -22 -70 -39 -74 -39 -20 0 -143 -94 -132 -101 9 -6 7 -10 -7 -16 -31 -12 51 -23 89 -12 63 18 575 4 756 -21 407 -56 745 -82 779 -61 17 11 64 119 63 147 0 11 -15 43 -35 71 -19 27 -38 60 -42 74 -4 13 -16 38 -26 54 -71 118 -72 388 -2 605 37 115 46 179 28 206 -17 27 -72 64 -94 64 -7 0 -84 -69 -170 -154z M10780 4940 c-8 -5 -48 -10 -88 -10 -49 0 -74 -4 -77 -12 -3 -7 -7 -188 -8 -403 -4 -420 -6 -440 -63 -565 -64 -142 -154 -232 -284 -286 -36 -15 -83 -35 -105 -46 -52 -26 -358 -118 -506 -152 -91 -21 -126 -35 -111 -45 13 -8 1389 -4 1411 4 19 8 9 165 -18 270 -68 267 -65 237 -67 756 -1 262 -4 482 -8 488 -9 14 -56 14 -76 1z M10051 4677 c-6 -6 -11 -41 -11 -78 0 -168 -67 -379 -152 -480 -70 -83 -219 -172 -354 -212 -28 -8 -65 -22 -81 -31 -16 -8 -56 -21 -89 -30 -32 -8 -122 -30 -199 -50 -77 -20 -145 -36 -152 -36 -6 0 -24 -5 -40 -11 -48 -19 -1 -27 163 -30 140 -2 153 0 221 25 40 15 105 36 145 47 40 11 114 31 163 45 50 14 117 32 150 41 33 8 76 21 95 28 19 7 55 20 80 28 149 50 206 88 216 146 4 20 14 50 22 66 21 39 31 457 12 480 -6 8 -33 17 -58 20 -26 4 -63 15 -83 25 -27 14 -40 15 -48 7z"/><path transform="translate(0.000000,2048.000000) scale(0.100000,-0.100000)" style="fill:var(--goose-ink,#1B1B1D)" d="M6855 17175 c-200 -32 -436 -120 -575 -216 -119 -81 -200 -154 -200 -180 0 -17 92 -109 109 -109 37 0 111 -176 111 -265 0 -46 -32 -179 -60 -250 -16 -43 -50 -211 -50 -252 0 -79 48 -207 101 -268 74 -87 86 -221 31 -359 -21 -53 -28 -84 -22 -95 19 -35 78 -79 133 -100 31 -11 81 -30 110 -41 29 -11 58 -20 65 -20 6 0 38 -8 69 -19 153 -50 285 -66 528 -65 222 1 233 2 315 29 175 56 223 44 222 -57 -1 -21 -4 -47 -7 -59 -8 -24 -101 -67 -165 -76 -34 -5 -55 -16 -89 -48 l-44 -42 4 -69 c18 -318 -13 -713 -77 -969 -9 -33 -20 -82 -25 -110 -5 -27 -18 -79 -28 -115 -10 -36 -31 -108 -46 -160 -33 -113 -77 -241 -140 -405 -87 -224 -99 -252 -166 -393 -27 -57 -49 -106 -49 -109 0 -12 -201 -405 -250 -488 -29 -49 -95 -164 -148 -255 -52 -91 -120 -208 -152 -260 -155 -259 -343 -647 -425 -880 -231 -658 -259 -1208 -89 -1775 27 -90 60 -190 74 -220 5 -11 27 -63 50 -115 92 -210 264 -488 431 -695 180 -225 524 -560 759 -740 73 -57 58 -46 267 -186 215 -144 239 -159 513 -319 348 -204 432 -267 753 -568 182 -171 428 -387 483 -426 199 -137 351 -229 479 -290 177 -83 194 -90 492 -193 l82 -28 41 40 c22 21 40 44 40 50 0 24 -80 86 -168 130 -241 119 -459 324 -564 530 -8 17 -28 55 -45 85 -103 190 -67 320 78 280 30 -9 40 -19 63 -68 87 -183 150 -275 281 -408 374 -381 764 -444 1147 -185 62 42 248 236 293 306 46 72 130 247 140 292 9 43 39 63 96 63 73 0 94 -23 94 -102 0 -143 -234 -529 -398 -656 -153 -119 -164 -136 -166 -258 -1 -57 1 -62 38 -98 l39 -38 113 12 c224 22 363 47 609 110 485 125 988 362 1385 654 22 17 65 48 95 70 455 333 1029 974 1382 1543 203 328 241 393 335 573 82 156 65 137 200 220 393 242 657 514 834 856 59 115 59 120 12 166 l-38 36 -170 6 c-270 10 -684 63 -775 100 -10 4 -30 -9 -58 -36 -46 -48 -46 -35 3 -125 34 -63 10 -194 -50 -275 -85 -116 -339 -245 -544 -277 -100 -16 -163 -88 -127 -143 19 -30 51 -216 43 -249 -16 -61 -162 -216 -283 -299 -12 -8 -57 -42 -100 -75 -279 -213 -663 -424 -1009 -555 -33 -13 -80 -30 -105 -40 -25 -9 -92 -32 -150 -49 -58 -18 -130 -41 -160 -52 -30 -10 -73 -21 -95 -24 -22 -4 -60 -13 -85 -20 -25 -8 -108 -25 -185 -39 -677 -122 -1338 -107 -2010 46 -144 32 -164 38 -345 97 -174 56 -224 74 -310 111 -41 17 -86 35 -100 40 -58 19 -316 154 -457 238 -304 182 -583 413 -757 627 -187 228 -282 387 -378 630 -84 210 -84 297 -2 323 76 24 103 3 137 -104 38 -119 155 -359 224 -458 185 -267 519 -594 782 -763 47 -31 97 -63 111 -73 46 -31 294 -167 355 -194 33 -15 78 -35 100 -46 211 -98 566 -212 825 -264 451 -91 1072 -119 1460 -66 36 5 115 16 175 25 464 67 1050 271 1425 498 41 25 110 66 152 91 208 123 578 432 578 483 0 28 -37 118 -96 235 -54 107 -62 144 -45 191 14 35 30 39 196 47 277 14 435 72 569 209 42 43 76 85 76 92 0 40 -231 230 -420 343 -19 12 -44 27 -55 34 -55 34 -176 84 -306 127 -79 26 -172 58 -206 71 -35 13 -93 36 -130 50 -136 51 -251 98 -383 156 -74 33 -162 71 -195 85 -33 14 -78 33 -100 43 -22 9 -56 24 -75 33 -19 8 -78 33 -130 55 -52 22 -122 52 -155 67 -99 45 -298 126 -330 134 -17 4 -41 13 -54 20 -12 7 -46 21 -74 31 -29 10 -104 37 -167 60 -152 56 -314 111 -425 144 -49 15 -117 36 -150 46 -33 11 -100 30 -150 43 -253 68 -237 64 -602 146 -50 12 -104 21 -120 21 -15 1 -57 7 -93 15 -58 13 -246 38 -495 65 -282 30 -898 31 -1190 1 -167 -17 -339 -41 -423 -57 -148 -30 -191 14 -271 276 -75 246 -61 706 34 1095 8 33 28 119 45 190 17 72 35 141 40 155 4 14 23 77 40 140 17 63 42 149 55 190 27 87 111 375 148 505 26 95 93 369 121 495 143 647 140 1347 -7 1920 -165 643 -619 1230 -1092 1413 -232 89 -559 122 -810 82z m473 -56 c534 -61 971 -444 1250 -1094 255 -594 303 -1462 126 -2265 -28 -126 -95 -400 -121 -495 -37 -130 -121 -418 -148 -505 -13 -41 -38 -127 -55 -190 -17 -63 -36 -126 -40 -140 -5 -14 -23 -83 -40 -155 -17 -71 -37 -157 -45 -190 -95 -389 -109 -849 -34 -1095 61 -201 111 -285 194 -327 l50 -26 85 17 c87 16 264 40 425 57 292 30 908 29 1190 -1 249 -27 437 -52 495 -65 36 -8 78 -14 93 -15 16 0 70 -9 120 -21 365 -82 349 -78 602 -146 50 -13 117 -32 150 -43 33 -10 101 -31 150 -46 111 -33 273 -88 425 -144 63 -23 138 -50 167 -60 28 -10 62 -24 74 -31 13 -7 37 -16 54 -20 32 -8 231 -89 330 -134 33 -15 103 -45 155 -67 52 -22 111 -47 130 -55 19 -9 53 -24 75 -33 22 -10 67 -29 100 -43 33 -14 121 -52 195 -85 132 -58 247 -105 383 -156 37 -14 95 -37 130 -50 34 -13 127 -45 206 -71 130 -43 251 -93 306 -127 11 -7 36 -22 55 -34 181 -109 360 -249 360 -282 0 -31 -94 -112 -174 -151 -116 -56 -231 -82 -411 -91 -169 -8 -192 -14 -230 -64 -50 -65 -46 -104 23 -241 80 -161 99 -217 85 -248 -21 -45 -364 -316 -511 -403 -42 -25 -111 -66 -152 -91 -375 -227 -961 -431 -1425 -498 -60 -9 -139 -20 -175 -25 -388 -53 -1009 -25 -1460 66 -259 52 -614 166 -825 264 -22 11 -67 31 -100 46 -61 27 -309 163 -355 194 -14 10 -64 42 -111 73 -258 166 -543 443 -722 703 -69 100 -185 337 -226 464 -55 167 -165 215 -266 115 -69 -69 -66 -142 13 -340 176 -445 462 -794 940 -1149 168 -125 588 -365 712 -406 14 -5 59 -23 100 -40 86 -37 136 -55 310 -111 181 -59 201 -65 345 -97 672 -153 1333 -168 2010 -46 77 14 160 31 185 39 25 7 63 16 85 20 22 3 65 14 95 24 30 11 102 34 160 52 58 17 125 40 150 49 25 10 72 27 105 40 346 131 730 342 1009 555 43 33 88 67 100 75 46 32 219 185 262 233 52 58 84 115 84 150 0 48 -31 203 -45 224 -32 49 -15 71 66 84 207 32 430 146 560 287 73 78 101 136 107 222 5 68 4 71 -41 155 -22 40 -5 60 39 45 116 -39 488 -86 777 -98 195 -8 191 -3 118 -145 -174 -338 -388 -557 -787 -805 -149 -92 -156 -101 -246 -272 -96 -181 -134 -246 -336 -573 -350 -564 -882 -1161 -1322 -1483 -30 -22 -73 -53 -95 -70 -186 -136 -370 -246 -620 -368 -324 -159 -537 -234 -945 -331 -145 -34 -528 -83 -550 -70 -12 7 -11 116 1 165 6 27 23 45 69 79 171 125 350 369 461 630 49 117 27 211 -61 256 -84 44 -203 -15 -226 -111 -27 -113 -147 -316 -252 -426 -353 -370 -854 -349 -1240 51 -105 109 -161 194 -253 384 -44 89 -89 122 -167 121 -52 -1 -58 -4 -93 -42 -72 -76 -73 -148 -6 -282 163 -322 388 -552 684 -698 97 -48 115 -64 94 -85 -12 -12 -27 -8 -246 69 -164 58 -178 64 -340 140 -128 61 -280 153 -479 290 -55 39 -301 255 -483 426 -321 301 -405 364 -753 568 -274 160 -298 175 -513 319 -209 140 -194 129 -267 186 -496 381 -922 900 -1130 1375 -23 52 -45 104 -50 115 -14 30 -47 130 -74 220 -170 567 -142 1117 89 1775 82 233 270 621 425 880 32 52 100 169 152 260 53 91 119 206 148 255 49 83 250 476 250 488 0 3 22 52 49 109 67 141 79 169 166 393 63 164 107 292 140 405 15 52 36 124 46 160 10 36 23 88 28 115 5 28 16 77 25 110 64 256 95 651 77 969 -5 80 3 90 72 99 172 24 276 156 211 268 -48 81 -119 93 -264 45 -83 -28 -90 -29 -315 -30 -243 -1 -375 15 -528 65 -31 11 -63 19 -69 19 -7 0 -35 9 -63 19 -27 11 -79 30 -113 43 -85 31 -88 38 -50 134 55 138 43 272 -31 359 -53 61 -101 189 -101 268 0 41 34 209 50 252 28 71 60 204 60 250 0 125 -76 263 -182 331 -63 41 -55 54 102 163 43 30 211 114 282 141 206 79 501 109 766 79z M6874 16720 c-88 -44 -128 -106 -128 -201 -2 -222 285 -283 388 -83 56 109 14 219 -106 280 -58 29 -100 30 -154 4z M5873 16547 c-12 -7 -78 -70 -145 -141 -238 -250 -615 -541 -888 -685 -96 -51 -198 -106 -257 -140 -40 -22 -75 -41 -78 -41 -14 0 -157 -103 -206 -149 l-54 -50 40 -40 c39 -40 41 -41 80 -29 57 16 595 16 765 0 74 -7 223 -24 330 -37 172 -20 299 -34 478 -50 51 -5 54 -4 102 41 27 25 54 62 61 82 6 19 20 50 31 67 21 37 18 50 -27 115 -136 194 -158 424 -69 728 35 119 45 168 39 190 -9 35 -74 101 -127 128 -55 28 -47 27 -75 11z m76 -71 c81 -42 84 -63 31 -241 -93 -314 -73 -548 65 -745 45 -65 48 -78 27 -115 -11 -17 -25 -48 -31 -68 -18 -52 -44 -68 -106 -62 -166 15 -303 30 -475 50 -107 13 -256 30 -330 37 -170 16 -708 16 -765 0 -52 -15 -71 0 -35 29 38 30 168 119 175 119 3 0 38 19 78 41 59 34 161 89 257 140 93 49 358 222 463 303 150 116 314 263 462 417 76 79 118 117 133 119 1 0 24 -11 51 -24z M10791 5015 c-18 -9 -65 -16 -104 -16 -66 -1 -72 -3 -110 -38 l-39 -37 2 -139 c1 -77 4 -201 5 -275 10 -458 -72 -694 -265 -770 -19 -7 -39 -17 -45 -21 -16 -11 -222 -85 -305 -109 -41 -12 -104 -30 -140 -40 -36 -10 -113 -31 -172 -46 -94 -24 -111 -31 -144 -65 l-38 -39 35 -36 36 -36 719 1 719 2 44 42 43 42 -5 90 c-3 50 -14 126 -26 170 -69 272 -65 235 -68 770 l-2 490 -40 37 c-45 42 -51 44 -100 23z m67 -54 c11 -6 14 -105 15 -497 3 -534 -1 -497 68 -769 28 -107 37 -256 17 -272 -14 -12 -1443 -22 -1455 -10 -13 14 14 26 114 51 59 15 137 36 173 46 36 10 99 28 140 40 83 24 289 98 305 109 6 4 26 14 45 21 126 49 228 177 288 360 26 78 41 273 37 470 -10 474 -19 427 85 429 37 0 83 7 101 16 40 17 49 18 67 6z M10008 4713 c-37 -37 -38 -41 -38 -109 0 -185 -74 -410 -161 -489 -56 -51 -204 -118 -384 -175 -159 -50 -196 -61 -334 -94 -136 -33 -147 -37 -185 -75 l-41 -41 37 -37 37 -36 138 -5 c76 -2 154 -4 173 -5 19 0 82 16 140 36 104 36 188 61 370 111 52 15 159 47 237 73 l142 46 64 66 c98 100 109 138 114 416 l5 220 -44 43 c-33 32 -61 47 -114 63 -114 35 -115 35 -156 -8z m155 -51 c107 -32 100 -13 94 -267 -8 -396 -19 -408 -497 -541 -182 -50 -266 -75 -370 -111 -58 -20 -121 -36 -140 -36 -227 6 -311 11 -317 16 -15 16 21 30 158 63 79 19 171 43 204 53 349 108 469 163 558 256 108 113 177 312 177 510 0 98 -2 97 133 57z"/></symbol></svg>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="#overview"><img src="img/goose-tile-96.png" alt="" width="34" height="34">Goose</a>
+    <nav class="tabs" aria-label="Sections">
+      <a class="tab" href="#overview" data-tab="overview">Overview</a>
+      <a class="tab" href="#features" data-tab="features">Features</a>
+      <a class="tab" href="#why" data-tab="why">Why Goose</a>
+      <a class="tab" href="#security" data-tab="security">Security</a>
+      <a class="tab" href="#faq" data-tab="faq">FAQ</a>
+    </nav>
+    <!-- The app's address. Change it here (and in the buttons below) when the app moves to its own domain. -->
+    <a class="signin" href="https://samrivasdorado.github.io/flight-of-the-goose/">Sign in</a>
+    <a class="btn btn-beak" href="https://samrivasdorado.github.io/flight-of-the-goose/">Get started</a>
+  </div>
+  <div class="stripe" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+</header>
+
+<main>
+
+<!-- ===================== OVERVIEW ===================== -->
+<section class="panel" data-panel="overview" aria-label="Overview">
+  <div class="wrap">
+    <div class="hero">
+      <div class="goose-stage"><svg viewBox="0 0 1266 1452" role="img" aria-label="The Goose mascot"><use href="#goose-art" width="1266" height="1452"/></svg></div>
+      <div class="hero-text">
+        <span class="eyebrow">Planning for technical and consulting teams</span>
+        <h1>Goals, projects and tasks, <em>flying in formation.</em></h1>
+        <p class="lede">Goose links what your team wants to achieve with the projects and tasks that get it there. Everyone sees the same plan, each person sees the work they are part of, and reviewing a week takes a minute.</p>
+        <div class="cta">
+          <a class="btn btn-beak" href="https://samrivasdorado.github.io/flight-of-the-goose/">Create your workspace</a>
+          <a class="btn btn-line" href="#features" data-tab-link="features">See what it does</a>
+        </div>
+        <div class="trio" aria-label="How Goose is organised"><b>Strategy</b><span class="arr">→</span><b>Projects</b><span class="arr">→</span><b>Tasks</b><span>· one plan, three levels of detail</span></div>
+      </div>
+    </div>
+
+    <figure class="shot overview-shot">
+      <button class="frame" type="button" data-zoom aria-label="Enlarge the Timeline screenshot">
+        <span class="chrome" aria-hidden="true"><i></i><i></i><i></i></span>
+        <picture><source srcset="img/app/timeline-dark.webp" media="(prefers-color-scheme: dark)"><img src="img/app/timeline.webp" alt="Goose Timeline: goals as bands on top, one lane per project, tasks placed on their due dates" width="1600" height="965" loading="eager"></picture>
+      </button>
+      <figcaption>The Timeline, Goose's home screen: goals on top, one lane per project, each task on its due date.</figcaption>
+    </figure>
+
+    <div class="flight">
+      <div class="flight-in">
+        <div class="flight-intro">
+          <span class="eyebrow">Why a goose</span>
+          <h2>How geese fly together</h2>
+          <p>Geese cross whole continents twice a year, and they do it as a team. The V they fly in is a working arrangement, and it maps neatly onto how good project teams work.</p>
+          <svg class="vee" viewBox="0 0 420 250" aria-hidden="true">
+            <defs><path id="bird" d="M0 0 C-6 -9 -15 -12 -24 -10 C-16 -6 -9 -2 -4 3 L0 8 L4 3 C9 -2 16 -6 24 -10 C15 -12 6 -9 0 0 Z"/></defs>
+            <path class="air" d="M206 50 C236 70 258 86 286 112"/><path class="air" d="M206 50 C176 70 154 86 126 112"/>
+            <path class="air" d="M290 126 C318 150 338 166 364 190"/><path class="air" d="M122 126 C94 150 74 166 48 190"/>
+            <use href="#bird" class="lead" transform="translate(206 44)"/>
+            <use href="#bird" class="bird" transform="translate(248 82) scale(.92)"/><use href="#bird" class="bird" transform="translate(164 82) scale(.92)"/>
+            <use href="#bird" class="bird" transform="translate(290 120) scale(.86)"/><use href="#bird" class="bird" transform="translate(122 120) scale(.86)"/>
+            <use href="#bird" class="bird" transform="translate(330 158) scale(.8)"/><use href="#bird" class="bird" transform="translate(84 158) scale(.8)"/>
+            <use href="#bird" class="bird" transform="translate(368 196) scale(.74)"/><use href="#bird" class="bird" transform="translate(46 196) scale(.74)"/>
+            <text x="206" y="18" text-anchor="middle">the lead changes during the flight</text>
+            <text x="206" y="240" text-anchor="middle">each bird rides the air rising off the wing ahead</text>
+          </svg>
+        </div>
+        <ul class="lessons">
+          <li>
+            <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17c3-1 5-4 9-4s6 3 9 4"/><path d="M3 11c3-1 5-4 9-4s6 3 9 4"/></svg></span>
+            <div><h3>They share the lift</h3>
+              <p>Each goose flies a little behind and to the side of the one ahead, where the air spilling off its wingtip rises. In the V, every bird spends less energy than it would flying alone.</p>
+              <span class="inapp"><b>In Goose:</b> one shared plan. The Timeline shows every project and deadline, so nobody pulls against the rest of the team.</span></div>
+          </li>
+          <li>
+            <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a3 3 0 0 1 3-3h15"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a3 3 0 0 1-3 3H3"/></svg></span>
+            <div><h3>They take turns at the front</h3>
+              <p>Leading is the hardest position because there is no rising air to ride. Birds in a V swap places, so the work at the front is shared across the flock.</p>
+              <span class="inapp"><b>In Goose:</b> every project has an owner and every team a lead, and both are easy to hand over.</span></div>
+          </li>
+          <li>
+            <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
+            <div><h3>They keep calling</h3>
+              <p>Geese call to each other constantly in flight, which is thought to help the flock stay together and keep its spacing.</p>
+              <span class="inapp"><b>In Goose:</b> project notebooks for meetings and decisions, and a weekly summary you can copy and send.</span></div>
+          </li>
+          <li>
+            <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 20l-6-3V4l6 3 6-3 6 3v13l-6-3-6 3z"/><path d="M9 7v13M15 4v13"/></svg></span>
+            <div><h3>They learn the route together</h3>
+              <p>Young geese migrate with their parents and learn the way by flying it, stopover by stopover.</p>
+              <span class="inapp"><b>In Goose:</b> notes, decisions and tasks stay with the project, so someone joining halfway sees the whole route so far.</span></div>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="levels">
+      <h2>One plan, three levels of detail</h2>
+      <div class="ladder">
+        <div class="rung"><span class="lvl">Level 1</span><h3>Strategy</h3><p>The outcomes the team is working towards this year, with sub-goals, owners and status.</p><span class="ex">Grow repeat-client work · on track</span></div>
+        <div class="rung"><span class="lvl">Level 2</span><h3>Projects</h3><p>Fixed-term projects with an end date and ongoing ones without, each linked to the goals it supports.</p><span class="ex">Brightwater field study · ends 18 Dec</span></div>
+        <div class="rung"><span class="lvl">Level 3</span><h3>Tasks</h3><p>The day-to-day work, with an assignee, due date, subtasks and time spent, rolling up into progress.</p><span class="ex">Send the draft fracture map · today</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== FEATURES ===================== -->
+<section class="panel" data-panel="features" aria-label="Features">
+  <div class="wrap">
+    <div class="panel-head">
+      <span class="eyebrow">Features</span>
+      <h2>Everything a project team checks in a week</h2>
+      <p class="lede">These screens come from a demo workspace for an invented consultancy, Alder Ridge Consulting. The people, clients and projects are made up.</p>
+    </div>
+    <nav class="subnav" aria-label="Features">
+      <a class="chip" href="#f-timeline">Timeline</a><a class="chip" href="#f-tasks">Tasks</a><a class="chip" href="#f-projects">Projects and notebooks</a>
+      <a class="chip" href="#f-strategy">Strategy</a><a class="chip" href="#f-team">Team</a><a class="chip" href="#f-review">Review</a>
+    </nav>
+
+    <article class="feature" id="f-timeline">
+      <div class="feature-text">
+        <span class="eyebrow">Timeline</span><h3>The whole year on one screen</h3>
+        <p class="what">Goals run across the top. Each project gets a lane, with its tasks placed on their due dates.</p>
+        <ul class="ticks">
+          <li>Solid bands for fixed-term projects, hatched bands for ongoing work with no end date</li>
+          <li>Overdue tasks ringed in red, so slips stand out</li>
+          <li>Zoom between weeks, months and quarters, and jump back to today</li>
+        </ul>
+      </div>
+      <figure class="shot"><button class="frame" type="button" data-zoom aria-label="Enlarge"><span class="chrome" aria-hidden="true"><i></i><i></i><i></i></span>
+        <picture><source srcset="img/app/timeline-dark.webp" media="(prefers-color-scheme: dark)"><img src="img/app/timeline.webp" alt="Timeline with goal bands and project lanes" width="1600" height="965" loading="lazy"></picture></button></figure>
+    </article>
+
+    <article class="feature" id="f-tasks">
+      <div class="feature-text">
+        <span class="eyebrow">Tasks</span><h3>List, board or calendar</h3>
+        <p class="what">The same tasks in the view that suits the moment.</p>
+        <ul class="ticks">
+          <li>List grouped by due date (overdue, today, next 7 days) or by project</li>
+          <li>Board: drag between To do, In progress and Done</li>
+          <li>Calendar: drag a task to another day to move it</li>
+          <li>Task panel with assignee, collaborators, subtasks, goal and time spent</li>
+        </ul>
+        <div class="switch" role="group" aria-label="Task view">
+          <button type="button" aria-pressed="true" data-shot="tasks-list">List</button>
+          <button type="button" aria-pressed="false" data-shot="tasks-board">Board</button>
+          <button type="button" aria-pressed="false" data-shot="tasks-calendar">Calendar</button>
+          <button type="button" aria-pressed="false" data-shot="task-panel">Task panel</button>
+        </div>
+      </div>
+      <figure class="shot"><button class="frame" type="button" data-zoom aria-label="Enlarge"><span class="chrome" aria-hidden="true"><i></i><i></i><i></i></span>
+        <picture id="tasks-pic"><source srcset="img/app/tasks-list-dark.webp" media="(prefers-color-scheme: dark)"><img src="img/app/tasks-list.webp" alt="Tasks list grouped by due date" width="1600" height="965" loading="lazy"></picture></button></figure>
+    </article>
+
+    <article class="feature" id="f-projects">
+      <div class="feature-text">
+        <span class="eyebrow">Projects and notebooks</span><h3>Notes that turn into tasks</h3>
+        <p class="what">Every project has a notebook for meetings, notes and decisions. Any line can become a task, linked back to where it came from.</p>
+        <ul class="ticks">
+          <li>Project wall with status, progress, open and overdue tasks and recent activity</li>
+          <li>Decisions collected on the side, so nobody asks "what did we agree?"</li>
+          <li>The project's own list, board and calendar, one click away</li>
+        </ul>
+        <div class="switch" role="group" aria-label="Project view">
+          <button type="button" aria-pressed="true" data-shot="project-notebook">Notebook</button>
+          <button type="button" aria-pressed="false" data-shot="projects">Project wall</button>
+        </div>
+      </div>
+      <figure class="shot"><button class="frame" type="button" data-zoom aria-label="Enlarge"><span class="chrome" aria-hidden="true"><i></i><i></i><i></i></span>
+        <picture><source srcset="img/app/project-notebook-dark.webp" media="(prefers-color-scheme: dark)"><img src="img/app/project-notebook.webp" alt="Project notebook with meeting notes, decisions and open tasks" width="1600" height="965" loading="lazy"></picture></button></figure>
+    </article>
+
+    <article class="feature" id="f-strategy">
+      <div class="feature-text">
+        <span class="eyebrow">Strategy</span><h3>Goals that measure themselves</h3>
+        <p class="what">Set goals and sub-goals with an owner and a time span, and link the projects that serve them.</p>
+        <ul class="ticks">
+          <li>Progress comes from linked projects, tasks and sub-goals, or a value you set</li>
+          <li>On track, at risk or off track at a glance, for goals and sub-goals</li>
+          <li>See who is involved in each goal</li>
+        </ul>
+      </div>
+      <figure class="shot"><button class="frame" type="button" data-zoom aria-label="Enlarge"><span class="chrome" aria-hidden="true"><i></i><i></i><i></i></span>
+        <picture><source srcset="img/app/strategy-dark.webp" media="(prefers-color-scheme: dark)"><img src="img/app/strategy.webp" alt="Strategy page with a goal, its progress and sub-goals" width="1600" height="965" loading="lazy"></picture></button></figure>
+    </article>
+
+    <article class="feature" id="f-team">
+      <div class="feature-text">
+        <span class="eyebrow">Team</span><h3>Who is carrying what</h3>
+        <p class="what">A card for each person with their open, overdue and finished work, and the projects they are on.</p>
+        <ul class="ticks">
+          <li>Teams with a lead and a colour; one person can be in several</li>
+          <li>"Who works on what": a grid of people against projects</li>
+          <li>Invite people as Admin, Manager, Member or Guest</li>
+        </ul>
+        <div class="switch" role="group" aria-label="Team view">
+          <button type="button" aria-pressed="true" data-shot="team">People</button>
+          <button type="button" aria-pressed="false" data-shot="team-matrix">Who works on what</button>
+        </div>
+      </div>
+      <figure class="shot"><button class="frame" type="button" data-zoom aria-label="Enlarge"><span class="chrome" aria-hidden="true"><i></i><i></i><i></i></span>
+        <picture><source srcset="img/app/team-dark.webp" media="(prefers-color-scheme: dark)"><img src="img/app/team.webp" alt="Team page with a card for each person" width="1600" height="965" loading="lazy"></picture></button></figure>
+    </article>
+
+    <article class="feature" id="f-review">
+      <div class="feature-text">
+        <span class="eyebrow">Review</span><h3>The weekly look back, done in a minute</h3>
+        <p class="what">Pick a period and Goose lays out what slipped, what got done and what is coming up.</p>
+        <ul class="ticks">
+          <li>Slipped tasks with one-click fixes: done, next Monday, one week later</li>
+          <li>Where the time went, by goal and by project</li>
+          <li>A ready-made summary to copy into an email or chat</li>
+        </ul>
+      </div>
+      <figure class="shot"><button class="frame" type="button" data-zoom aria-label="Enlarge"><span class="chrome" aria-hidden="true"><i></i><i></i><i></i></span>
+        <picture><source srcset="img/app/review-dark.webp" media="(prefers-color-scheme: dark)"><img src="img/app/review.webp" alt="Review page for the last 30 days" width="1600" height="965" loading="lazy"></picture></button></figure>
+    </article>
+
+    <div class="soon">
+      <span class="eyebrow">In the works</span>
+      <h3>Next on the flight plan</h3>
+      <ul>
+        <li>Insights: charts of workload and progress over time</li>
+        <li>Filters by person and team across every screen</li>
+        <li>Custom labels such as priority, client or region, for tasks and projects</li>
+        <li>Profile pictures and project images</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== WHY GOOSE ===================== -->
+<section class="panel" data-panel="why" aria-label="Why Goose">
+  <div class="wrap">
+    <div class="why">
+      <aside class="why-side">
+        <div class="goose-stage"><svg viewBox="0 0 1266 1452" role="img" aria-label="The Goose mascot"><use href="#goose-art" width="1266" height="1452"/></svg></div>
+        <blockquote>Most task tools track tasks. Goose tracks where the tasks are taking you.</blockquote>
+      </aside>
+      <div>
+        <div class="panel-head">
+          <span class="eyebrow">Why Goose</span>
+          <h2>Built for teams whose work is part project, part ongoing</h2>
+          <p class="lede">Goose started as a tool for technical consulting, where a client study with a hard deadline runs next to work that never really ends. Generic task apps handle one or the other.</p>
+        </div>
+        <div class="reasons">
+          <div class="reason"><h3>Deadlines and ongoing work side by side</h3>
+            <p>Fixed-term projects end; training, publications and client care do not. Goose treats both properly, so the ongoing work stays visible instead of hiding in a backlog.</p></div>
+          <div class="reason"><h3>Strategy you can check</h3>
+            <p>Goals are linked to real projects and tasks, so their progress updates as the work gets done. You can see which goal is falling behind before the quarterly meeting.</p></div>
+          <div class="reason"><h3>Meeting notes that don't get lost</h3>
+            <p>Write the notes where the project lives. Turn any line into a task in one click, and keep decisions where the next person will find them.</p></div>
+          <div class="reason"><h3>Clients can look in</h3>
+            <p>Invite a client as a Guest and they see their project, read-only, and nothing else in your workspace.</p></div>
+          <div class="reason"><h3>Calm to use</h3>
+            <p>A short menu, clear words, and a Create or Save button in every form, so you always know when something is saved.</p></div>
+          <div class="reason"><h3>Who it is for</h3>
+            <div><p>Small and mid-sized teams that run projects for clients or for themselves.</p>
+            <div class="for"><span>Consultancies</span><span>Engineering and geoscience teams</span><span>Research groups</span><span>Agencies and studios</span><span>Freelancers</span></div></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== SECURITY ===================== -->
+<section class="panel" data-panel="security" aria-label="Security">
+  <div class="wrap">
+    <div class="panel-head">
+      <span class="eyebrow">Security and privacy</span>
+      <h2>Each person sees only what they are part of</h2>
+      <p class="lede">Client work is confidential, so Goose decides who sees what on the server, before anything reaches a browser.</p>
+    </div>
+    <div class="sec-grid">
+      <div class="sec"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span>
+        <h3>Rules enforced by the database</h3><p>Visibility is checked by the database itself for every row of data. A person's browser never receives a project or task they are not allowed to see.</p></div>
+      <div class="sec"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg></span>
+        <h3>Data kept in the EU</h3><p>Your workspace is stored in a data centre in Ireland.</p></div>
+      <div class="sec"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16v12H4z"/><path d="M4 7l8 6 8-6"/></svg></span>
+        <h3>Sign in with an email link</h3><p>No password to remember or leak. Goose sends a one-time link to your inbox.</p></div>
+      <div class="sec"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>
+        <h3>Tested on every change</h3><p>Every update runs automatic checks that sign in as an admin, a member, a guest and an outsider and confirm what each one can see and change.</p></div>
+      <div class="sec"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></span>
+        <h3>Separate workspaces</h3><p>Each workspace is sealed off from every other. You can belong to several, with a different access level in each.</p></div>
+      <div class="sec"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M17 11l2 2 3.5-3.5"/></svg></span>
+        <h3>You choose who joins</h3><p>Only admins invite people and set their access level. Removing someone hands their projects back to the admin.</p></div>
+    </div>
+
+    <div class="access">
+      <h2>Access levels</h2>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th scope="col">Level</th><th scope="col">Sees</th><th scope="col">Can do</th><th scope="col">Typical person</th></tr></thead>
+          <tbody>
+            <tr><td><span class="lvlbadge">Admin</span></td><td>Everything in the workspace</td><td>Everything, including inviting people and managing teams</td><td>Owner of the workspace</td></tr>
+            <tr><td><span class="lvlbadge">Manager</span></td><td>Everything in the workspace</td><td>Create goals and projects, review anyone's work, edit teams they lead</td><td>Project or team lead</td></tr>
+            <tr><td><span class="lvlbadge">Member</span></td><td>Their projects and tasks</td><td>Work on tasks in their projects; their review covers their own tasks</td><td>Team member</td></tr>
+            <tr><td><span class="lvlbadge">Guest</span></td><td>The projects they are invited to</td><td>Read only</td><td>A client</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <ul class="rules">
+        <li><b>Projects</b> are visible to their owner, their members and the teams they are shared with. Joining a project gives you all of it: tasks and notebook.</li>
+        <li><b>Tasks</b> are visible when you can see their project, or when you are the assignee, a collaborator or the person who created them.</li>
+        <li><b>Goals</b> are visible to their owner and to anyone who can see a linked project or task.</li>
+        <li><b>Job titles</b> are just labels. Access comes only from the level an admin sets.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== FAQ ===================== -->
+<section class="panel" data-panel="faq" aria-label="Frequently asked questions">
+  <div class="wrap">
+    <div class="panel-head">
+      <span class="eyebrow">FAQ</span>
+      <h2>Questions people ask</h2>
+    </div>
+    <div class="faq">
+      <details open><summary>Can I use Goose on my own?</summary>
+        <div><p>Yes. Everyone who signs up gets their own workspace, where they are the admin and can plan goals, projects and tasks alone. Invite people whenever you are ready.</p></div></details>
+      <details><summary>Can I be part of more than one workspace?</summary>
+        <div><p>Yes. Your own workspace and every workspace you are invited to sit under one sign-in, and you switch between them. Your access level can differ in each.</p></div></details>
+      <details><summary>Can my clients see their project?</summary>
+        <div><p>Invite them as a Guest. They see the projects they are a member of, read-only, and nothing else.</p></div></details>
+      <details><summary>What is the difference between a fixed-term and an ongoing project?</summary>
+        <div><p>A fixed-term project has an end date, like a client study. An ongoing project keeps going, like training or publications. Both can support goals, and the Timeline draws them differently so you can tell them apart.</p></div></details>
+      <details><summary>How is goal progress calculated?</summary>
+        <div><p>From what is linked to the goal: the tasks of its projects, tasks linked to it directly, and its sub-goals. If nothing is linked yet, you set the progress yourself.</p></div></details>
+      <details><summary>Where is my data stored?</summary>
+        <div><p>In the European Union, in a data centre in Ireland. Who can see what is enforced by the database, not by the page in your browser.</p></div></details>
+      <details><summary>Why is it called Goose?</summary>
+        <div><p>Geese travel thousands of kilometres by flying together: they share the effort, take turns leading and keep in touch the whole way. That is the kind of teamwork Goose is built for.</p></div></details>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <a class="brand" href="#overview"><img src="img/goose-tile-96.png" alt="" width="28" height="28">Goose</a>
+    <span>© 2026 Goose</span>
+    <nav aria-label="Footer">
+      <a href="#overview" data-tab-link="overview">Overview</a><a href="#features" data-tab-link="features">Features</a><a href="#why" data-tab-link="why">Why Goose</a>
+      <a href="#security" data-tab-link="security">Security</a><a href="#faq" data-tab-link="faq">FAQ</a>
+      <a href="https://samrivasdorado.github.io/flight-of-the-goose/">Sign in</a>
+    </nav>
+  </div>
+</footer>
+
+<dialog class="zoom" id="zoom" aria-label="Screenshot">
+  <form method="dialog"><button type="submit">Close</button></form>
+  <img alt="" id="zoom-img">
+</dialog>
+
+<script>
+(function () {
+  document.documentElement.classList.add('js');
+  var TABS = ['overview', 'features', 'why', 'security', 'faq'];
+  var panels = {}; TABS.forEach(function (t) { panels[t] = document.querySelector('[data-panel="' + t + '"]'); });
+  // which tab holds a given anchor (e.g. #f-tasks lives in Features)
+  function tabFor(id) {
+    if (panels[id]) return id;
+    var el = id && document.getElementById(id);
+    var p = el && el.closest('.panel');
+    return p ? p.dataset.panel : 'overview';
+  }
+  function show(id, scrollTo) {
+    var tab = tabFor(id);
+    TABS.forEach(function (t) { panels[t].classList.toggle('on', t === tab); });
+    document.querySelectorAll('.tab').forEach(function (a) {
+      if (a.dataset.tab === tab) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+    });
+    var target = scrollTo && document.getElementById(id);
+    if (target && !panels[id]) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    else window.scrollTo({ top: 0, behavior: 'instant' });
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest('a[href^="#"]');
+    if (!a) return;
+    var id = a.getAttribute('href').slice(1);
+    if (!id) return;
+    e.preventDefault();
+    try { history.replaceState(null, '', '#' + id); } catch (_) {}
+    show(id, true);
+  });
+  window.addEventListener('hashchange', function () { show(location.hash.slice(1), true); });
+  show(location.hash.slice(1), true);
+
+  // screenshot switches (Tasks, Projects, Team)
+  document.querySelectorAll('.switch').forEach(function (sw) {
+    var pic = sw.closest('.feature').querySelector('picture');
+    sw.addEventListener('click', function (e) {
+      var b = e.target.closest('button[data-shot]'); if (!b) return;
+      sw.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+      var n = b.dataset.shot;
+      pic.querySelector('source').srcset = 'img/app/' + n + '-dark.webp';
+      var img = pic.querySelector('img'); img.src = 'img/app/' + n + '.webp'; img.alt = b.textContent + ' screen';
+    });
+  });
+
+  // click a screenshot to see it large
+  var dlg = document.getElementById('zoom'), zimg = document.getElementById('zoom-img');
+  document.querySelectorAll('[data-zoom]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var img = btn.querySelector('img');
+      zimg.src = img.currentSrc || img.src; zimg.alt = img.alt;
+      if (dlg.showModal) dlg.showModal();
+    });
+  });
+  dlg.addEventListener('click', function (e) { if (e.target === dlg || e.target === zimg) dlg.close(); });
+})();
+</script>
+</body>
+</html>

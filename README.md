@@ -14,7 +14,7 @@ It grew out of a prototype (in `public/prototype/`) and is now being built as a 
 |---|---|---|
 | Web app | React + TypeScript (Vite) | Standard, fast, easy to host anywhere |
 | Database, logins, files | [Supabase](https://supabase.com) (Postgres, EU region) | Email sign-in and invitations built in; row-level security enforces who sees what |
-| Hosting | Cloudflare Pages | Free for commercial use, global CDN |
+| Hosting | GitHub Pages | Free, published automatically on every push to `main` |
 
 The visibility rules live in the database (`supabase/migrations`), not in the page: the browser never receives data a person may not see. See [docs/architecture.md](docs/architecture.md) and [docs/teams-and-access.md](docs/teams-and-access.md).
 
@@ -26,7 +26,7 @@ Phase 1 (foundation) is under way. Working now: sign-in by email link, personal 
 
 You need Node.js 20 or newer and a free Supabase account.
 
-1. **Create the Supabase project.** At supabase.com create a new project; pick the **Frankfurt (eu-central-1)** region.
+1. **Create the Supabase project.** At supabase.com create a new project; pick an EU region (Goose uses **Ireland, eu-west-1**).
 2. **Create the database.** In the project's **SQL Editor**, paste the contents of `supabase/migrations/20261023000000_init.sql` and run it.
 3. **Allow sign-in links back to the app.** In **Authentication → URL Configuration**, set the Site URL to `http://localhost:5173` while developing (later, your real domain).
 4. **Connect the app.** Copy `.env.example` to `.env.local` and fill in the Project URL and the `anon` public key from **Project Settings → API**.
@@ -46,6 +46,10 @@ psql -f supabase/tests/stub_supabase.sql
 psql -f supabase/migrations/20261023000000_init.sql
 psql -f supabase/tests/access_rules.sql   # ends with "ALL ACCESS TESTS PASSED"
 ```
+
+## Website
+
+The public website (Overview, Features, Why Goose, Security, FAQ) is in [`website/`](website/README.md).
 
 ## Name and look
 
