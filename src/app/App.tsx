@@ -70,7 +70,7 @@ function Shell() {
 function SetupNeeded() {
   return (
     <div className="auth"><div className="authbox">
-      <div className="row"><Logo /><h1>{APP_NAME}</h1></div>
+      <div className="row"><Logo variant="plain" size={52} /><h1>{APP_NAME}</h1></div>
       <p style={{ margin: 0 }}><b>Almost there.</b> Connect the app to its database: copy <code>.env.example</code> to <code>.env.local</code>, fill in your Supabase project URL and anon key, and restart <code>npm run dev</code>.</p>
       <p className="muted" style={{ margin: 0 }}>The README walks through creating the Supabase project.</p>
     </div></div>

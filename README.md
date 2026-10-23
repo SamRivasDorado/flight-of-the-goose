@@ -49,4 +49,4 @@ psql -f supabase/tests/access_rules.sql   # ends with "ALL ACCESS TESTS PASSED"
 
 ## Name and look
 
-The app is called **Goose** (`APP_NAME` in `src/config.ts`, `<title>` in `index.html`). The default palette is **Goose feather**: near-black top bars, warm white content, beak-orange actions and yolk-yellow highlights. The other palettes (Golden meadow, Forest calm, Evening glow, Coastal breeze) are in `src/styles.css`. The logo is still the four-band placeholder in `src/components/Logo.tsx`.
+The app is called **Goose** (`APP_NAME` in `src/config.ts`, `<title>` in `index.html`). The default palette is **Goose feather**: near-black top bars, warm white content, beak-orange actions and yolk-yellow highlights. The other palettes (Golden meadow, Forest calm, Evening glow, Coastal breeze) are in `src/styles.css`. The preliminary logo is the goose in `public/` (`goose.png` on its own, `goose-tile-*.png` on a warm white square for the dark top bar and app icons), used through `src/components/Logo.tsx`.

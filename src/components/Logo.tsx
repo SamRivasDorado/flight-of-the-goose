@@ -1,8 +1,10 @@
 import type { Member } from '../lib/types';
 
-/** Four strata in the current palette; replace with the real logo when ready. */
-export function Logo() {
-  return <span className="logo" aria-hidden="true"><i /><i /><i /><i /></span>;
+/** The Goose mark. "tile" sits on a warm white square (for the dark top bar);
+    "plain" is the goose alone (for light screens such as sign-in). */
+export function Logo({ variant = 'tile', size = 30 }: { variant?: 'tile' | 'plain'; size?: number }) {
+  const src = variant === 'tile' ? '/goose-tile-96.png' : '/goose.png';
+  return <img className="brandmark" src={src} alt="" width={size} height={size} />;
 }
 
 export function Avatar({ m, size = '' }: { m: Pick<Member, 'display_name' | 'color' | 'title'> | null | undefined; size?: '' | 'sm' | 'lg' | 'xl' }) {

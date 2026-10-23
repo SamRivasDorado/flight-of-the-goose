@@ -63,6 +63,7 @@ button{cursor:pointer;background:none;border:0;padding:0}
 .app{display:flex;flex-direction:column;height:100%}
 .bar{background:var(--bar-bg);color:var(--bar-fg);display:flex;align-items:center;gap:10px;padding-block:10px;flex-wrap:wrap}
 .brand{color:var(--bar-fg);display:flex;align-items:center;gap:9px;font-family:var(--f-nav);font-weight:700;font-size:19px;white-space:nowrap}
+.brandmark{border-radius:8px;flex:none;display:block}
 .logo{width:24px;height:24px;border-radius:6px;overflow:hidden;display:grid;grid-template-rows:4fr 2.6fr 1.8fr 1.6fr;flex:none}
 .logo i:nth-child(1){background:var(--sun)}.logo i:nth-child(2){background:var(--sage)}.logo i:nth-child(3){background:var(--moss)}.logo i:nth-child(4){background:var(--ochre)}
 .nav{display:flex;gap:2px;flex-wrap:wrap;flex:1 1 auto;min-width:0}

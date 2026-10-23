@@ -25,7 +25,7 @@ export function Login() {
   return (
     <div className="auth">
       <form className="authbox" onSubmit={submit}>
-        <div className="row"><Logo /><h1>{APP_NAME}</h1></div>
+        <div className="row"><Logo variant="plain" size={52} /><h1>{APP_NAME}</h1></div>
         {sent ? (
           <>
             <p>We sent a sign-in link to <b>{email.trim()}</b>. Open it on this device to continue.</p>
