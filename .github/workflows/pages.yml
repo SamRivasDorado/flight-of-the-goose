@@ -1,8 +1,7 @@
 name: Publish the site
 
-# Builds Goose and publishes it on GitHub Pages at
-# https://samrivasdorado.github.io/<repo-name>/ on every push to main.
-# The path follows the repository name, so renaming the repo keeps it working.
+# Publishes https://flightofthegoose.com on GitHub Pages on every push to main:
+# the public website (website/) at the root and the app under /app/.
 on:
   push:
     branches: [main]
@@ -29,10 +28,18 @@ jobs:
       - run: npm ci
       - run: npm run build
         env:
-          BASE_PATH: /${{ github.event.repository.name }}/
+          BASE_PATH: /app/
+      - name: Put the website at the root and the app under /app/
+        run: |
+          mkdir site
+          cp -r website/. site/
+          rm -f site/README.md
+          mkdir site/app
+          cp -r dist/. site/app/
+          echo flightofthegoose.com > site/CNAME
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: site
 
   deploy:
     needs: build
