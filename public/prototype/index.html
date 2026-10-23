@@ -1,4 +1,4 @@
-<title>Project Tracker Prototype v6</title>
+<title>Goose Prototype v7</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geologica:wght@300..700&family=Fraunces:opsz,wght@9..144,500..700&display=swap">
@@ -12,6 +12,8 @@
   --accent:#4F6E3E;--accent-soft:#E2EBDA;--primary:#F4CB5D;--primary-hover:#EBBD45;--primary-fg:#2B2410;
   --danger:#B5482F;--warn:#B9771A;--ok:#4F7D3F;--quiet:#7A5535;
   --canvas:color-mix(in srgb,var(--bg) 91%,var(--fg));
+  /* top bars: same as the surface unless a palette gives them their own colour */
+  --bar-bg:var(--surface);--bar-fg:var(--fg);--bar-muted:var(--muted);--bar-line:var(--line);--bar-hi:var(--surface-2);--bar-on:var(--accent-soft);--bar-on-fg:var(--fg);--bar-field:var(--surface);
   --shadow:0 -10px 40px rgb(20 30 15 / .18);--shadow-s:0 2px 10px rgb(20 30 15 / .06);
   --raise:#FFFFFF;--raise-2:#F1F4EC;--raise-line:#CDD4C4;
   /* one content face everywhere inside the panels; a separate face for the brand and main navigation */
@@ -41,25 +43,30 @@ button{cursor:pointer;background:none;border:0;padding:0}
 
 .app{display:flex;flex-direction:column;height:100%}
 /* top bar */
-.bar{background:var(--surface);display:flex;align-items:center;gap:10px;padding-block:10px;flex-wrap:wrap}
+.bar{background:var(--bar-bg);color:var(--bar-fg);display:flex;align-items:center;gap:10px;padding-block:10px;flex-wrap:wrap}
 .brand{display:flex;align-items:center;gap:9px;font-family:var(--f-nav);font-weight:700;font-size:19px;letter-spacing:-.01em;white-space:nowrap;font-variation-settings:"opsz" 36}
 .logo{width:24px;height:24px;border-radius:6px;overflow:hidden;display:grid;grid-template-rows:4fr 2.6fr 1.8fr 1.6fr;flex:none}
 .logo i:nth-child(1){background:var(--sun)}.logo i:nth-child(2){background:var(--sage)}.logo i:nth-child(3){background:var(--moss)}.logo i:nth-child(4){background:var(--ochre)}
 .nav{display:flex;gap:2px;flex-wrap:wrap;flex:1 1 auto;min-width:0}
-.navsep{width:1px;align-self:stretch;margin:6px 4px;background:var(--line)}
-.navl{display:flex;align-items:center;gap:6px;padding:7px 9px;border-radius:8px;color:var(--muted);white-space:nowrap;font-family:var(--f-nav);font-size:15.5px;font-weight:500;font-variation-settings:"opsz" 24}
-.navl:hover{color:var(--fg);background:var(--surface-2)}
-.navl.on{color:var(--fg);background:var(--accent-soft);font-weight:650}
+.navsep{width:1px;align-self:stretch;margin:6px 4px;background:var(--bar-line)}
+.navl{display:flex;align-items:center;gap:6px;padding:7px 9px;border-radius:8px;color:var(--bar-muted);white-space:nowrap;font-family:var(--f-nav);font-size:15.5px;font-weight:500;font-variation-settings:"opsz" 24}
+.navl:hover{color:var(--bar-fg);background:var(--bar-hi)}
+.navl.on{color:var(--bar-on-fg);background:var(--bar-on);font-weight:650}
 .stripe{display:grid;grid-template-rows:3px 2px 1.5px 1.5px}
 .stripe i:nth-child(1){background:var(--sun)}.stripe i:nth-child(2){background:var(--sage)}.stripe i:nth-child(3){background:var(--moss)}.stripe i:nth-child(4){background:var(--ochre)}
-.search{display:flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:0 9px;color:var(--muted)}
-.search input{border:0;background:transparent;padding:6px 0;width:90px;outline:none;color:var(--fg)}
+.search{display:flex;align-items:center;gap:6px;border:1px solid var(--bar-line);background:var(--bar-field);border-radius:8px;padding:0 9px;color:var(--muted)}
+.search input{border:0;background:transparent;padding:6px 0;width:90px;outline:none;color:var(--bar-fg)}
+.search input::placeholder{color:var(--bar-muted)}
+.search{color:var(--bar-muted)}
 /* filter bar */
-.fbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding-block:8px;border-bottom:1px solid var(--line);background:var(--surface);box-shadow:0 4px 14px -10px rgb(0 0 0 / .35);position:relative;z-index:2;font-size:13px}
-.fbar .lab{color:var(--muted);display:flex;align-items:center;gap:5px}
-.fsel{appearance:none;border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:4px 26px 4px 11px;font-size:13px;cursor:pointer;
-  background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);background-position:calc(100% - 13px) 55%,calc(100% - 9px) 55%;background-size:4px 4px;background-repeat:no-repeat;max-width:165px;width:auto}
-.fsel.on{border-color:var(--accent);background-color:var(--accent-soft);font-weight:600}
+.fbar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding-block:8px;border-bottom:1px solid var(--bar-line);background:var(--bar-bg);color:var(--bar-fg);box-shadow:0 4px 14px -10px rgb(0 0 0 / .35);position:relative;z-index:2;font-size:13px}
+.fbar .lab{color:var(--bar-muted);display:flex;align-items:center;gap:5px}
+.fsel{appearance:none;border:1px solid var(--bar-line);background:var(--bar-field);color:var(--bar-fg);border-radius:99px;padding:4px 24px 4px 10px;font-size:13px;cursor:pointer;
+  background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);background-position:calc(100% - 13px) 55%,calc(100% - 9px) 55%;background-size:4px 4px;background-repeat:no-repeat;max-width:140px;width:auto}
+.fsel.on{border-color:var(--primary);background-color:var(--bar-on);color:var(--bar-on-fg);font-weight:600}
+.fbar .btn.ghost,.bar .iconbtn,.fbar .iconbtn{color:var(--bar-muted)}
+.fbar .btn.ghost:hover,.bar .iconbtn:hover{color:var(--bar-fg);background:var(--bar-hi)}
+.brand{color:var(--bar-fg)}
 .view{flex:1;min-height:0;overflow:auto;padding-block:18px 48px;background:var(--canvas)}
 .view.fill{overflow:hidden;display:flex;flex-direction:column;padding-bottom:12px}
 
@@ -537,8 +544,25 @@ details summary{cursor:pointer;font-size:13px;color:var(--muted)}
   --bg:#190B22;--surface:#21102D;--surface-2:#2B1738;--line:#3D244F;--fg:#F6E6EC;--muted:#C3A4BE;--faint:#7F6284;
   --accent:#E9A6C8;--accent-soft:#3E1D4A;--primary:#FCC3A3;--primary-hover:#FDD3BB;--primary-fg:#2A0F2A;
   --raise:#2D183F;--raise-2:#37204B;--raise-line:#523464}
-.palbtn{position:relative;display:inline-flex;align-items:center;gap:3px;border:1px solid var(--line);border-radius:8px;padding:5px 5px 5px 7px;background:var(--surface);color:var(--muted);cursor:pointer}
-.palbtn:hover{background:var(--surface-2)}
+/* ===== Goose feather: the default. Near-black top bars, warm white content, beak-orange actions, yolk-yellow highlights ===== */
+:root[data-palette="goose"]{--sun:#F6C343;--sage:#F28C28;--moss:#3A3B40;--ochre:#FFFFFF;
+  --bg:#FAF8F3;--surface:#FFFFFF;--surface-2:#F3EFE6;--line:#E4DED2;--fg:#1B1B1D;--muted:#625D55;--faint:#A39C90;
+  --accent:#B9510C;--accent-soft:#FFEFC4;--primary:#F28C28;--primary-hover:#E37A14;--primary-fg:#1B1B1D;
+  --raise:#FFFFFF;--raise-2:#F7F3EA;--raise-line:#DDD5C6;
+  --bar-bg:#18191C;--bar-fg:#F5F3EE;--bar-muted:#ABA79F;--bar-line:#34363B;--bar-hi:#26282D;--bar-on:#F6C343;--bar-on-fg:#18191C;--bar-field:#222428}
+@media (prefers-color-scheme: dark){:root[data-palette="goose"]:not([data-theme="light"]){
+  --bg:#1C1D21;--canvas:#1A1B1E;--surface:#25272C;--surface-2:#2D3035;--line:#3A3D44;--fg:#F2F0EB;--muted:#ADA9A1;--faint:#727069;
+  --accent:#F6C343;--accent-soft:#3A2E12;--primary:#F28C28;--primary-hover:#F7A04A;--primary-fg:#141517;
+  --raise:#2A2C31;--raise-2:#32353B;--raise-line:#474A51;
+  --bar-bg:#0B0B0C;--bar-fg:#F5F3EE;--bar-muted:#9E9A91;--bar-line:#26282D;--bar-hi:#1C1D20;--bar-on:#F6C343;--bar-on-fg:#0B0B0C;--bar-field:#17181B}}
+:root[data-palette="goose"][data-theme="dark"]{
+  --bg:#1C1D21;--canvas:#1A1B1E;--surface:#25272C;--surface-2:#2D3035;--line:#3A3D44;--fg:#F2F0EB;--muted:#ADA9A1;--faint:#727069;
+  --accent:#F6C343;--accent-soft:#3A2E12;--primary:#F28C28;--primary-hover:#F7A04A;--primary-fg:#141517;
+  --raise:#2A2C31;--raise-2:#32353B;--raise-line:#474A51;
+  --bar-bg:#0B0B0C;--bar-fg:#F5F3EE;--bar-muted:#9E9A91;--bar-line:#26282D;--bar-hi:#1C1D20;--bar-on:#F6C343;--bar-on-fg:#0B0B0C;--bar-field:#17181B}
+:root[data-palette="goose"] .logo{box-shadow:inset 0 0 0 1px rgb(0 0 0 / .12)}
+.palbtn{position:relative;display:inline-flex;align-items:center;gap:3px;border:1px solid var(--bar-line);border-radius:8px;padding:5px 5px 5px 7px;background:var(--bar-field);color:var(--bar-muted);cursor:pointer}
+.palbtn:hover{background:var(--bar-hi)}
 .palbtn:focus-within{outline:2px solid var(--accent);outline-offset:2px}
 .palbtn .logo{width:20px;height:20px;border-radius:5px}
 .palbtn .ic{width:13px;height:13px}
@@ -569,10 +593,10 @@ window.addEventListener('unhandledrejection', function(e){ window.__bootErr('Pro
 </script>
 <script>
 /* ===== {{APP_NAME}} — prototype v3. Replace the placeholder below once the app has a name. ===== */
-const APP_NAME = '{{APP_NAME}}';
-const KEY = 'app_placeholder_state_v6';
+const APP_NAME = 'Goose';
+const KEY = 'goose_state_v7';
 const OLD_KEY = 'app_placeholder_state_v2';
-const PREV_KEYS = ['app_placeholder_state_v5','app_placeholder_state_v4_original','app_placeholder_state_v4_forest','app_placeholder_state_v4_coastal','app_placeholder_state_v3'];
+const PREV_KEYS = ['app_placeholder_state_v6','app_placeholder_state_v5','app_placeholder_state_v4_original','app_placeholder_state_v4_forest','app_placeholder_state_v4_coastal','app_placeholder_state_v3'];
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -629,6 +653,7 @@ const icon = (n, cls='') => `<svg class="ic ${cls}" viewBox="0 0 24 24" aria-hid
 const psym = p => p.img ? `<img src="${p.img}" alt="" class="${p.imgFit==='fill'?'fill':''}">` : icon(p.icon);
 const PROJECT_ICONS = ['folder','book','flask','globe','derrick','layers','mountain','bolt','flag','star','chart','users','briefcase','map','mic','cube','lifebuoy'];
 const PALETTES = {
+  goose:{name:'Goose feather', proj:['#F2C230','#F28C28','#D9572B','#D46A8C','#8E6BBF','#4F86C6','#3BA39B','#6FA65A','#4A4D52','#A6A23E','#C9A877','#8A9099']},
   original:{name:'Golden meadow', proj:['#E9B93A','#E39A3E','#C8634A','#C9718F','#9A7EC0','#5B83B5','#3E9A94','#6B9160','#4F6E3E','#8E9440','#B89A6A','#7C8577']},
   forest:{name:'Forest calm', proj:['#CDBB5E','#D29A62','#C47A63','#B88FA6','#7F8FC4','#5B93B8','#3FA08F','#79B26A','#3D7A58','#9AA552','#8CCBB0','#7E9190']},
   dusk:{name:'Evening glow', proj:['#F2C38B','#F09F9C','#D7826A','#C76B98','#8E4F99','#7A86C4','#5FA3A0','#8FB07E','#632B6C','#B8A06A','#FCC3A3','#9C8295']},
@@ -735,7 +760,9 @@ function load(){
   return seed();
 }
 let S = load();
-function applyPalette(){ const k = PALETTES[S.settings?.palette] ? S.settings.palette : 'original';
+/* data made before Goose feather existed (or fresh sample data) uses Golden meadow colours: convert once */
+function ensurePalette(){ if(!S.settings.palette){ S.settings.palette = 'original'; switchPalette('goose'); } else applyPalette(); }
+function applyPalette(){ const k = PALETTES[S.settings?.palette] ? S.settings.palette : 'goose';
   PCOLORS = PALETTES[k].proj; OPT_COLORS = ['#D0453A','#8E5CC2','#4A7FC1', ...PCOLORS];
   if(k==='original') delete document.documentElement.dataset.palette; else document.documentElement.dataset.palette = k; }
 function switchPalette(k){
@@ -744,7 +771,7 @@ function switchPalette(k){
   S.projects.forEach(p => p.color = map(p.color));
   S.fields.forEach(f => (f.options||[]).forEach(o => o.color = map(o.color)));
   S.settings.palette = k; applyPalette(); }
-S.settings = S.settings || {}; applyPalette();
+S.settings = S.settings || {}; ensurePalette();
 /* ===== people & teams ===== */
 const ACCESS = [{id:'admin',label:'Admin',desc:'Everything, including inviting people and managing teams'},{id:'manager',label:'Manager',desc:'Sees everything, creates goals and projects, and reviews anyone’s work'},
   {id:'member',label:'Member',desc:'Works on tasks in their projects; their review covers only their own tasks'},{id:'guest',label:'Guest',desc:'Read-only, for example a client'}];
@@ -932,8 +959,8 @@ function renderBar(){
     <label class="search">${icon('search')}<input id="q" type="search" placeholder="Search tasks" value="${esc(UI.q)}" data-ui="q" aria-label="Search tasks"></label>
     <button class="btn primary" data-act="addTask">${icon('plus')}New task</button>
     <button class="iconbtn databtn" data-act="backup" title="Data: import, export and backup" aria-label="Data: import, export and backup">${icon('save')}</button>
-    <label class="palbtn" title="Colour palette: ${esc(PALETTES[S.settings.palette||'original'].name)}"><span class="logo" aria-hidden="true"><i></i><i></i><i></i><i></i></span>${icon('down')}
-      <select id="palsel" data-palette="1" aria-label="Colour palette">${Object.entries(PALETTES).map(([k,v])=>`<option value="${k}" ${(S.settings.palette||'original')===k?'selected':''}>${v.name}</option>`).join('')}</select></label>
+    <label class="palbtn" title="Colour palette: ${esc(PALETTES[S.settings.palette||'goose'].name)}"><span class="logo" aria-hidden="true"><i></i><i></i><i></i><i></i></span>${icon('down')}
+      <select id="palsel" data-palette="1" aria-label="Colour palette">${Object.entries(PALETTES).map(([k,v])=>`<option value="${k}" ${(S.settings.palette||'goose')===k?'selected':''}>${v.name}</option>`).join('')}</select></label>
     <label class="mebtn" title="Viewing as ${esc(viewer()?.name||'')} (${esc((ACCESS.find(a=>a.id===accessOf())||{}).label||'')}). Pick someone to see the app as they would.">${av(viewer(),'lg')}
       <select id="viewas" data-viewas="1" aria-label="Viewing as">${S.people.map(x=>`<option value="${x.id}" ${x.id===viewer()?.id?'selected':''}>${esc(x.name)}${x.id===S.settings.me?' (you)':''} · ${(ACCESS.find(a=>a.id===x.access)||{}).label}</option>`).join('')}</select></label>`;
 }
@@ -2138,10 +2165,10 @@ const A = {
   restore(){ applyBackup(document.getElementById('bk-in').value); },
   resetAsk(el){ UI.modal.reset = el.dataset.k; renderModal(); },
   resetNo(){ UI.modal.reset = null; renderModal(); },
-  resetYes(){ const keepMe = person(S.settings.me); S = UI.modal.reset==='blank' ? blank() : seed(); if(UI.modal.reset==='blank'){ S.people = [keepMe || {id:'u_me',name:'You',title:'',access:'admin',color:PERSON_COLORS[0]}]; S.teams = []; S.settings.me = S.people[0].id; } else addPeople(S); UI.viewAs = null; UI.modal = null; UI.sheet = null; UI.page='timeline'; UI.filt={project:''}; UI.tlScroll=null; commit(); toast('Done'); }
+  resetYes(){ const keepMe = person(S.settings.me), curPal = S.settings.palette; S = UI.modal.reset==='blank' ? blank() : seed(); ensurePalette(); if(curPal && curPal!=='goose' && PALETTES[curPal]) switchPalette(curPal); if(UI.modal.reset==='blank'){ S.people = [keepMe || {id:'u_me',name:'You',title:'',access:'admin',color:PERSON_COLORS[0]}]; S.teams = []; S.settings.me = S.people[0].id; } else addPeople(S); UI.viewAs = null; UI.modal = null; UI.sheet = null; UI.page='timeline'; UI.filt={project:''}; UI.tlScroll=null; commit(); toast('Done'); }
 };
 function applyBackup(txt){
-  try{ let s = JSON.parse(txt); if(!s || ![2,3].includes(s.v) || !Array.isArray(s.tasks)) throw 0; S = migrateGoals(migrate(s)); S.settings = S.settings || {}; applyPalette(); addPeople(S); UI.viewAs = null; UI.modal=null; UI.sheet=null; UI.page='timeline'; commit(); toast('Backup restored'); }
+  try{ let s = JSON.parse(txt); if(!s || ![2,3].includes(s.v) || !Array.isArray(s.tasks)) throw 0; S = migrateGoals(migrate(s)); S.settings = S.settings || {}; ensurePalette(); addPeople(S); UI.viewAs = null; UI.modal=null; UI.sheet=null; UI.page='timeline'; commit(); toast('Backup restored'); }
   catch(e){ UI.modal.err = 'That text is not a backup from this version of the app. Copy the whole backup, from the first { to the last }.'; UI.modal.paste = txt; renderModal(); }
 }
 

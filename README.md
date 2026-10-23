@@ -1,4 +1,4 @@
-# {{APP_NAME}}
+# Goose
 
 A planning and tracking app for technical and consulting work: goals, projects, tasks and the people behind them.
 It grew out of a prototype (in `public/prototype/`) and is now being built as a real web app.
@@ -47,6 +47,6 @@ psql -f supabase/migrations/20261023000000_init.sql
 psql -f supabase/tests/access_rules.sql   # ends with "ALL ACCESS TESTS PASSED"
 ```
 
-## Naming
+## Name and look
 
-The app name is a placeholder: change `APP_NAME` in `src/config.ts` and the `<title>` in `index.html`. The logo is the four-band mark in `src/components/Logo.tsx`.
+The app is called **Goose** (`APP_NAME` in `src/config.ts`, `<title>` in `index.html`). The default palette is **Goose feather**: near-black top bars, warm white content, beak-orange actions and yolk-yellow highlights. The other palettes (Golden meadow, Forest calm, Evening glow, Coastal breeze) are in `src/styles.css`. The logo is still the four-band placeholder in `src/components/Logo.tsx`.

@@ -1,5 +1,6 @@
-/* Tokens carried over from the prototype (prototype/index.html).
-   Golden meadow is the base; data-palette on <html> switches palettes.
+/* Tokens carried over from the prototype (public/prototype/index.html).
+   Golden meadow is the base set of tokens; data-palette on <html> switches palettes,
+   and index.html sets Goose feather as the default.
    Layout: light top bars, dimmer canvas for content. */
 :root{
   --sun:#F4CB5D;--sage:#6B9160;--moss:#5D7A4B;--ochre:#E5A957;
@@ -8,6 +9,8 @@
   --danger:#B5482F;--warn:#B9771A;--ok:#4F7D3F;--quiet:#7A5535;
   --canvas:color-mix(in srgb,var(--bg) 91%,var(--fg));
   --raise:#FFFFFF;--raise-2:#F1F4EC;--raise-line:#CDD4C4;
+  /* top bars: same as the surface unless a palette gives them their own colour */
+  --bar-bg:var(--surface);--bar-fg:var(--fg);--bar-muted:var(--muted);--bar-line:var(--line);--bar-hi:var(--surface-2);--bar-on:var(--accent-soft);--bar-on-fg:var(--fg);--bar-field:var(--surface);
   --f-content:"Geologica",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
   --f-nav:"Fraunces",ui-serif,Georgia,"Times New Roman",serif;
   color-scheme:light;
@@ -20,6 +23,24 @@
   --bg:#12160F;--surface:#191F16;--surface-2:#21281D;--line:#2F3929;--fg:#E5EBDD;--muted:#9EA996;--faint:#6D7866;
   --accent:#97BB88;--accent-soft:#25321F;--primary-hover:#F7D676;--danger:#E58468;--warn:#E5A957;--ok:#8DBA7B;--quiet:#9A7656;
   --canvas:color-mix(in srgb,var(--bg) 62%,#000);--raise:#24301F;--raise-2:#2B3825;--raise-line:#3B4A33;color-scheme:dark}
+
+/* Goose feather (default): near-black top bars, warm white content, beak-orange actions, yolk-yellow highlights */
+:root[data-palette="goose"]{--sun:#F6C343;--sage:#F28C28;--moss:#3A3B40;--ochre:#FFFFFF;
+  --bg:#FAF8F3;--surface:#FFFFFF;--surface-2:#F3EFE6;--line:#E4DED2;--fg:#1B1B1D;--muted:#625D55;--faint:#A39C90;
+  --accent:#B9510C;--accent-soft:#FFEFC4;--primary:#F28C28;--primary-hover:#E37A14;--primary-fg:#1B1B1D;
+  --raise:#FFFFFF;--raise-2:#F7F3EA;--raise-line:#DDD5C6;
+  --bar-bg:#18191C;--bar-fg:#F5F3EE;--bar-muted:#ABA79F;--bar-line:#34363B;--bar-hi:#26282D;--bar-on:#F6C343;--bar-on-fg:#18191C;--bar-field:#222428}
+@media (prefers-color-scheme: dark){:root[data-palette="goose"]:not([data-theme="light"]){
+  --bg:#1C1D21;--canvas:#1A1B1E;--surface:#25272C;--surface-2:#2D3035;--line:#3A3D44;--fg:#F2F0EB;--muted:#ADA9A1;--faint:#727069;
+  --accent:#F6C343;--accent-soft:#3A2E12;--primary:#F28C28;--primary-hover:#F7A04A;--primary-fg:#141517;
+  --raise:#2A2C31;--raise-2:#32353B;--raise-line:#474A51;
+  --bar-bg:#0B0B0C;--bar-fg:#F5F3EE;--bar-muted:#9E9A91;--bar-line:#26282D;--bar-hi:#1C1D20;--bar-on:#F6C343;--bar-on-fg:#0B0B0C;--bar-field:#17181B}}
+:root[data-palette="goose"][data-theme="dark"]{
+  --bg:#1C1D21;--canvas:#1A1B1E;--surface:#25272C;--surface-2:#2D3035;--line:#3A3D44;--fg:#F2F0EB;--muted:#ADA9A1;--faint:#727069;
+  --accent:#F6C343;--accent-soft:#3A2E12;--primary:#F28C28;--primary-hover:#F7A04A;--primary-fg:#141517;
+  --raise:#2A2C31;--raise-2:#32353B;--raise-line:#474A51;
+  --bar-bg:#0B0B0C;--bar-fg:#F5F3EE;--bar-muted:#9E9A91;--bar-line:#26282D;--bar-hi:#1C1D20;--bar-on:#F6C343;--bar-on-fg:#0B0B0C;--bar-field:#17181B}
+:root[data-palette="goose"] .logo{box-shadow:inset 0 0 0 1px rgb(0 0 0 / .12)}
 
 :root[data-palette="forest"]{--sun:#C8DA9A;--sage:#5FAE97;--moss:#36684E;--ochre:#D9C79E;--bg:#F1F5EF;--surface-2:#E4EEE6;--line:#D0DDD2;--fg:#17271E;--muted:#4F665A;--faint:#8FA598;--accent:#23776A;--accent-soft:#D7EEE6;--primary:#B9D98D;--primary-hover:#A7CE74;--primary-fg:#16280C}
 @media (prefers-color-scheme: dark){:root[data-palette="forest"]:not([data-theme="light"]){--bg:#0F1713;--surface:#15211B;--surface-2:#1C2B24;--line:#2A3C33;--fg:#E0EDE5;--muted:#95AFA2;--faint:#62796D;--accent:#7FD0B8;--accent-soft:#183A31;--primary:#B4D88A;--primary-hover:#C6E3A3;--primary-fg:#13240A;--raise:#20322A;--raise-2:#283D34;--raise-line:#3B5649}}
@@ -40,15 +61,17 @@ button{cursor:pointer;background:none;border:0;padding:0}
 .gut{padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px))}
 
 .app{display:flex;flex-direction:column;height:100%}
-.bar{background:var(--surface);display:flex;align-items:center;gap:10px;padding-block:10px;flex-wrap:wrap}
-.brand{display:flex;align-items:center;gap:9px;font-family:var(--f-nav);font-weight:700;font-size:19px;white-space:nowrap}
+.bar{background:var(--bar-bg);color:var(--bar-fg);display:flex;align-items:center;gap:10px;padding-block:10px;flex-wrap:wrap}
+.brand{color:var(--bar-fg);display:flex;align-items:center;gap:9px;font-family:var(--f-nav);font-weight:700;font-size:19px;white-space:nowrap}
 .logo{width:24px;height:24px;border-radius:6px;overflow:hidden;display:grid;grid-template-rows:4fr 2.6fr 1.8fr 1.6fr;flex:none}
 .logo i:nth-child(1){background:var(--sun)}.logo i:nth-child(2){background:var(--sage)}.logo i:nth-child(3){background:var(--moss)}.logo i:nth-child(4){background:var(--ochre)}
 .nav{display:flex;gap:2px;flex-wrap:wrap;flex:1 1 auto;min-width:0}
-.navsep{width:1px;align-self:stretch;margin:6px 4px;background:var(--line)}
-.navl{display:flex;align-items:center;gap:6px;padding:7px 9px;border-radius:8px;color:var(--muted);white-space:nowrap;font-family:var(--f-nav);font-size:15.5px;font-weight:500;text-decoration:none}
-.navl:hover{color:var(--fg);background:var(--surface-2)}
-.navl.on{color:var(--fg);background:var(--accent-soft);font-weight:650}
+.navsep{width:1px;align-self:stretch;margin:6px 4px;background:var(--bar-line)}
+.navl{display:flex;align-items:center;gap:6px;padding:7px 9px;border-radius:8px;color:var(--bar-muted);white-space:nowrap;font-family:var(--f-nav);font-size:15.5px;font-weight:500;text-decoration:none}
+.navl:hover{color:var(--bar-fg);background:var(--bar-hi)}
+.navl.on{color:var(--bar-on-fg);background:var(--bar-on);font-weight:650}
+.bar .btn.ghost{color:var(--bar-muted)}.bar .btn.ghost:hover{color:var(--bar-fg);background:var(--bar-hi)}
+.bar .field-in{background:var(--bar-field);border-color:var(--bar-line);color:var(--bar-fg)}
 .stripe{display:grid;grid-template-rows:3px 2px 1.5px 1.5px}
 .stripe i:nth-child(1){background:var(--sun)}.stripe i:nth-child(2){background:var(--sage)}.stripe i:nth-child(3){background:var(--moss)}.stripe i:nth-child(4){background:var(--ochre)}
 .view{flex:1;min-height:0;overflow:auto;padding-block:18px 48px;background:var(--canvas)}
