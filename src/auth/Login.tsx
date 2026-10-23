@@ -16,7 +16,7 @@ export function Login() {
     setBusy(true); setError(null);
     const { error } = await db().auth.signInWithOtp({
       email: email.trim(),
-      options: { emailRedirectTo: window.location.origin },
+      options: { emailRedirectTo: window.location.origin + import.meta.env.BASE_URL },
     });
     setBusy(false);
     if (error) setError(error.message); else setSent(true);

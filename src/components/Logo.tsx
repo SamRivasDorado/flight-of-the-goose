@@ -3,7 +3,7 @@ import type { Member } from '../lib/types';
 /** The Goose mark. "tile" sits on a warm white square (for the dark top bar);
     "plain" is the goose alone (for light screens such as sign-in). */
 export function Logo({ variant = 'tile', size = 30 }: { variant?: 'tile' | 'plain'; size?: number }) {
-  const src = variant === 'tile' ? '/goose-tile-96.png' : '/goose.png';
+  const src = `${import.meta.env.BASE_URL}${variant === 'tile' ? 'goose-tile-96.png' : 'goose.png'}`;
   return <img className="brandmark" src={src} alt="" width={size} height={size} />;
 }
 
