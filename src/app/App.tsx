@@ -12,6 +12,7 @@ import { ProjectPage } from '../pages/ProjectPage';
 import { Tasks } from '../pages/Tasks';
 import { Team } from '../pages/Team';
 import { Strategy } from '../pages/Strategy';
+import { Timeline } from '../pages/Timeline';
 import { Placeholder } from '../pages/Placeholder';
 
 type Page = 'timeline' | 'strategy' | 'projects' | 'tasks' | 'review' | 'team' | 'insights';
@@ -22,7 +23,7 @@ const NAV: [Page, string, Parameters<typeof Icon>[0]['name']][] = [
 const pageFromHash = (): Page | 'project' => {
   const h = location.hash.replace('#/', '');
   if (h.startsWith('project/')) return 'project';
-  return NAV.some(n => n[0] === h) ? h as Page : 'tasks';
+  return NAV.some(n => n[0] === h) ? h as Page : 'timeline';
 };
 /** The project id when the address is #/project/<id>. */
 export const projectIdFromHash = () => { const m = location.hash.match(/^#\/project\/([\w-]+)/); return m ? m[1] : null; };
@@ -66,12 +67,12 @@ function Shell() {
         </div>
         <div className="stripe" aria-hidden="true"><i /><i /><i /><i /></div>
       </header>
-      <main className="view gut">
+      <main className={`view gut ${page === 'timeline' ? 'fill' : ''}`}>
         {page === 'projects' && <Projects />}
         {page === 'project' && projectId && <ProjectPage key={projectId} id={projectId} />}
         {page === 'tasks' && <Tasks />}
         {page === 'team' && <Team />}
-        {page === 'timeline' && <Placeholder title="Timeline" what="Project lanes, goal bands and Monday/Friday markers come next." />}
+        {page === 'timeline' && <Timeline />}
         {page === 'strategy' && <Strategy />}
         {page === 'review' && <Placeholder title="Review" what="Date ranges, slipped/done/coming-up panels and the shareable summary come next." />}
         {page === 'insights' && <Placeholder title="Insights" what="The chart builder and dashboard come next." />}
@@ -80,6 +81,9 @@ function Shell() {
     </div>
   );
 }
+
+/** Pages that filter their own tasks by the search box; from any other page, searching opens Tasks. */
+const showsTasks = () => { const p = pageFromHash(); return p === 'tasks' || p === 'timeline' || p === 'project'; };
 
 /** Search box, New task button and colour palette, as in the prototype's top bar. */
 function TopTools() {
@@ -95,7 +99,7 @@ function TopTools() {
     <>
       <label className="search"><Icon name="search" />
         <input type="search" placeholder="Search tasks" aria-label="Search tasks" value={ui.q}
-          onChange={e => { ui.setQ(e.target.value); if (e.target.value && !location.hash.startsWith('#/tasks')) location.hash = '#/tasks'; }} /></label>
+          onChange={e => { ui.setQ(e.target.value); if (e.target.value && !showsTasks()) location.hash = '#/tasks'; }} /></label>
       {canEdit(ws.access) && <button className="btn primary" onClick={newTask}><Icon name="plus" />New task</button>}
       <label className="palbtn" title={`Colour palette: ${PALETTES[palette as keyof typeof PALETTES] ?? ''}`}>
         <span className="logo" aria-hidden="true"><i /><i /><i /><i /></span><Icon name="down" />
