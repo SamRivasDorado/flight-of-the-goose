@@ -8,6 +8,7 @@ import { ACCESS_LABEL, canEdit } from '../lib/types';
 import { APP_NAME, DEFAULT_PALETTE, PALETTES } from '../config';
 import { Icon, Logo } from '../components/Logo';
 import { Projects } from '../pages/Projects';
+import { ProjectPage } from '../pages/ProjectPage';
 import { Tasks } from '../pages/Tasks';
 import { Team } from '../pages/Team';
 import { Placeholder } from '../pages/Placeholder';
@@ -17,7 +18,13 @@ const NAV: [Page, string, Parameters<typeof Icon>[0]['name']][] = [
   ['timeline', 'Timeline', 'timeline'], ['strategy', 'Strategy', 'target'], ['projects', 'Projects', 'wall'], ['tasks', 'Tasks', 'tasks'],
   ['review', 'Review', 'review'], ['team', 'Team', 'users'], ['insights', 'Insights', 'chart'],
 ];
-const pageFromHash = (): Page => { const h = location.hash.replace('#/', '') as Page; return NAV.some(n => n[0] === h) ? h : 'tasks'; };
+const pageFromHash = (): Page | 'project' => {
+  const h = location.hash.replace('#/', '');
+  if (h.startsWith('project/')) return 'project';
+  return NAV.some(n => n[0] === h) ? h as Page : 'tasks';
+};
+/** The project id when the address is #/project/<id>. */
+export const projectIdFromHash = () => { const m = location.hash.match(/^#\/project\/([\w-]+)/); return m ? m[1] : null; };
 
 export function App() {
   if (!isConfigured) return <SetupNeeded />;
@@ -35,10 +42,11 @@ function SignedInGate() {
 
 function Shell() {
   const { current, workspaces, switchWorkspace, signOut } = useSession();
-  const [page, setPage] = useState<Page>(pageFromHash);
-  useEffect(() => { const f = () => setPage(pageFromHash()); addEventListener('hashchange', f); return () => removeEventListener('hashchange', f); }, []);
+  const [page, setPage] = useState(pageFromHash);
+  const [projectId, setProjectId] = useState(projectIdFromHash);
+  useEffect(() => { const f = () => { setPage(pageFromHash()); setProjectId(projectIdFromHash()); }; addEventListener('hashchange', f); return () => removeEventListener('hashchange', f); }, []);
   const navl = (p: Page, label: string, ic: Parameters<typeof Icon>[0]['name']) =>
-    <a key={p} href={`#/${p}`} className={`navl ${page === p ? 'on' : ''}`}><Icon name={ic} />{label}</a>;
+    <a key={p} href={`#/${p}`} className={`navl ${page === p || (p === 'projects' && page === 'project') ? 'on' : ''}`}><Icon name={ic} />{label}</a>;
 
   return (
     <div className="app">
@@ -59,6 +67,7 @@ function Shell() {
       </header>
       <main className="view gut">
         {page === 'projects' && <Projects />}
+        {page === 'project' && projectId && <ProjectPage key={projectId} id={projectId} />}
         {page === 'tasks' && <Tasks />}
         {page === 'team' && <Team />}
         {page === 'timeline' && <Placeholder title="Timeline" what="Project lanes, goal bands and Monday/Friday markers come next." />}
@@ -79,7 +88,7 @@ function TopTools() {
   useEffect(() => { document.documentElement.dataset.palette = palette; }, [palette]);
   const ws = current!;
 
-  function newTask() { ui.newTask({}); }
+  function newTask() { const pid = projectIdFromHash(); ui.newTask(pid ? { project_id: pid } : {}); }
 
   return (
     <>

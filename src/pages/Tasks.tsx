@@ -17,12 +17,15 @@ interface Ctx {
   editable: boolean;
   me: string;
   showDone: boolean;
+  /** Set on a project page: the views show only this project's tasks. */
+  projectId: string | null;
   open: (id: string) => void;
   save: (id: string, patch: Partial<Task>) => Promise<void>;
   add: (extra: Partial<Task>, openIt?: boolean) => Promise<void>;
 }
 
-export function Tasks() {
+/** Loads tasks (optionally for one project), applies the top-bar search, and builds what the views need. */
+export function useTaskViews(projectId: string | null = null) {
   const ws = useWorkspace();
   const ui = useUI();
   const editable = canEdit(ws.access);
@@ -30,40 +33,52 @@ export function Tasks() {
     const [tasks, projects, members] = await Promise.all([listTasksFull(ws.workspace_id), listProjects(ws.workspace_id), listMembers(ws.workspace_id)]);
     return { tasks, projects, members };
   }, [ws.workspace_id, ui.version]);
-  const [tab, setTab] = useLocalPref<Tab>('tasksTab', 'list');
   const [showDone, setShowDone] = useLocalPref('showDone', false);
   const [msg, setMsg] = useState<string | null>(null);
-
   const q = ui.q.trim().toLowerCase();
-  const tasks = (data?.tasks ?? []).filter(t => !q || t.title.toLowerCase().includes(q));
-  const open = tasks.filter(t => t.status !== 'done');
-
+  const tasks = (data?.tasks ?? []).filter(t => (!projectId || t.project_id === projectId) && (!q || t.title.toLowerCase().includes(q)));
   const c: Ctx = {
-    tasks, projects: data?.projects ?? [], members: data?.members ?? [], editable, me: ws.member_id, showDone,
+    tasks, projects: data?.projects ?? [], members: data?.members ?? [], editable, me: ws.member_id, showDone, projectId,
     open: id => ui.openTask(id),
     save: async (id, patch) => {
-      try { setMsg(null); await updateTask(id, patch); await reload(); }
+      try { setMsg(null); await updateTask(id, patch); await reload(); ui.changed(); }
       catch (e) { setMsg(e instanceof Error ? e.message : String(e)); }
     },
     add: async (extra, openIt = true) => {
-      if (openIt) { ui.newTask(extra); return; }
-      try { setMsg(null); await createTask(ws.workspace_id, ws.member_id, extra); ui.changed(); }
+      const full = { ...(projectId ? { project_id: projectId } : {}), ...extra };
+      if (openIt) { ui.newTask(full); return; }
+      try { setMsg(null); await createTask(ws.workspace_id, ws.member_id, full); ui.changed(); }
       catch (e) { setMsg(e instanceof Error ? e.message : String(e)); }
     },
   };
+  const toggle = <label className="chk"><input type="checkbox" checked={showDone} onChange={e => setShowDone(e.target.checked)} />Show completed</label>;
+  return { c, loaded: !!data, error: error || msg, toggle, q: ui.q };
+}
 
-  const tabBtn = (id: Tab, ic: IconName, label: string) =>
-    <button className={`tab ${tab === id ? 'on' : ''}`} onClick={() => setTab(id)}><Icon name={ic} />{label}</button>;
-
+/** List, Board or Calendar for the tasks from useTaskViews. */
+export function TaskViews({ tab, v }: { tab: 'list' | 'board' | 'calendar'; v: ReturnType<typeof useTaskViews> }) {
   return (
     <>
-      <div className="ph"><h1>Tasks</h1>{data && <span className="sub mono">{open.length} open · {tasks.length - open.length} done</span>}
-        {q && <span className="tag">Search: {ui.q}</span>}</div>
+      {v.error && <div className="err" style={{ marginBottom: 10 }}>{v.error}</div>}
+      {tab === 'list' && <ListView c={v.c} tools={v.toggle} />}
+      {tab === 'board' && <BoardView c={v.c} tools={v.toggle} />}
+      {tab === 'calendar' && <CalendarView c={v.c} tools={v.toggle} />}
+    </>
+  );
+}
+
+export function Tasks() {
+  const v = useTaskViews(null);
+  const [tab, setTab] = useLocalPref<Tab>('tasksTab', 'list');
+  const open = v.c.tasks.filter(t => t.status !== 'done');
+  const tabBtn = (id: Tab, ic: IconName, label: string) =>
+    <button className={`tab ${tab === id ? 'on' : ''}`} onClick={() => setTab(id)}><Icon name={ic} />{label}</button>;
+  return (
+    <>
+      <div className="ph"><h1>Tasks</h1>{v.loaded && <span className="sub mono">{open.length} open · {v.c.tasks.length - open.length} done</span>}
+        {v.q.trim() && <span className="tag">Search: {v.q}</span>}</div>
       <div className="tabs">{tabBtn('list', 'list', 'List')}{tabBtn('board', 'board', 'Board')}{tabBtn('calendar', 'calendar', 'Calendar')}</div>
-      {(error || msg) && <div className="err" style={{ marginBottom: 10 }}>{error || msg}</div>}
-      {tab === 'list' && <ListView c={c} tools={<label className="chk"><input type="checkbox" checked={showDone} onChange={e => setShowDone(e.target.checked)} />Show completed</label>} />}
-      {tab === 'board' && <BoardView c={c} tools={<label className="chk"><input type="checkbox" checked={showDone} onChange={e => setShowDone(e.target.checked)} />Show completed</label>} />}
-      {tab === 'calendar' && <CalendarView c={c} tools={<label className="chk"><input type="checkbox" checked={showDone} onChange={e => setShowDone(e.target.checked)} />Show completed</label>} />}
+      <TaskViews tab={tab} v={v} />
     </>
   );
 }
@@ -78,7 +93,7 @@ function ListView({ c, tools }: { c: Ctx; tools: React.ReactNode }) {
   const openT = shown.filter(t => t.status !== 'done');
 
   let groups: { k: string; label: string; items: TaskFull[] }[];
-  if (group === 'project') {
+  if (group === 'project' && !c.projectId) {
     groups = [...c.projects.map(p => ({ k: p.id, label: p.name, items: openT.filter(t => t.project_id === p.id) })),
       { k: 'none', label: 'No project', items: openT.filter(t => !c.projects.some(p => p.id === t.project_id)) }];
   } else {
@@ -98,21 +113,21 @@ function ListView({ c, tools }: { c: Ctx; tools: React.ReactNode }) {
   return (
     <>
       <div className="tools"><span className="grow" />
-        <label className="chk">Group by <select className="field-in" value={group} onChange={e => setGroup(e.target.value as Group)}>
-          <option value="due">Due date</option><option value="project">Project</option></select></label>{tools}</div>
+        {!c.projectId && <label className="chk">Group by <select className="field-in" value={group} onChange={e => setGroup(e.target.value as Group)}>
+          <option value="due">Due date</option><option value="project">Project</option></select></label>}{tools}</div>
       <div className="tbl-wrap">
         <table className="tl2">
-          <thead><tr><th>Name</th><th>Due date</th><th>Assignee</th><th>Project</th><th>Time</th></tr></thead>
+          <thead><tr><th>Name</th><th>Due date</th><th>Assignee</th>{!c.projectId && <th>Project</th>}<th>Time</th></tr></thead>
           <tbody>
             {groups.map(g => {
               const isClosed = !!closed[g.k];
               return [
                 <tr key={`s-${g.k}`} className={`sec ${isClosed ? 'closed' : ''}`} onClick={() => setClosed({ ...closed, [g.k]: !isClosed })}>
-                  <td colSpan={5}><Icon name="down" /> {g.label}<span className="n mono">{g.items.length}</span></td></tr>,
+                  <td colSpan={c.projectId ? 4 : 5}><Icon name="down" /> {g.label}<span className="n mono">{g.items.length}</span></td></tr>,
                 ...(isClosed ? [] : [...g.items].sort(byDue).map(t => <Row key={t.id} t={t} c={c} />)),
               ];
             })}
-            {groups.length === 0 && <tr><td colSpan={5} className="muted" style={{ padding: 20 }}>{c.tasks.length ? 'No open tasks match.' : 'No tasks yet. Add one below.'}</td></tr>}
+            {groups.length === 0 && <tr><td colSpan={c.projectId ? 4 : 5} className="muted" style={{ padding: 20 }}>{c.tasks.length ? 'No open tasks match.' : 'No tasks yet. Add one below.'}</td></tr>}
           </tbody>
         </table>
         {c.editable && <div className="quick"><Icon name="plus" /><input placeholder="Add a task and press Enter" aria-label="Quick add task"
@@ -139,7 +154,7 @@ function Row({ t, c }: { t: TaskFull; c: Ctx }) {
       <td className="mono"><span className={due.cls}>{due.text}</span></td>
       <td>{who ? <span className="who"><Avatar m={who} size="sm" />{firstName(who.display_name)}
         {t.collaborator_ids.length > 0 && <span className="muted"> +{t.collaborator_ids.length}</span>}</span> : <span className="muted">—</span>}</td>
-      <td><ProjectChip p={c.projects.find(p => p.id === t.project_id)} /></td>
+      {!c.projectId && <td><ProjectChip p={c.projects.find(p => p.id === t.project_id)} /></td>}
       <td className="mono">{t.hours ? `${hrs(t.hours)} h` : ''}</td>
     </tr>
   );
@@ -181,7 +196,7 @@ function BoardView({ c, tools }: { c: Ctx; tools: React.ReactNode }) {
               return (
                 <button key={t.id} className={`card ${t.status === 'done' ? 'done' : ''}`} onClick={() => c.open(t.id)} {...dragProps(t.id, c.editable)}>
                   <span className="t">{t.title || 'Untitled task'}</span>
-                  <span className="meta">{who && <Avatar m={who} size="sm" />}{p && <ProjectChip p={p} />}
+                  <span className="meta">{who && <Avatar m={who} size="sm" />}{p && !c.projectId && <ProjectChip p={p} />}
                     {due.text && <span className={`mono ${due.cls}`}>{due.text}</span>}{t.hours ? <span className="mono muted">{hrs(t.hours)} h</span> : null}</span>
                 </button>);
             })}

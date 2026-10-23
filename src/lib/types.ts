@@ -27,6 +27,9 @@ export interface Project {
   name: string;
   color: string;
   icon: string;
+  image_path: string | null;
+  image_fit: 'fit' | 'fill';
+  created_at: string;
   kind: 'fixed' | 'ongoing';
   status: 'active' | 'paused' | 'closed';
   start_date: string | null;
@@ -48,6 +51,9 @@ export interface Task {
   assignee_member_id: string | null;
   created_by_member: string | null;
   created_at: string;
+  /** Set when the task was made from a notebook line. */
+  source_note_id?: string | null;
+  source_line?: number | null;
 }
 
 export interface Subtask {
@@ -82,3 +88,32 @@ export const ACCESS_LABEL: Record<Access, string> = {
 
 export const canManage = (a: Access) => a === 'admin' || a === 'manager';
 export const canEdit = (a: Access) => a !== 'guest';
+
+/** A project with the people, teams and goals linked to it. */
+export interface ProjectFull extends Project {
+  member_ids: string[];
+  team_ids: string[];
+  goal_ids: string[];
+}
+
+export type NoteKind = 'note' | 'meeting' | 'decision';
+export const NOTE_KINDS: { id: NoteKind; label: string }[] = [
+  { id: 'note', label: 'Note' }, { id: 'meeting', label: 'Meeting' }, { id: 'decision', label: 'Decision' },
+];
+
+export interface Note {
+  id: string;
+  workspace_id: string;
+  project_id: string;
+  entry_date: string;
+  kind: NoteKind;
+  body: string;
+  created_by_member: string | null;
+  created_at: string;
+}
+
+export interface TeamRef {
+  id: string;
+  name: string;
+  color: string;
+}

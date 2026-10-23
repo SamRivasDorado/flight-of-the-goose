@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { db } from './supabase';
-import type { GoalRef, Member, Project, Subtask, Task, TaskFull } from './types';
+import type { GoalRef, Member, Note, NoteKind, Project, ProjectFull, Subtask, Task, TaskFull, TeamRef } from './types';
 
 /** Loads data for the current screen and reloads after a change. */
 export function useLoad<T>(load: () => Promise<T>, deps: unknown[]) {
@@ -41,8 +41,78 @@ export async function listTasks(ws: string): Promise<Task[]> {
     .order('due_date', { ascending: true, nullsFirst: false }).order('created_at'));
 }
 
-export async function createProject(ws: string, me: string, p: Pick<Project, 'name' | 'color' | 'kind'>) {
-  return check(await db().from('projects').insert({ workspace_id: ws, owner_member_id: me, ...p }).select().single());
+// ---------- projects ----------
+
+/** Projects with their members, shared teams and goals (only what this person may see). */
+export async function listProjectsFull(ws: string): Promise<ProjectFull[]> {
+  const projects = await listProjects(ws);
+  if (!projects.length) return [];
+  const ids = projects.map(p => p.id);
+  const [pm, pt, gp] = await Promise.all([
+    db().from('project_members').select('project_id, member_id').in('project_id', ids),
+    db().from('project_teams').select('project_id, team_id').in('project_id', ids),
+    db().from('goal_projects').select('project_id, goal_id').in('project_id', ids),
+  ]);
+  const m = check(pm) as { project_id: string; member_id: string }[];
+  const t = check(pt) as { project_id: string; team_id: string }[];
+  const g = check(gp) as { project_id: string; goal_id: string }[];
+  return projects.map(p => ({ ...p,
+    member_ids: m.filter(x => x.project_id === p.id).map(x => x.member_id),
+    team_ids: t.filter(x => x.project_id === p.id).map(x => x.team_id),
+    goal_ids: g.filter(x => x.project_id === p.id).map(x => x.goal_id) }));
+}
+
+export type ProjectInput = Pick<ProjectFull, 'name' | 'color' | 'icon' | 'kind' | 'status' | 'start_date' | 'end_date' | 'owner_member_id' | 'member_ids' | 'team_ids' | 'goal_ids'>;
+
+/** Adds and removes link rows so the table matches the wanted list. */
+async function syncLinks(table: string, key: string, projectId: string, col: string, before: string[], after: string[]) {
+  const add = after.filter(x => !before.includes(x)), drop = before.filter(x => !after.includes(x));
+  if (add.length) check(await db().from(table).insert(add.map(v => ({ [key]: projectId, [col]: v }))));
+  if (drop.length) check(await db().from(table).delete().eq(key, projectId).in(col, drop));
+}
+
+/** Creates a project (existing = null) or saves changes to one, including its links. */
+export async function saveProject(ws: string, existing: ProjectFull | null, d: ProjectInput): Promise<string> {
+  const { member_ids, team_ids, goal_ids, ...row } = d;
+  const p = existing
+    ? check(await db().from('projects').update(row).eq('id', existing.id).select().single()) as Project
+    : check(await db().from('projects').insert({ workspace_id: ws, ...row }).select().single()) as Project;
+  await syncLinks('project_members', 'project_id', p.id, 'member_id', existing?.member_ids ?? [], member_ids.filter(x => x !== row.owner_member_id));
+  await syncLinks('project_teams', 'project_id', p.id, 'team_id', existing?.team_ids ?? [], team_ids);
+  await syncLinks('goal_projects', 'project_id', p.id, 'goal_id', existing?.goal_ids ?? [], goal_ids);
+  return p.id;
+}
+
+export async function deleteProject(id: string) {
+  check(await db().from('projects').delete().eq('id', id));
+}
+
+export async function listTeamRefs(ws: string): Promise<TeamRef[]> {
+  return check(await db().from('teams').select('id, name, color').eq('workspace_id', ws).order('name'));
+}
+
+// ---------- notebook ----------
+
+export async function listNotes(projectId: string): Promise<Note[]> {
+  return check(await db().from('notes').select('*').eq('project_id', projectId)
+    .order('entry_date', { ascending: false }).order('created_at', { ascending: false }));
+}
+
+/** Dates of notebook entries in the workspace, for "last activity" on project cards. */
+export async function listNoteDates(ws: string): Promise<{ project_id: string; entry_date: string }[]> {
+  return check(await db().from('notes').select('project_id, entry_date').eq('workspace_id', ws));
+}
+
+export async function addNote(ws: string, me: string, n: { project_id: string; entry_date: string; kind: NoteKind; body: string }): Promise<Note> {
+  return check(await db().from('notes').insert({ workspace_id: ws, created_by_member: me, ...n }).select().single());
+}
+
+export async function updateNote(id: string, patch: Partial<Pick<Note, 'entry_date' | 'kind' | 'body'>>) {
+  check(await db().from('notes').update(patch).eq('id', id));
+}
+
+export async function deleteNote(id: string) {
+  check(await db().from('notes').delete().eq('id', id));
 }
 
 /** Tasks with their subtasks and collaborators (only what this person may see). */
