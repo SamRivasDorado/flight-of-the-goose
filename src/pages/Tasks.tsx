@@ -1,64 +1,245 @@
-import { useState, type KeyboardEvent } from 'react';
+import { useState, type DragEvent, type KeyboardEvent } from 'react';
 import { useWorkspace } from '../auth/session';
-import { createTask, listMembers, listProjects, listTasks, updateTask, useLoad } from '../lib/data';
-import { canEdit, type Task } from '../lib/types';
-import { Icon } from '../components/Logo';
+import { createTask, listMembers, listProjects, listTasksFull, todayISO, updateTask, useLoad } from '../lib/data';
+import { canEdit, STATUSES, type Member, type Project, type Task, type TaskFull } from '../lib/types';
+import { useLocalPref, useUI } from '../lib/ui';
+import { byDue, diffDays, dueLabel, firstName, hrs, parseISO } from '../lib/format';
+import { Avatar, Icon, type IconName } from '../components/Logo';
+import { NO_PROJECT_COLOR, ProjectChip } from '../components/ProjectChip';
+
+type Tab = 'list' | 'board' | 'calendar';
+type Group = 'due' | 'project';
+
+interface Ctx {
+  tasks: TaskFull[];
+  projects: Project[];
+  members: Member[];
+  editable: boolean;
+  me: string;
+  showDone: boolean;
+  open: (id: string) => void;
+  save: (id: string, patch: Partial<Task>) => Promise<void>;
+  add: (extra: Partial<Task>, openIt?: boolean) => Promise<void>;
+}
 
 export function Tasks() {
   const ws = useWorkspace();
+  const ui = useUI();
   const editable = canEdit(ws.access);
   const { data, error, reload } = useLoad(async () => {
-    const [tasks, projects, members] = await Promise.all([listTasks(ws.workspace_id), listProjects(ws.workspace_id), listMembers(ws.workspace_id)]);
+    const [tasks, projects, members] = await Promise.all([listTasksFull(ws.workspace_id), listProjects(ws.workspace_id), listMembers(ws.workspace_id)]);
     return { tasks, projects, members };
-  }, [ws.workspace_id]);
-  const [draft, setDraft] = useState('');
+  }, [ws.workspace_id, ui.version]);
+  const [tab, setTab] = useLocalPref<Tab>('tasksTab', 'list');
+  const [showDone, setShowDone] = useLocalPref('showDone', false);
   const [msg, setMsg] = useState<string | null>(null);
 
-  async function save(id: string, patch: Partial<Task>) {
-    try { await updateTask(id, patch); await reload(); }
-    catch (e) { setMsg(e instanceof Error ? e.message : String(e)); }
-  }
-  async function quickAdd(e: KeyboardEvent<HTMLInputElement>) {
-    if (e.key !== 'Enter' || !draft.trim()) return;
-    try { await createTask(ws.workspace_id, ws.member_id, { title: draft.trim() }); setDraft(''); await reload(); }
-    catch (err) { setMsg(err instanceof Error ? err.message : String(err)); }
-  }
-
-  const tasks = data?.tasks ?? [];
+  const q = ui.q.trim().toLowerCase();
+  const tasks = (data?.tasks ?? []).filter(t => !q || t.title.toLowerCase().includes(q));
   const open = tasks.filter(t => t.status !== 'done');
+
+  const c: Ctx = {
+    tasks, projects: data?.projects ?? [], members: data?.members ?? [], editable, me: ws.member_id, showDone,
+    open: id => ui.openTask(id),
+    save: async (id, patch) => {
+      try { setMsg(null); await updateTask(id, patch); await reload(); }
+      catch (e) { setMsg(e instanceof Error ? e.message : String(e)); }
+    },
+    add: async (extra, openIt = true) => {
+      try { setMsg(null); const t = await createTask(ws.workspace_id, ws.member_id, extra); ui.changed(); if (openIt) ui.openTask(t.id); }
+      catch (e) { setMsg(e instanceof Error ? e.message : String(e)); }
+    },
+  };
+
+  const tabBtn = (id: Tab, ic: IconName, label: string) =>
+    <button className={`tab ${tab === id ? 'on' : ''}`} onClick={() => setTab(id)}><Icon name={ic} />{label}</button>;
+
   return (
     <>
-      <div className="ph"><h1>Tasks</h1>{data && <span className="sub">{open.length} open · {tasks.length - open.length} done</span>}</div>
+      <div className="ph"><h1>Tasks</h1>{data && <span className="sub mono">{open.length} open · {tasks.length - open.length} done</span>}
+        {q && <span className="tag">Search: {ui.q}</span>}</div>
+      <div className="tabs">{tabBtn('list', 'list', 'List')}{tabBtn('board', 'board', 'Board')}{tabBtn('calendar', 'calendar', 'Calendar')}</div>
       {(error || msg) && <div className="err" style={{ marginBottom: 10 }}>{error || msg}</div>}
+      {tab === 'list' && <ListView c={c} tools={<label className="chk"><input type="checkbox" checked={showDone} onChange={e => setShowDone(e.target.checked)} />Show completed</label>} />}
+      {tab === 'board' && <BoardView c={c} tools={<label className="chk"><input type="checkbox" checked={showDone} onChange={e => setShowDone(e.target.checked)} />Show completed</label>} />}
+      {tab === 'calendar' && <CalendarView c={c} tools={<label className="chk"><input type="checkbox" checked={showDone} onChange={e => setShowDone(e.target.checked)} />Show completed</label>} />}
+    </>
+  );
+}
+
+/* ---------- list ---------- */
+
+function ListView({ c, tools }: { c: Ctx; tools: React.ReactNode }) {
+  const [group, setGroup] = useLocalPref<Group>('tasksGroup', 'due');
+  const [closed, setClosed] = useState<Record<string, boolean>>({});
+  const [draft, setDraft] = useState('');
+  const shown = c.tasks.filter(t => c.showDone || t.status !== 'done');
+  const openT = shown.filter(t => t.status !== 'done');
+
+  let groups: { k: string; label: string; items: TaskFull[] }[];
+  if (group === 'project') {
+    groups = [...c.projects.map(p => ({ k: p.id, label: p.name, items: openT.filter(t => t.project_id === p.id) })),
+      { k: 'none', label: 'No project', items: openT.filter(t => !c.projects.some(p => p.id === t.project_id)) }];
+  } else {
+    const b = (t: Task) => !t.due_date ? 'nodate' : diffDays(t.due_date) < 0 ? 'overdue' : diffDays(t.due_date) === 0 ? 'today' : diffDays(t.due_date) <= 7 ? 'week' : 'later';
+    groups = [['overdue', 'Overdue'], ['today', 'Today'], ['week', 'Next 7 days'], ['later', 'Later'], ['nodate', 'No due date']]
+      .map(([k, label]) => ({ k, label, items: openT.filter(t => b(t) === k) }));
+  }
+  groups = groups.filter(g => g.items.length);
+  if (c.showDone) groups.push({ k: 'done', label: 'Completed', items: shown.filter(t => t.status === 'done') });
+
+  async function quickAdd(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key !== 'Enter' || !draft.trim()) return;
+    const title = draft.trim(); setDraft('');
+    await c.add({ title }, false);
+  }
+
+  return (
+    <>
+      <div className="tools"><span className="grow" />
+        <label className="chk">Group by <select className="field-in" value={group} onChange={e => setGroup(e.target.value as Group)}>
+          <option value="due">Due date</option><option value="project">Project</option></select></label>{tools}</div>
       <div className="tbl-wrap">
         <table className="tl2">
-          <thead><tr><th style={{ width: '42%' }}>Name</th><th>Due date</th><th>Assignee</th><th>Project</th><th>Hours</th></tr></thead>
+          <thead><tr><th>Name</th><th>Due date</th><th>Assignee</th><th>Project</th><th>Time</th></tr></thead>
           <tbody>
-            {data && tasks.length === 0 && <tr><td colSpan={5} className="muted" style={{ padding: 20 }}>No tasks yet. Add one below.</td></tr>}
-            {tasks.map(t => (
-              <tr key={t.id} className={t.status === 'done' ? 'done' : ''}>
-                <td><div className="row" style={{ flexWrap: 'nowrap' }}>
-                  <button className={`circ ${t.status === 'done' ? 'on' : ''}`} disabled={!editable}
-                          aria-label={t.status === 'done' ? 'Mark incomplete' : 'Mark complete'}
-                          onClick={() => save(t.id, { status: t.status === 'done' ? 'todo' : 'done' })}><Icon name="check" /></button>
-                  <input className="cellin ttl" defaultValue={t.title} disabled={!editable} aria-label="Task name"
-                         onBlur={e => e.target.value !== t.title && save(t.id, { title: e.target.value })} /></div></td>
-                <td><input className="cellin" type="date" defaultValue={t.due_date ?? ''} disabled={!editable} aria-label="Due date"
-                           onChange={e => save(t.id, { due_date: e.target.value || null })} /></td>
-                <td><select className="cellin" value={t.assignee_member_id ?? ''} disabled={!editable} aria-label="Assignee"
-                            onChange={e => save(t.id, { assignee_member_id: e.target.value || null })}>
-                  <option value="">Nobody</option>{data!.members.map(m => <option key={m.id} value={m.id}>{m.display_name}</option>)}</select></td>
-                <td><select className="cellin" value={t.project_id ?? ''} disabled={!editable} aria-label="Project"
-                            onChange={e => save(t.id, { project_id: e.target.value || null })}>
-                  <option value="">No project</option>{data!.projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></td>
-                <td><input className="cellin" type="number" min={0} step={0.25} style={{ width: 80 }} defaultValue={t.hours ?? ''} disabled={!editable} aria-label="Hours"
-                           onBlur={e => save(t.id, { hours: e.target.value === '' ? null : Number(e.target.value) })} /></td>
-              </tr>))}
+            {groups.map(g => {
+              const isClosed = !!closed[g.k];
+              return [
+                <tr key={`s-${g.k}`} className={`sec ${isClosed ? 'closed' : ''}`} onClick={() => setClosed({ ...closed, [g.k]: !isClosed })}>
+                  <td colSpan={5}><Icon name="down" /> {g.label}<span className="n mono">{g.items.length}</span></td></tr>,
+                ...(isClosed ? [] : [...g.items].sort(byDue).map(t => <Row key={t.id} t={t} c={c} />)),
+              ];
+            })}
+            {groups.length === 0 && <tr><td colSpan={5} className="muted" style={{ padding: 20 }}>{c.tasks.length ? 'No open tasks match.' : 'No tasks yet. Add one below.'}</td></tr>}
           </tbody>
         </table>
-        {editable && <div className="quick"><Icon name="plus" /><input value={draft} onChange={e => setDraft(e.target.value)} onKeyDown={quickAdd}
-                                                                         placeholder="Add a task and press Enter" aria-label="Add a task" /></div>}
+        {c.editable && <div className="quick"><Icon name="plus" /><input placeholder="Add a task and press Enter" aria-label="Quick add task"
+          value={draft} onChange={e => setDraft(e.target.value)} onKeyDown={quickAdd} /></div>}
       </div>
+    </>
+  );
+}
+
+function Row({ t, c }: { t: TaskFull; c: Ctx }) {
+  const done = t.status === 'done';
+  const due = dueLabel(t.due_date, done);
+  const who = c.members.find(m => m.id === t.assignee_member_id);
+  const subDone = t.subtasks.filter(s => s.done).length;
+  return (
+    <tr className={`trow ${done ? 'done' : ''}`} onClick={() => c.open(t.id)}>
+      <td className="name"><div className="namewrap">
+        <button className={`circ ${done ? 'on' : ''}`} disabled={!c.editable} aria-label={done ? 'Mark incomplete' : 'Mark complete'}
+          onClick={e => { e.stopPropagation(); void c.save(t.id, { status: done ? 'todo' : 'done' }); }}><Icon name="check" /></button>
+        <span className="ttl">{t.title || <span className="muted">Untitled task</span>}</span>
+        {t.subtasks.length > 0 && <span className="subn mono">{subDone}/{t.subtasks.length}<Icon name="sub" /></span>}
+        {t.goal_id && <span className="subn" title="Linked to a goal"><Icon name="target" /></span>}
+      </div></td>
+      <td className="mono"><span className={due.cls}>{due.text}</span></td>
+      <td>{who ? <span className="who"><Avatar m={who} size="sm" />{firstName(who.display_name)}
+        {t.collaborator_ids.length > 0 && <span className="muted"> +{t.collaborator_ids.length}</span>}</span> : <span className="muted">—</span>}</td>
+      <td><ProjectChip p={c.projects.find(p => p.id === t.project_id)} /></td>
+      <td className="mono">{t.hours ? `${hrs(t.hours)} h` : ''}</td>
+    </tr>
+  );
+}
+
+/* ---------- board ---------- */
+
+function useDrop(onDrop: (taskId: string, target: string) => void) {
+  const [over, setOver] = useState<string | null>(null);
+  return {
+    over,
+    props: (target: string) => ({
+      onDragOver: (e: DragEvent) => { e.preventDefault(); setOver(target); },
+      onDragLeave: () => setOver(o => (o === target ? null : o)),
+      onDrop: (e: DragEvent) => { e.preventDefault(); setOver(null); const id = e.dataTransfer.getData('text/task'); if (id) onDrop(id, target); },
+    }),
+  };
+}
+const dragProps = (id: string, editable: boolean) => editable ? {
+  draggable: true,
+  onDragStart: (e: DragEvent) => { e.dataTransfer.setData('text/task', id); e.dataTransfer.effectAllowed = 'move'; (e.currentTarget as HTMLElement).classList.add('dragging'); },
+  onDragEnd: (e: DragEvent) => (e.currentTarget as HTMLElement).classList.remove('dragging'),
+} : {};
+
+function BoardView({ c, tools }: { c: Ctx; tools: React.ReactNode }) {
+  const drop = useDrop((id, st) => { const t = c.tasks.find(x => x.id === id); if (t && t.status !== st) void c.save(id, { status: st as Task['status'] }); });
+  return (
+    <>
+      <div className="tools"><span className="grow" />{tools}</div>
+      <div className="board">{STATUSES.map(st => {
+        const items = c.tasks.filter(t => t.status === st.id && (c.showDone || t.status !== 'done')).sort(byDue);
+        return (
+          <div key={st.id} className={`col ${drop.over === st.id ? 'over' : ''}`} {...(c.editable ? drop.props(st.id) : {})}>
+            <h3><i className="dot" style={{ ['--c' as string]: st.color }} />{st.label}<span className="mono">{items.length}</span></h3>
+            {st.id === 'done' && !c.showDone && <span className="muted" style={{ fontSize: 12, margin: '0 4px' }}>Tick “Show completed” to see finished tasks.</span>}
+            {items.map(t => {
+              const who = c.members.find(m => m.id === t.assignee_member_id), due = dueLabel(t.due_date, t.status === 'done');
+              const p = c.projects.find(x => x.id === t.project_id);
+              return (
+                <button key={t.id} className={`card ${t.status === 'done' ? 'done' : ''}`} onClick={() => c.open(t.id)} {...dragProps(t.id, c.editable)}>
+                  <span className="t">{t.title || 'Untitled task'}</span>
+                  <span className="meta">{who && <Avatar m={who} size="sm" />}{p && <ProjectChip p={p} />}
+                    {due.text && <span className={`mono ${due.cls}`}>{due.text}</span>}{t.hours ? <span className="mono muted">{hrs(t.hours)} h</span> : null}</span>
+                </button>);
+            })}
+            {c.editable && <button className="btn ghost sm" onClick={() => void c.add({ status: st.id, title: '' })}><Icon name="plus" />Add task</button>}
+          </div>);
+      })}</div>
+    </>
+  );
+}
+
+/* ---------- calendar ---------- */
+
+function CalendarView({ c, tools }: { c: Ctx; tools: React.ReactNode }) {
+  const [weekStart, setWeekStart] = useLocalPref<0 | 1>('weekStart', 1);
+  const [month, setMonth] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
+  const drop = useDrop((id, k) => { const t = c.tasks.find(x => x.id === id); if (t && t.due_date !== k) void c.save(id, { due_date: k }); });
+
+  const last = new Date(month.getFullYear(), month.getMonth() + 1, 0);
+  const start = new Date(month); start.setDate(1 - ((month.getDay() - weekStart + 7) % 7));
+  const end = new Date(last); end.setDate(last.getDate() + ((weekStart + 6 - last.getDay() + 7) % 7));
+  const names = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const today = todayISO();
+  const days: Date[] = [];
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) days.push(new Date(d));
+  const shift = (n: number) => setMonth(n === 0 ? (() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); })() : new Date(month.getFullYear(), month.getMonth() + n, 1));
+
+  return (
+    <>
+      <div className="tools">
+        <button className="iconbtn" onClick={() => shift(-1)} aria-label="Previous month"><Icon name="left" /></button>
+        <button className="btn sm" onClick={() => shift(0)}>Today</button>
+        <button className="iconbtn" onClick={() => shift(1)} aria-label="Next month"><Icon name="right" /></button>
+        <span className="month">{month.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}</span><span className="grow" />
+        <span className="seg" role="group" aria-label="Week starts on">
+          <button className={weekStart === 0 ? 'on' : ''} onClick={() => setWeekStart(0)}>Sun</button>
+          <button className={weekStart === 1 ? 'on' : ''} onClick={() => setWeekStart(1)}>Mon</button></span>
+        {tools}
+      </div>
+      <div className="cal-wrap"><div className="cal">
+        {Array.from({ length: 7 }, (_, i) => <div key={`h${i}`} className="dow">{names[(i + weekStart) % 7]}</div>)}
+        {days.map(d => {
+          const k = todayISO(d);
+          const items = c.tasks.filter(t => t.due_date === k && (c.showDone || t.status !== 'done'));
+          return (
+            <div key={k} className={`day ${d.getMonth() !== month.getMonth() ? 'out' : ''} ${k === today ? 'today' : ''} ${drop.over === k ? 'over' : ''}`} {...(c.editable ? drop.props(k) : {})}>
+              <div className="dn"><b>{d.getDate() === 1 ? `${d.toLocaleDateString('en-GB', { month: 'short' })} ` : ''}{d.getDate()}</b>
+                {c.editable && <button className="add" aria-label={`Add task on ${parseISO(k).toLocaleDateString('en-GB')}`} onClick={() => void c.add({ due_date: k, title: '' })}><Icon name="plus" /></button>}</div>
+              {items.map(t => {
+                const p = c.projects.find(x => x.id === t.project_id), who = c.members.find(m => m.id === t.assignee_member_id);
+                return (
+                  <button key={t.id} className={`chip ${t.status === 'done' ? 'done' : ''}`} style={{ ['--c' as string]: p ? p.color : NO_PROJECT_COLOR }}
+                    title={p ? p.name : 'No project'} onClick={() => c.open(t.id)} {...dragProps(t.id, c.editable)}>
+                    <span className="t">{t.title || 'Untitled task'}</span>
+                    {who && who.id !== c.me && <Avatar m={who} size="xs" />}
+                  </button>);
+              })}
+            </div>);
+        })}
+      </div></div>
     </>
   );
 }

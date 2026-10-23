@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { useWorkspace } from '../auth/session';
+import { useUI } from '../lib/ui';
 import { createProject, listMembers, listProjects, listTasks, useLoad } from '../lib/data';
 import { canManage } from '../lib/types';
 import { PROJECT_COLORS } from '../config';
@@ -7,10 +8,11 @@ import { Avatar, Icon } from '../components/Logo';
 
 export function Projects() {
   const ws = useWorkspace();
+  const ui = useUI();
   const { data, error, reload } = useLoad(async () => {
     const [projects, tasks, members] = await Promise.all([listProjects(ws.workspace_id), listTasks(ws.workspace_id), listMembers(ws.workspace_id)]);
     return { projects, tasks, members };
-  }, [ws.workspace_id]);
+  }, [ws.workspace_id, ui.version]);
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState('');
   const [color, setColor] = useState(PROJECT_COLORS[0]);

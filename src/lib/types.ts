@@ -47,7 +47,34 @@ export interface Task {
   hours: number | null;
   assignee_member_id: string | null;
   created_by_member: string | null;
+  created_at: string;
 }
+
+export interface Subtask {
+  id: string;
+  task_id: string;
+  title: string;
+  done: boolean;
+  position: number;
+}
+
+/** A task together with its subtasks and collaborators, as the screens use it. */
+export interface TaskFull extends Task {
+  subtasks: Subtask[];
+  collaborator_ids: string[];
+}
+
+export interface GoalRef {
+  id: string;
+  title: string;
+  parent_id: string | null;
+}
+
+export const STATUSES: { id: Task['status']; label: string; color: string }[] = [
+  { id: 'todo', label: 'To do', color: '#7C8577' },
+  { id: 'doing', label: 'In progress', color: '#E9B93A' },
+  { id: 'done', label: 'Done', color: '#6B9160' },
+];
 
 export const ACCESS_LABEL: Record<Access, string> = {
   admin: 'Admin', manager: 'Manager', member: 'Member', guest: 'Guest',

@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react';
+import { createTask } from '../lib/data';
+import { UIProvider, useLocalPref, useUI } from '../lib/ui';
+import { TaskSheet } from '../components/TaskSheet';
 import { useSession } from '../auth/session';
 import { Login } from '../auth/Login';
 import { isConfigured } from '../lib/supabase';
-import { ACCESS_LABEL } from '../lib/types';
-import { APP_NAME } from '../config';
+import { ACCESS_LABEL, canEdit } from '../lib/types';
+import { APP_NAME, DEFAULT_PALETTE, PALETTES } from '../config';
 import { Icon, Logo } from '../components/Logo';
 import { Projects } from '../pages/Projects';
 import { Tasks } from '../pages/Tasks';
@@ -28,7 +31,7 @@ function SignedInGate() {
   if (!session) return <Login />;
   if (error) return <div className="auth"><div className="authbox"><b>Something went wrong</b><span className="err">{error}</span></div></div>;
   if (!current) return <div className="auth"><span className="muted">Opening your workspace…</span></div>;
-  return <Shell />;
+  return <UIProvider><Shell /></UIProvider>;
 }
 
 function Shell() {
@@ -46,6 +49,7 @@ function Shell() {
           <nav className="nav">
             {navl(...NAV[0])}<i className="navsep" />{NAV.slice(1, 4).map(n => navl(...n))}<i className="navsep" />{NAV.slice(4).map(n => navl(...n))}
           </nav>
+          <TopTools />
           {workspaces.length > 1 && (
             <select className="field-in" aria-label="Workspace" value={current!.workspace_id} onChange={e => switchWorkspace(e.target.value)}>
               {workspaces.map(w => <option key={w.workspace_id} value={w.workspace_id}>{w.workspace_name} · {ACCESS_LABEL[w.access]}</option>)}
@@ -63,7 +67,41 @@ function Shell() {
         {page === 'review' && <Placeholder title="Review" what="Date ranges, slipped/done/coming-up panels and the shareable summary come next." />}
         {page === 'insights' && <Placeholder title="Insights" what="The chart builder and dashboard come next." />}
       </main>
+      <TaskSheet />
     </div>
+  );
+}
+
+/** Search box, New task button and colour palette, as in the prototype's top bar. */
+function TopTools() {
+  const { current } = useSession();
+  const ui = useUI();
+  const [palette, setPalette] = useLocalPref<string>('palette', DEFAULT_PALETTE);
+  const [err, setErr] = useState<string | null>(null);
+  useEffect(() => { document.documentElement.dataset.palette = palette; }, [palette]);
+  const ws = current!;
+
+  async function newTask() {
+    try {
+      setErr(null);
+      const t = await createTask(ws.workspace_id, ws.member_id, { title: '' });
+      ui.changed(); ui.openTask(t.id);
+      if (!location.hash.startsWith('#/tasks')) location.hash = '#/tasks';
+    } catch (e) { setErr(e instanceof Error ? e.message : String(e)); }
+  }
+
+  return (
+    <>
+      <label className="search"><Icon name="search" />
+        <input type="search" placeholder="Search tasks" aria-label="Search tasks" value={ui.q}
+          onChange={e => { ui.setQ(e.target.value); if (e.target.value && !location.hash.startsWith('#/tasks')) location.hash = '#/tasks'; }} /></label>
+      {canEdit(ws.access) && <button className="btn primary" onClick={() => void newTask()} title={err ?? undefined}><Icon name="plus" />New task</button>}
+      {err && <span className="err" style={{ color: 'var(--bar-fg)' }}>{err}</span>}
+      <label className="palbtn" title={`Colour palette: ${PALETTES[palette as keyof typeof PALETTES] ?? ''}`}>
+        <span className="logo" aria-hidden="true"><i /><i /><i /><i /></span><Icon name="down" />
+        <select aria-label="Colour palette" value={palette} onChange={e => setPalette(e.target.value)}>
+          {Object.entries(PALETTES).map(([k, name]) => <option key={k} value={k}>{name}</option>)}</select></label>
+    </>
   );
 }
 
