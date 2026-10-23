@@ -9,7 +9,7 @@ import { Avatar, Icon, type IconName } from '../components/Logo';
 import { ProjectIcon } from '../components/ProjectChip';
 import { ProjectDialog } from '../components/ProjectDialog';
 import { TaskViews, useTaskViews } from './Tasks';
-import { AvStack, KindBadge, projectPeople } from './Projects';
+import { AvStack, KindBadge, ProjectDims, projectPeople } from './Projects';
 
 type PTab = 'notebook' | 'list' | 'board' | 'calendar';
 
@@ -45,7 +45,7 @@ export function ProjectPage({ id }: { id: string }) {
       <div className="phead">
         <ProjectIcon p={p} size="lg" />
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}><h1>{p.name}</h1>
-          <div className="meta"><KindBadge p={p} /><span>{dates}</span><span className="pill" style={{ ['--c' as string]: h.color }}>{h.label}</span></div></div>
+          <div className="meta"><KindBadge p={p} /><span>{dates}</span><span className="pill" style={{ ['--c' as string]: h.color }}>{h.label}</span><ProjectDims id={p.id} /></div></div>
         <span style={{ flex: 1 }} />
         <div className="pagepeople"><span className="who">{owner && <Avatar m={owner} />}<span><b>{owner?.display_name ?? 'No owner'}</b><br /><span className="muted">Owner</span></span></span>
           <AvStack list={projectPeople(p, data.members)} max={7} /></div>

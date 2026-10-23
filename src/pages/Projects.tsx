@@ -3,6 +3,8 @@ import { useWorkspace } from '../auth/session';
 import { listMembers, listNoteDates, listProjectsFull, listTasks, useLoad } from '../lib/data';
 import { canManage, type Member, type ProjectFull, type Task } from '../lib/types';
 import { useUI } from '../lib/ui';
+import { useLens } from '../lib/lens';
+import { OptPill } from '../components/Lens';
 import { byDue, diffDays, dueLabel, firstName, hrs } from '../lib/format';
 import { elapsed, fmtDate, health, lastActivity, weeklyDone, type Health } from '../lib/projects';
 import { Avatar, Icon } from '../components/Logo';
@@ -14,6 +16,7 @@ export const projectHref = (id: string) => `#/project/${id}`;
 export function Projects() {
   const ws = useWorkspace();
   const ui = useUI();
+  const lens = useLens();
   const { data, error, reload } = useLoad(async () => {
     const [projects, tasks, members, noteDates] = await Promise.all([
       listProjectsFull(ws.workspace_id), listTasks(ws.workspace_id), listMembers(ws.workspace_id), listNoteDates(ws.workspace_id)]);
@@ -23,7 +26,7 @@ export function Projects() {
   const [critOpen, setCritOpen] = useState(false);
   const manager = canManage(ws.access);
 
-  const ps = data?.projects ?? [];
+  const ps = (data?.projects ?? []).filter(p => lens.project(p, data!.tasks));
   const hp = (p: ProjectFull) => health(p, data!.tasks, data!.noteDates);
   const live = ps.filter(p => p.status !== 'closed'), closed = ps.filter(p => p.status === 'closed');
   const fixed = live.filter(p => p.kind === 'fixed'), ongoing = live.filter(p => p.kind !== 'fixed');
@@ -125,7 +128,7 @@ function ProjectCard({ p, h, tasks, members, noteDates }: { p: ProjectFull; h: H
       <div className="ppl-row"><span className="who">{owner && <Avatar m={owner} size="sm" />}<span>{owner ? firstName(owner.display_name) : 'No owner'}</span><span className="muted">owner</span></span>
         <AvStack list={projectPeople(p, members)} /></div>
       <div className="body">
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}><span className="pill" style={{ ['--c' as string]: h.color }}>{h.label}</span></div>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}><span className="pill" style={{ ['--c' as string]: h.color }}>{h.label}</span><ProjectDims id={p.id} /></div>
         {mid}
         <div className="stats"><div><b>{open.length}</b><span>open</span></div><div><b style={overdue ? { color: 'var(--danger)' } : undefined}>{overdue}</b><span>overdue</span></div>
           <div><b>{hrs(time)}</b><span>hours logged</span></div></div>
@@ -133,4 +136,10 @@ function ProjectCard({ p, h, tasks, members, noteDates }: { p: ProjectFull; h: H
         <div className="next">{last ? `Last activity: ${dueLabel(last, true).text}` : 'No activity yet'}</div>
       </div>
     </a>);
+}
+
+/** The project's default dimension values as pills (Priority, Region, …). */
+export function ProjectDims({ id }: { id: string }) {
+  const lens = useLens();
+  return <>{lens.dims.map(d => <OptPill key={d.id} dim={d} option={lens.projectDefault(id, d.id)} />)}</>;
 }

@@ -531,3 +531,28 @@ textarea.notes{width:100%;min-height:90px;border:1px solid var(--line);border-ra
 .ltab .sw2{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:7px;background:var(--c)}
 .preview{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:18px;margin-top:14px;align-items:start}
 @media (max-width:860px){.preview{grid-template-columns:minmax(0,1fr)}}
+
+/* ===== Lens bar and Dimensions (from the prototype) ===== */
+.fbar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding-block:8px;border-bottom:1px solid var(--bar-line);background:var(--bar-bg);color:var(--bar-fg);box-shadow:0 4px 14px -10px rgb(0 0 0 / .35);position:relative;z-index:2;font-size:13px}
+.fbar .lab{color:var(--bar-muted);display:flex;align-items:center;gap:5px}
+.fsel{appearance:none;border:1px solid var(--bar-line);background:var(--bar-field);color:var(--bar-fg);border-radius:99px;padding:4px 24px 4px 10px;font-size:13px;cursor:pointer;
+  background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);background-position:calc(100% - 13px) 55%,calc(100% - 9px) 55%;background-size:4px 4px;background-repeat:no-repeat;max-width:140px;width:auto}
+.fsel.on{border-color:var(--primary);background-color:var(--bar-on);color:var(--bar-on-fg);font-weight:600}
+.fbar .btn.ghost,.bar .iconbtn,.fbar .iconbtn{color:var(--bar-muted)}
+.fbar .btn.ghost:hover,.bar .iconbtn:hover{color:var(--bar-fg);background:var(--bar-hi)}
+.pill{--c:#999;display:inline-flex;align-items:center;gap:5px;padding:1px 8px;border-radius:99px;font-size:12px;font-weight:500;background:color-mix(in srgb,var(--c) 22%,var(--surface));white-space:nowrap}
+.pill::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--c)}
+.pill.inh{background:transparent;border:1px dashed color-mix(in srgb,var(--c) 70%,var(--line))}
+.newfield{display:grid;grid-template-columns:1fr 130px;gap:8px;padding:10px;border:1px dashed var(--line);border-radius:8px}
+.newfield .full{grid-column:1/-1}
+.dimbox{border:1px solid var(--line);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:8px}
+.dimhead{display:flex;gap:8px;align-items:center}
+.dimname{flex:1;font-weight:600}
+.optlist{display:flex;flex-direction:column;gap:4px}
+.optrow{display:flex;gap:8px;align-items:center}
+.optrow .field-in{flex:1;padding:4px 8px}
+.optsw{width:22px;height:22px;border-radius:50%;background:var(--c);border:2px solid var(--surface);box-shadow:0 0 0 1px var(--line);flex:none}
+.optsw.on{box-shadow:0 0 0 2px var(--fg)}
+.optpick{padding:4px 0 6px 30px;gap:6px}
+.optpick .swt{width:22px;height:22px;border-radius:6px}
+.optsw{cursor:pointer;flex:none}

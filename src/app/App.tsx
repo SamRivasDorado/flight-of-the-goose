@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { UIProvider, useLocalPref, useUI } from '../lib/ui';
+import { LensProvider } from '../lib/lens';
+import { LensBar } from '../components/Lens';
 import { TaskSheet } from '../components/TaskSheet';
 import { useSession } from '../auth/session';
 import { Login } from '../auth/Login';
@@ -40,7 +42,7 @@ function SignedInGate() {
   if (!session) return <Login />;
   if (error) return <div className="auth"><div className="authbox"><b>Something went wrong</b><span className="err">{error}</span></div></div>;
   if (!current) return <div className="auth"><span className="muted">Opening your workspace…</span></div>;
-  return <UIProvider><Shell /></UIProvider>;
+  return <UIProvider><LensProvider><Shell /></LensProvider></UIProvider>;
 }
 
 function Shell() {
@@ -67,6 +69,7 @@ function Shell() {
           <button className="btn sm ghost" onClick={() => void signOut()} title="Sign out"><Icon name="out" />Sign out</button>
         </div>
         <div className="stripe" aria-hidden="true"><i /><i /><i /><i /></div>
+        <LensBar page={page} self={current!.access === 'member' || current!.access === 'guest'} />
       </header>
       <main className={`view gut ${page === 'timeline' ? 'fill' : ''}`}>
         {page === 'projects' && <Projects />}

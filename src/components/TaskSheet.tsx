@@ -2,10 +2,11 @@ import { useEffect, useState, type KeyboardEvent } from 'react';
 import { useWorkspace } from '../auth/session';
 import {
   addSubtask, createTask, deleteSubtask, deleteTask, getTaskFull, listGoalRefs, listMembers, listProjects,
-  setCollaborator, updateSubtask, updateTask, useLoad,
+  setCollaborator, setTaskValue, updateSubtask, updateTask, useLoad,
 } from '../lib/data';
 import { canEdit, STATUSES, type Subtask, type Task, type TaskFull } from '../lib/types';
 import { useUI } from '../lib/ui';
+import { useLens } from '../lib/lens';
 import { dueLabel, firstName } from '../lib/format';
 import { Avatar, Icon } from './Logo';
 import { ProjectChip } from './ProjectChip';
@@ -31,6 +32,9 @@ function Sheet({ id, defaults, close, changed }: SheetProps) {
   const ws = useWorkspace();
   const isNew = id == null;
   const editable = canEdit(ws.access);
+  const lens = useLens();
+  /** Dimension values chosen in this panel (field id → option id, or null to inherit). */
+  const [dimOwn, setDimOwn] = useState<Record<string, string | null>>({});
   const { data: lists } = useLoad(async () => {
     const [members, projects, goals] = await Promise.all([listMembers(ws.workspace_id), listProjects(ws.workspace_id), listGoalRefs(ws.workspace_id)]);
     return { members, projects, goals };
@@ -81,6 +85,7 @@ function Sheet({ id, defaults, close, changed }: SheetProps) {
       });
       for (const [i, s] of t.subtasks.entries()) { const x = await addSubtask(saved.id, s.title, i); if (s.done) await updateSubtask(x.id, { done: true }); }
       for (const m of t.collaborator_ids) await setCollaborator(saved.id, m, true);
+      for (const [f, o] of Object.entries(dimOwn)) if (o) await setTaskValue(saved.id, f, o);
     });
     setBusy(false);
     if (ok) close();
@@ -212,6 +217,16 @@ function Sheet({ id, defaults, close, changed }: SheetProps) {
               onChange={e => setHours(e.target.value)}
               onBlur={() => { if (isNew) return; const h = hoursValue(); if (h !== t.hours) patch({ hours: h }); }} />
               <span className="muted">hours</span></dd>
+            {lens.dims.length > 0 && <div className="sep">Dimensions</div>}
+            {lens.dims.map(d => {
+              const own = d.id in dimOwn ? dimOwn[d.id] : isNew ? null : lens.taskOwn(t.id, d.id);
+              const inh = t.project_id ? d.options.find(o => o.id === lens.projectDefault(t.project_id!, d.id)) : undefined;
+              return [<dt key={`l${d.id}`}><label htmlFor={`dm-${d.id}`}>{d.name}</label></dt>,
+                <dd key={`v${d.id}`}><select id={`dm-${d.id}`} className="field-in" disabled={!editable} value={own ?? ''}
+                  onChange={e => { const v = e.target.value || null; setDimOwn({ ...dimOwn, [d.id]: v }); if (!isNew) void run(() => setTaskValue(t.id, d.id, v)); }}>
+                  <option value="">{inh ? `${inh.label} (from project)` : '—'}</option>
+                  {d.options.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}</select></dd>];
+            })}
           </dl>
           {!isNew && <div className="muted" style={{ fontSize: 12 }}>Created {created}{completed && ` · completed ${completed}`}</div>}
         </div>

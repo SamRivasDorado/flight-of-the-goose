@@ -3,6 +3,7 @@ import { useWorkspace } from '../auth/session';
 import { listGoals, listNoteDates, listProjectsFull, listTasks, todayISO, updateTask, useLoad } from '../lib/data';
 import { canEdit, type Goal, type Task } from '../lib/types';
 import { useLocalPref, useUI } from '../lib/ui';
+import { useLens } from '../lib/lens';
 import { byDue, dueLabel, hrs, parseISO } from '../lib/format';
 import { fmtDate, lastActivity } from '../lib/projects';
 import { goalProgress, goalStatus } from '../lib/goals';
@@ -33,11 +34,12 @@ function fmtRange(a: string, b: string) {
   return `${A.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', ...(sy ? {} : { year: 'numeric' }) })} – ${B.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`;
 }
 
-interface RV { preset: string; from?: string; to?: string; months?: number; week?: boolean; inc: boolean | null }
+interface RV { preset: string; from?: string; to?: string; months?: number; week?: boolean; inc: boolean | null; dims?: string[] }
 
 export function Review() {
   const ws = useWorkspace();
   const ui = useUI();
+  const lens = useLens();
   const self = ws.access === 'member' || ws.access === 'guest';
   const { data, error, reload } = useLoad(async () => {
     const [tasks, projects, goals, noteDates] = await Promise.all([listTasks(ws.workspace_id), listProjectsFull(ws.workspace_id), listGoals(ws.workspace_id), listNoteDates(ws.workspace_id)]);
@@ -57,7 +59,7 @@ export function Review() {
     let A: Date, B: Date;
     if (months) { const s0 = parseISO(a); A = new Date(s0.getFullYear(), s0.getMonth() + d * months, 1); B = new Date(A.getFullYear(), A.getMonth() + months, 0); }
     else { const n = week ? 7 : spanDays(a, b); A = addDays(parseISO(a), d * n); B = addDays(parseISO(b), d * n); }
-    setRv({ preset: 'custom', from: iso(A), to: iso(B), inc: null, months, week });
+    setRv({ preset: 'custom', from: iso(A), to: iso(B), inc: null, months, week, dims: rv.dims });
   }
   async function act(t: Task, patch: Partial<Task>, note: string) {
     try { await updateTask(t.id, patch); setMsg(note); ui.changed(); void reload(); }
@@ -69,7 +71,7 @@ export function Review() {
 
   const q = ui.q.trim().toLowerCase();
   // members (and guests) review only the tasks assigned to them
-  const tasks = data.tasks.filter(t => (!self || t.assignee_member_id === ws.member_id) && (!q || t.title.toLowerCase().includes(q)));
+  const tasks = data.tasks.filter(t => (!q || t.title.toLowerCase().includes(q)) && lens.task(t, self ? ws.member_id : null));
   const proj = (id: string | null) => data.projects.find(p => p.id === id);
   const inR = (s: string | null | undefined) => !!s && s >= a && s <= b;
   const isDone = (t: Task) => t.status === 'done';
@@ -84,7 +86,7 @@ export function Review() {
   const touchesNow = b >= iso(addDays(parseISO(today), -1));
   const incUp = rv.inc ?? touchesNow;
   const notesR = data.noteDates.filter(n => inR(n.entry_date));
-  const active = data.projects.filter(p => p.status === 'active');
+  const active = data.projects.filter(p => p.status === 'active' && lens.project(p, data.tasks));
   const quiet = active.filter(p => !data.tasks.some(t => t.project_id === p.id && (inR(t.completed_at) || inR(t.created_at.slice(0, 10)))) && !data.noteDates.some(n => n.project_id === p.id && inR(n.entry_date)));
 
   type Row = { label: string; color: string; h: number; n: number };
@@ -101,6 +103,14 @@ export function Review() {
     if (!byGoal.has(k)) byGoal.set(k, { label: g ? g.title : 'Not linked to a goal', color: g ? goalStatus(g.status).color : NO_PROJECT_COLOR, h: 0, n: 0 });
     const o = byGoal.get(k)!; o.h += Number(t.hours) || 0; o.n++; }); });
   const goalRows = [...byGoal.entries()].sort((x, y) => Number(x[0] === '_') - Number(y[0] === '_') || y[1].h - x[1].h || y[1].n - x[1].n).map(e => e[1]);
+  const bdDims = (rv.dims ?? []).map(id => lens.dims.find(d => d.id === id)).filter(Boolean) as typeof lens.dims;
+  const byDim = new Map<string, Row>();
+  if (bdDims.length) done.forEach(t => {
+    const parts = bdDims.map(d => d.options.find(o => o.id === lens.eff(t, d.id).option));
+    const k = parts.map(o => o?.id ?? '_').join('|');
+    if (!byDim.has(k)) byDim.set(k, { label: parts.map(o => o?.label ?? 'Not set').join(' · '), color: parts.find(Boolean)?.color ?? NO_PROJECT_COLOR, h: 0, n: 0 });
+    const o = byDim.get(k)!; o.h += Number(t.hours) || 0; o.n++; });
+  const dimRows = [...byDim.values()].sort((x, y) => y.h - x.h || y.n - x.n);
   const useH = hoursDone > 0, metric = (r: Row) => (useH ? r.h : r.n);
   const bars = (rows: Row[], total?: number) => { const max = Math.max(1e-9, ...rows.map(metric)); return rows.map((r, i) => (
     <div key={i} className="hbar"><span title={r.label} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.label}</span>
@@ -113,6 +123,7 @@ export function Review() {
   const summary = [`${presetName}: ${range}`, `${done.length} task${done.length === 1 ? '' : 's'} completed, ${hrs(hoursDone)} h logged.`,
     ...(goalRows.length ? ['', 'By goal:', ...goalRows.map(line)] : []),
     ...(projRows.length ? ['', 'By project:', ...projRows.map(line)] : []),
+    ...(dimRows.length ? ['', `By ${bdDims.map(d => d.name.toLowerCase()).join(' × ')}:`, ...dimRows.map(line)] : []),
     ...(done.length ? ['', 'Completed:', ...done.map(t => `- ${t.title}${pn(t)}`)] : []),
     ...(slipped.length ? ['', `Open and overdue (${slipped.length}):`, ...slipped.map(t => `- ${t.title}${pn(t)}, due ${fmtDate(t.due_date!, { day: 'numeric', month: 'short', year: 'numeric' })}`)] : []),
     ...(incUp && upcoming.length ? ['', `Coming up, ${fmtRange(upStart, upEnd)}:`, ...upcoming.map(t => `- ${t.title}${pn(t)}, ${fmtDate(t.due_date!, { weekday: 'short', day: 'numeric', month: 'short' })}`)] : [])].join('\n');
@@ -133,12 +144,12 @@ export function Review() {
       <div className="ph"><h1>Review</h1><span className="sub">{presetName} · {range}{self ? ' · your own tasks' : ''}</span></div>
       <div className="rvbar">
         <button className="iconbtn" onClick={() => shift(-1)} aria-label="Previous period"><Icon name="left" /></button>
-        <div className="presets">{PRESETS.map(([k, l]) => <button key={k} className={`chipbtn ${rv.preset === k ? 'on' : ''}`} onClick={() => setRv({ preset: k, inc: null })}>{l}</button>)}</div>
+        <div className="presets">{PRESETS.map(([k, l]) => <button key={k} className={`chipbtn ${rv.preset === k ? 'on' : ''}`} onClick={() => setRv({ preset: k, inc: null, dims: rv.dims })}>{l}</button>)}</div>
         <button className="iconbtn" onClick={() => shift(1)} aria-label="Next period"><Icon name="right" /></button>
         <span className="rvdates"><label htmlFor="rv-from">From</label>
-          <input id="rv-from" type="date" className="field-in" value={a} onChange={e => e.target.value && setRv({ preset: 'custom', from: e.target.value, to: e.target.value > b ? e.target.value : b, inc: null })} />
+          <input id="rv-from" type="date" className="field-in" value={a} onChange={e => e.target.value && setRv({ preset: 'custom', from: e.target.value, to: e.target.value > b ? e.target.value : b, inc: null, dims: rv.dims })} />
           <label htmlFor="rv-to">to</label>
-          <input id="rv-to" type="date" className="field-in" value={b} onChange={e => e.target.value && setRv({ preset: 'custom', from: e.target.value < a ? e.target.value : a, to: e.target.value, inc: null })} /></span>
+          <input id="rv-to" type="date" className="field-in" value={b} onChange={e => e.target.value && setRv({ preset: 'custom', from: e.target.value < a ? e.target.value : a, to: e.target.value, inc: null, dims: rv.dims })} /></span>
       </div>
       {msg && <div className="note">{msg}</div>}
       <div className="rv"><div className="colm">
@@ -165,7 +176,15 @@ export function Review() {
           {goalRows.length > 0 && <div className="hint" style={{ fontSize: 12 }}>A task counts toward every goal its project supports, plus any goal it is linked to directly, so goals can add up to more than the total.</div>}
           <div className="h3" style={{ marginTop: 6 }}>By project</div>
           {projRows.length ? bars(projRows, projRows.reduce((s, r) => s + metric(r), 0)) : <span className="hint">Nothing completed in this period.</span>}
-          <div className="hint" style={{ fontSize: 12 }}>Breakdowns by Priority, Region and other dimensions come with the Lens and Dimensions step.</div></div>
+          {lens.dims.length > 0 && <>
+            <div className="h3" style={{ marginTop: 6 }}>Break down by</div>
+            <div className="presets" style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>{lens.dims.map(d => { const on = (rv.dims ?? []).includes(d.id); return (
+              <button key={d.id} className={`chipbtn ${on ? 'on' : ''}`} aria-pressed={on}
+                onClick={() => setRv({ ...rv, dims: on ? (rv.dims ?? []).filter(x => x !== d.id) : [...(rv.dims ?? []), d.id] })}>{d.name}</button>); })}</div>
+            {bdDims.length
+              ? (dimRows.length ? <><div className="h3" style={{ marginTop: 4 }}>By {bdDims.map(d => d.name.toLowerCase()).join(' × ')}</div>{bars(dimRows, dimRows.reduce((s, r) => s + metric(r), 0))}</>
+                : <span className="hint">Nothing completed in this period.</span>)
+              : <span className="hint" style={{ fontSize: 12 }}>Pick one dimension, or several to combine them (for example Region × Client).</span>}</>}</div>
         <GoalsPanel goals={data.goals} tasks={data.tasks} />
         <div className="panel"><h2>Quiet projects<span>active, but nothing happened in this period</span></h2>
           {quiet.map(p => { const last = lastActivity(p, data.tasks, data.noteDates); return (

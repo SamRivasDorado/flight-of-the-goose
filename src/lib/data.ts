@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { db } from './supabase';
-import type { Goal, GoalRef, Member, Note, NoteKind, Project, ProjectFull, Subtask, Task, Team, TaskFull, TeamRef } from './types';
+import type { Dim, FieldOption, Goal, GoalRef, Member, Note, NoteKind, Project, ProjectFull, Subtask, Task, Team, TaskFull, TeamRef } from './types';
 
 /** Loads data for the current screen and reloads after a change. */
 export function useLoad<T>(load: () => Promise<T>, deps: unknown[]) {
@@ -286,3 +286,49 @@ export async function saveMySettings(memberId: string, patch: Record<string, unk
   const cur = await getMySettings(memberId);
   check(await db().from('member_settings').upsert({ member_id: memberId, settings: { ...cur, ...patch } }).select().single());
 }
+
+// ---------- dimensions (Priority, Region, …) ----------
+
+export async function listDims(ws: string): Promise<Dim[]> {
+  const [f, o] = await Promise.all([
+    db().from('fields').select('id, name, builtin, position').eq('workspace_id', ws).eq('is_dimension', true).eq('type', 'select').order('position').order('name'),
+    db().from('field_options').select('id, field_id, label, color, position').eq('workspace_id', ws).order('position'),
+  ]);
+  const opts = check(o) as FieldOption[];
+  return (check(f) as Omit<Dim, 'options'>[]).map(d => ({ ...d, options: opts.filter(x => x.field_id === d.id) }));
+}
+
+/** Task values and project defaults for every dimension (only rows this person may see). */
+export async function listDimValues(): Promise<{ task: { task_id: string; field_id: string; option_id: string | null }[]; project: { project_id: string; field_id: string; option_id: string }[] }> {
+  const [t, p] = await Promise.all([
+    db().from('task_values').select('task_id, field_id, option_id').not('option_id', 'is', null),
+    db().from('project_defaults').select('project_id, field_id, option_id'),
+  ]);
+  return { task: check(t) as never, project: check(p) as never };
+}
+
+export async function listCollaborations(): Promise<{ task_id: string; member_id: string }[]> {
+  return check(await db().from('task_collaborators').select('task_id, member_id'));
+}
+
+export async function setTaskValue(taskId: string, fieldId: string, optionId: string | null) {
+  if (optionId) check(await db().from('task_values').upsert({ task_id: taskId, field_id: fieldId, option_id: optionId, value: null }));
+  else check(await db().from('task_values').delete().eq('task_id', taskId).eq('field_id', fieldId));
+}
+
+export async function setProjectDefault(projectId: string, fieldId: string, optionId: string | null) {
+  if (optionId) check(await db().from('project_defaults').upsert({ project_id: projectId, field_id: fieldId, option_id: optionId }));
+  else check(await db().from('project_defaults').delete().eq('project_id', projectId).eq('field_id', fieldId));
+}
+
+export async function createDim(ws: string, name: string, options: { label: string; color: string }[], position: number) {
+  const f = check(await db().from('fields').insert({ workspace_id: ws, name, type: 'select', is_dimension: true, builtin: false, position }).select().single()) as { id: string };
+  if (options.length) check(await db().from('field_options').insert(options.map((o, i) => ({ field_id: f.id, workspace_id: ws, label: o.label, color: o.color, position: i }))));
+}
+export async function renameDim(id: string, name: string) { check(await db().from('fields').update({ name }).eq('id', id)); }
+export async function deleteDim(id: string) { check(await db().from('fields').delete().eq('id', id)); }
+export async function addOption(ws: string, fieldId: string, label: string, color: string, position: number) {
+  check(await db().from('field_options').insert({ field_id: fieldId, workspace_id: ws, label, color, position }));
+}
+export async function updateOption(id: string, patch: Partial<Pick<FieldOption, 'label' | 'color'>>) { check(await db().from('field_options').update(patch).eq('id', id)); }
+export async function deleteOption(id: string) { check(await db().from('field_options').delete().eq('id', id)); }

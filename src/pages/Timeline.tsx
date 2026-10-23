@@ -3,6 +3,7 @@ import { useWorkspace } from '../auth/session';
 import { listGoals, listMembers, listProjectsFull, listTasks, todayISO, useLoad } from '../lib/data';
 import { canManage, type Goal, type ProjectFull, type Task } from '../lib/types';
 import { useLocalPref, useUI } from '../lib/ui';
+import { useLens } from '../lib/lens';
 import { byDue, parseISO } from '../lib/format';
 import { fmtDate } from '../lib/projects';
 import { goalProgress, goalRange, goalStatus } from '../lib/goals';
@@ -24,6 +25,7 @@ const monday = (d: Date) => addDays(new Date(d.getFullYear(), d.getMonth(), d.ge
 export function Timeline() {
   const ws = useWorkspace();
   const ui = useUI();
+  const lens = useLens();
   const { data, error, reload } = useLoad(async () => {
     const [goals, projects, tasks, members] = await Promise.all([listGoals(ws.workspace_id), listProjectsFull(ws.workspace_id), listTasks(ws.workspace_id), listMembers(ws.workspace_id)]);
     return { goals, projects, tasks, members };
@@ -63,10 +65,10 @@ export function Timeline() {
   const lanes: ReactNode[] = [];
   if (data) {
     const search = ui.q.trim().toLowerCase();
-    const match = (t: Task) => !search || t.title.toLowerCase().includes(search);
+    const match = (t: Task) => (!search || t.title.toLowerCase().includes(search)) && lens.task(t);
     // goals lane
     const goals = data.goals.filter(g => !g.parent_id).map(g => ({ g, r: [g.start_date, g.end_date ?? endISO] as const })).filter(o => o.r[1] >= startISO && o.r[0] <= endISO);
-    if (goals.length) {
+    if (goals.length && !lens.filt.project) {
       const rows: number[] = [];
       const items = goals.map(({ g, r }) => {
         const l = Math.max(0, x(r[0])), w = Math.min(W, x(r[1]) + ppd) - l;
@@ -86,7 +88,7 @@ export function Timeline() {
     }
     // project lanes: fixed term first, then ongoing, paused, closed
     const order = (p: ProjectFull) => p.status === 'closed' ? 3 : p.status === 'paused' ? 2 : p.kind === 'fixed' ? 0 : 1;
-    const ps = data.projects.filter(p => !(p.status === 'closed' && p.end_date && p.end_date < startISO)).sort((a, b) => order(a) - order(b));
+    const ps = data.projects.filter(p => !(p.status === 'closed' && p.end_date && p.end_date < startISO) && lens.project(p, data.tasks)).sort((a, b) => order(a) - order(b));
     const lane = (p: ProjectFull | null, ts: Task[]) => {
       const color = p ? p.color : NO_PROJECT_COLOR;
       const dated = ts.filter(t => t.due_date && t.due_date >= startISO && t.due_date <= endISO && (showDone || t.status !== 'done')).sort(byDue);
@@ -130,7 +132,7 @@ export function Timeline() {
     };
     ps.forEach(p => lanes.push(...lane(p, data.tasks.filter(t => t.project_id === p.id && match(t)))));
     const loose = data.tasks.filter(t => !data.projects.some(p => p.id === t.project_id) && match(t));
-    if (loose.length) lanes.push(...lane(null, loose));
+    if (loose.length && (!lens.filt.project || lens.filt.project === 'none')) lanes.push(...lane(null, loose));
   }
 
   return (

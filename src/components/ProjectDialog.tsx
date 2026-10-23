@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useWorkspace } from '../auth/session';
-import { deleteProject, listGoalRefs, listMembers, listTeamRefs, saveProject, todayISO, useLoad, type ProjectInput } from '../lib/data';
+import { deleteProject, listGoalRefs, listMembers, listTeamRefs, saveProject, setProjectDefault, todayISO, useLoad, type ProjectInput } from '../lib/data';
+import { useLens } from '../lib/lens';
 import { canManage, type ProjectFull } from '../lib/types';
 import { PROJECT_COLORS } from '../config';
 import { Avatar, Icon, PROJECT_ICONS } from './Logo';
@@ -30,6 +31,9 @@ export function ProjectDialog({ project, kind, count, onClose, onSaved, onDelete
       start_date: todayISO(), end_date: k === 'fixed' ? todayISO(end) : null, owner_member_id: ws.member_id, member_ids: [], team_ids: [], goal_ids: [] };
   })());
   const [busy, setBusy] = useState(false);
+  const lens = useLens();
+  const [defs, setDefs] = useState<Record<string, string | null>>(() =>
+    Object.fromEntries(lens.dims.map(dm => [dm.id, project ? lens.projectDefault(project.id, dm.id) : null])));
   const [err, setErr] = useState<string | null>(null);
   const [confirmDel, setConfirmDel] = useState(false);
   const set = (p: Partial<ProjectInput>) => setD(cur => ({ ...cur, ...p }));
@@ -47,6 +51,7 @@ export function ProjectDialog({ project, kind, count, onClose, onSaved, onDelete
     setBusy(true); setErr(null);
     try {
       const id = await saveProject(ws.workspace_id, project, { ...d, name: d.name.trim(), end_date: d.kind === 'fixed' ? d.end_date : null });
+      for (const [f, o] of Object.entries(defs)) if ((project ? lens.projectDefault(project.id, f) : null) !== o) await setProjectDefault(id, f, o);
       onSaved(id);
     } catch (e) { setErr(e instanceof Error ? e.message : String(e)); setBusy(false); }
   }
@@ -113,6 +118,12 @@ export function ProjectDialog({ project, kind, count, onClose, onSaved, onDelete
                   <i className="dot" style={{ ['--c' as string]: t.color }} />{t.name}</button>))}
               {lists && lists.teams.length === 0 && <span className="hint">No teams yet. They will be created in the Team tab.</span>}
             </div></div>
+          {lens.dims.length > 0 && <div><span className="lbl">Default dimensions</span>
+            {hint('Tasks in this project inherit these values unless a task sets its own.')}
+            <div className="row2">{lens.dims.map(dm => (
+              <div key={dm.id}><label className="hint" htmlFor={`pd-${dm.id}`} style={{ display: 'block', marginBottom: 4 }}>{dm.name}</label>
+                <select id={`pd-${dm.id}`} className="field-in" style={{ width: '100%' }} value={defs[dm.id] ?? ''} onChange={e => setDefs({ ...defs, [dm.id]: e.target.value || null })}>
+                  <option value="">—</option>{dm.options.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}</select></div>))}</div></div>}
           <div><span className="lbl">Colour</span><div className="swatches">
             {PROJECT_COLORS.map(c => <button key={c} type="button" className={`swt ${d.color === c ? 'on' : ''}`} style={{ ['--c' as string]: c }} aria-label={`Colour ${c}`} onClick={() => set({ color: c })} />)}
             <label className="swt custom" title="Any colour" style={{ position: 'relative' }}>+<input type="color" value={d.color} onChange={e => set({ color: e.target.value })} aria-label="Pick any colour" /></label>

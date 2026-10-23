@@ -159,3 +159,17 @@ export interface Goal {
   /** Linked projects, filled in from goal_projects. */
   project_ids: string[];
 }
+
+export interface FieldOption { id: string; field_id: string; label: string; color: string; position: number }
+
+/** A shared label such as Priority or Region, with its options. */
+export interface Dim {
+  id: string;
+  name: string;
+  builtin: boolean;
+  position: number;
+  options: FieldOption[];
+}
+
+/** A value chosen for a dimension, on a task (task_values) or as a project default (project_defaults). */
+export interface DimValue { field_id: string; option_id: string | null }
