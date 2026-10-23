@@ -60,7 +60,7 @@ export function ProjectDialog({ project, kind, count, onClose, onSaved, onDelete
   const statusSel = (
     <select id="pm-status" className="field-in" style={{ width: '100%' }} value={d.status} onChange={e => set({ status: e.target.value as ProjectInput['status'] })}>
       <option value="active">Active</option><option value="paused">Paused</option><option value="closed">Closed</option></select>);
-  const hint = (t: string) => <div className="muted" style={{ fontSize: 13, margin: '-2px 0 8px' }}>{t}</div>;
+  const hint = (t: string) => <div className="hint" style={{ margin: '-2px 0 8px' }}>{t}</div>;
 
   return (
     <div className="scrim" onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}>
@@ -95,15 +95,15 @@ export function ProjectDialog({ project, kind, count, onClose, onSaved, onDelete
               {(lists?.members ?? []).filter(m => m.id !== d.owner_member_id).map(m => (
                 <button key={m.id} type="button" className={`pp ${d.member_ids.includes(m.id) ? 'on' : ''}`} aria-pressed={d.member_ids.includes(m.id)} onClick={() => toggle('member_ids', m.id)}>
                   <Avatar m={m} size="sm" />{m.display_name}{m.access === 'guest' && <span className="muted"> (guest)</span>}</button>))}
-              {lists && lists.members.filter(m => m.id !== d.owner_member_id).length === 0 && <span className="muted">No one else in the workspace yet. Invite people from the Team tab.</span>}
+              {lists && lists.members.filter(m => m.id !== d.owner_member_id).length === 0 && <span className="hint">No one else in the workspace yet. Invite people from the Team tab.</span>}
             </div></div>
-          <div><span className="lbl">Part of goals <span className="muted" style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 400 }}>· optional</span></span>
+          <div><span className="lbl">Part of goals <span className="muted">· optional</span></span>
             {hint('Tick the goals this project supports. Leave all unticked if it stands on its own.')}
             <div className="pplpick">
               {(lists?.goals ?? []).filter(g => !g.parent_id).flatMap(g => [g, ...(lists?.goals ?? []).filter(k => k.parent_id === g.id)]).map(g => (
                 <button key={g.id} type="button" className={`pp ${d.goal_ids.includes(g.id) ? 'on' : ''}`} aria-pressed={d.goal_ids.includes(g.id)} onClick={() => toggle('goal_ids', g.id)}>
                   <Icon name="target" />{g.parent_id ? '↳ ' : ''}{g.title}</button>))}
-              {lists && lists.goals.length === 0 && <span className="muted">No goals yet. They will be created in Strategy.</span>}
+              {lists && lists.goals.length === 0 && <span className="hint">No goals yet. They will be created in Strategy.</span>}
             </div></div>
           <div><span className="lbl">Shared with teams</span>
             {hint('Everyone in a team you tick becomes a member, including people who join the team later.')}
@@ -111,7 +111,7 @@ export function ProjectDialog({ project, kind, count, onClose, onSaved, onDelete
               {(lists?.teams ?? []).map(t => (
                 <button key={t.id} type="button" className={`pp ${d.team_ids.includes(t.id) ? 'on' : ''}`} aria-pressed={d.team_ids.includes(t.id)} onClick={() => toggle('team_ids', t.id)}>
                   <i className="dot" style={{ ['--c' as string]: t.color }} />{t.name}</button>))}
-              {lists && lists.teams.length === 0 && <span className="muted">No teams yet. They will be created in the Team tab.</span>}
+              {lists && lists.teams.length === 0 && <span className="hint">No teams yet. They will be created in the Team tab.</span>}
             </div></div>
           <div><span className="lbl">Colour</span><div className="swatches">
             {PROJECT_COLORS.map(c => <button key={c} type="button" className={`swt ${d.color === c ? 'on' : ''}`} style={{ ['--c' as string]: c }} aria-label={`Colour ${c}`} onClick={() => set({ color: c })} />)}
@@ -120,7 +120,7 @@ export function ProjectDialog({ project, kind, count, onClose, onSaved, onDelete
           <div><span className="lbl">Symbol</span><div className="icons">
             {PROJECT_ICONS.map(n => <button key={n} type="button" className={d.icon === n ? 'on' : ''} aria-label={n} onClick={() => set({ icon: n })}
               style={d.icon === n ? { color: d.color } : undefined}><Icon name={n} /></button>)}
-          </div><div className="muted" style={{ fontSize: 12, marginTop: 6 }}>Your own image as a symbol comes later, with profile pictures.</div></div>
+          </div><div className="hint" style={{ marginTop: 6 }}>Your own image as a symbol comes later, with profile pictures.</div></div>
           {confirmDel && (
             <div className="confirm">Delete this project? Its tasks stay, without a project. Its notebook entries are deleted.<span style={{ flex: 1 }} />
               <button className="btn sm" onClick={() => setConfirmDel(false)}>Keep</button>

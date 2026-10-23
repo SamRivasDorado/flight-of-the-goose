@@ -349,3 +349,8 @@ textarea.notes{width:100%;min-height:90px;border:1px solid var(--line);border-ra
 .statusbar{display:flex;flex-wrap:wrap;gap:16px;align-items:center;font-size:13px;color:var(--muted);margin-bottom:14px}
 .statusbar b{color:var(--fg);font-variant-numeric:tabular-nums}
 @media (max-width:860px){.nb,.row2,.kindpick{grid-template-columns:minmax(0,1fr)}.entry{grid-template-columns:minmax(0,1fr);gap:4px}.entry .when b{display:inline;font-size:15px;margin-right:6px}}
+/* one size for every explanation and empty message in dialogs */
+.hint{font-size:13px;line-height:1.45;color:var(--muted)}
+.modal .kindpick span{font-size:13px;line-height:1.45;color:var(--muted)}
+.modal .kindpick b{font-size:14px;color:var(--fg);margin-bottom:2px}
+.modal .pp{font-size:13px}
