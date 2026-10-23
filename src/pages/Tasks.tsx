@@ -46,7 +46,8 @@ export function Tasks() {
       catch (e) { setMsg(e instanceof Error ? e.message : String(e)); }
     },
     add: async (extra, openIt = true) => {
-      try { setMsg(null); const t = await createTask(ws.workspace_id, ws.member_id, extra); ui.changed(); if (openIt) ui.openTask(t.id); }
+      if (openIt) { ui.newTask(extra); return; }
+      try { setMsg(null); await createTask(ws.workspace_id, ws.member_id, extra); ui.changed(); }
       catch (e) { setMsg(e instanceof Error ? e.message : String(e)); }
     },
   };
@@ -184,7 +185,7 @@ function BoardView({ c, tools }: { c: Ctx; tools: React.ReactNode }) {
                     {due.text && <span className={`mono ${due.cls}`}>{due.text}</span>}{t.hours ? <span className="mono muted">{hrs(t.hours)} h</span> : null}</span>
                 </button>);
             })}
-            {c.editable && <button className="btn ghost sm" onClick={() => void c.add({ status: st.id, title: '' })}><Icon name="plus" />Add task</button>}
+            {c.editable && <button className="btn ghost sm" onClick={() => void c.add({ status: st.id })}><Icon name="plus" />Add task</button>}
           </div>);
       })}</div>
     </>
@@ -227,7 +228,7 @@ function CalendarView({ c, tools }: { c: Ctx; tools: React.ReactNode }) {
           return (
             <div key={k} className={`day ${d.getMonth() !== month.getMonth() ? 'out' : ''} ${k === today ? 'today' : ''} ${drop.over === k ? 'over' : ''}`} {...(c.editable ? drop.props(k) : {})}>
               <div className="dn"><b>{d.getDate() === 1 ? `${d.toLocaleDateString('en-GB', { month: 'short' })} ` : ''}{d.getDate()}</b>
-                {c.editable && <button className="add" aria-label={`Add task on ${parseISO(k).toLocaleDateString('en-GB')}`} onClick={() => void c.add({ due_date: k, title: '' })}><Icon name="plus" /></button>}</div>
+                {c.editable && <button className="add" aria-label={`Add task on ${parseISO(k).toLocaleDateString('en-GB')}`} onClick={() => void c.add({ due_date: k })}><Icon name="plus" /></button>}</div>
               {items.map(t => {
                 const p = c.projects.find(x => x.id === t.project_id), who = c.members.find(m => m.id === t.assignee_member_id);
                 return (

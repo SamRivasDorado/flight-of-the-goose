@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { createTask } from '../lib/data';
 import { UIProvider, useLocalPref, useUI } from '../lib/ui';
 import { TaskSheet } from '../components/TaskSheet';
 import { useSession } from '../auth/session';
@@ -77,26 +76,17 @@ function TopTools() {
   const { current } = useSession();
   const ui = useUI();
   const [palette, setPalette] = useLocalPref<string>('palette', DEFAULT_PALETTE);
-  const [err, setErr] = useState<string | null>(null);
   useEffect(() => { document.documentElement.dataset.palette = palette; }, [palette]);
   const ws = current!;
 
-  async function newTask() {
-    try {
-      setErr(null);
-      const t = await createTask(ws.workspace_id, ws.member_id, { title: '' });
-      ui.changed(); ui.openTask(t.id);
-      if (!location.hash.startsWith('#/tasks')) location.hash = '#/tasks';
-    } catch (e) { setErr(e instanceof Error ? e.message : String(e)); }
-  }
+  function newTask() { ui.newTask({}); }
 
   return (
     <>
       <label className="search"><Icon name="search" />
         <input type="search" placeholder="Search tasks" aria-label="Search tasks" value={ui.q}
           onChange={e => { ui.setQ(e.target.value); if (e.target.value && !location.hash.startsWith('#/tasks')) location.hash = '#/tasks'; }} /></label>
-      {canEdit(ws.access) && <button className="btn primary" onClick={() => void newTask()} title={err ?? undefined}><Icon name="plus" />New task</button>}
-      {err && <span className="err" style={{ color: 'var(--bar-fg)' }}>{err}</span>}
+      {canEdit(ws.access) && <button className="btn primary" onClick={newTask}><Icon name="plus" />New task</button>}
       <label className="palbtn" title={`Colour palette: ${PALETTES[palette as keyof typeof PALETTES] ?? ''}`}>
         <span className="logo" aria-hidden="true"><i /><i /><i /><i /></span><Icon name="down" />
         <select aria-label="Colour palette" value={palette} onChange={e => setPalette(e.target.value)}>

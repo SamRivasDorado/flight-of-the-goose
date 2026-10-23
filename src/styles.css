@@ -250,3 +250,6 @@ textarea.notes{width:100%;min-height:90px;border:1px solid var(--line);border-ra
 .soon{color:var(--ok)} .grow{flex:1}
 @media (max-width:860px){.search input{width:100px}.sbody{grid-template-columns:minmax(0,1fr)}}
 .props .hrs input{width:90px}
+.sfoot{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:12px 18px;border-top:1px solid var(--raise-line)}
+.sbody{flex:1;min-height:0}
+.hrs{display:flex;gap:8px;align-items:center}
