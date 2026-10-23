@@ -7,12 +7,12 @@ export function Logo({ variant = 'tile', size = 30 }: { variant?: 'tile' | 'plai
   return <img className="brandmark" src={src} alt="" width={size} height={size} />;
 }
 
-export function Avatar({ m, size = '' }: { m: Pick<Member, 'display_name' | 'color' | 'title'> | null | undefined; size?: '' | 'xs' | 'sm' | 'lg' | 'xl' }) {
+export function Avatar({ m, size = '' }: { m: (Pick<Member, 'display_name' | 'color' | 'title'> & { avatar_url?: string | null }) | null | undefined; size?: '' | 'xs' | 'sm' | 'lg' | 'xl' }) {
   if (!m) return null;
   const initials = m.display_name.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
   return (
     <span className={`av ${size}`} style={{ ['--c' as string]: m.color }} title={m.title ? `${m.display_name} · ${m.title}` : m.display_name}>
-      {initials}
+      {m.avatar_url ? <img src={m.avatar_url} alt="" /> : initials}
     </span>
   );
 }

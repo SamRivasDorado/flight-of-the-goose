@@ -19,6 +19,7 @@ export interface Member {
   access: Access;
   status: 'invited' | 'active';
   color: string;
+  avatar_url?: string | null;
 }
 
 export interface Project {
@@ -173,3 +174,13 @@ export interface Dim {
 
 /** A value chosen for a dimension, on a task (task_values) or as a project default (project_defaults). */
 export interface DimValue { field_id: string; option_id: string | null }
+
+/** The signed-in person's own profile (profiles table). */
+export interface Profile {
+  id: string;
+  full_name: string;
+  title: string;
+  color: string | null;
+  avatar_url: string | null;
+  setup_done: boolean;
+}

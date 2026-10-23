@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { db } from '../lib/supabase';
-import type { WorkspaceRef } from '../lib/types';
+import type { Profile, WorkspaceRef } from '../lib/types';
 
 interface SessionState {
   session: Session | null;
@@ -11,6 +11,9 @@ interface SessionState {
   current: WorkspaceRef | null;
   switchWorkspace: (id: string) => void;
   signOut: () => Promise<void>;
+  /** The person's own profile; null until loaded, or when the database has no profile columns yet. */
+  profile: Profile | null;
+  refreshProfile: () => Promise<void>;
 }
 
 const Ctx = createContext<SessionState | null>(null);
@@ -21,9 +24,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [workspaces, setWorkspaces] = useState<WorkspaceRef[]>([]);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [currentId, setCurrentId] = useState<string | null>(() => {
     try { return localStorage.getItem(LAST_WS); } catch { return null; }
   });
+
+  // The welcome screen needs the profile columns (migration 20261023180000); without them, skip it.
+  const loadProfile = useCallback(async (uid: string) => {
+    const { data, error } = await db().from('profiles').select('id, full_name, title, color, avatar_url, setup_done').eq('id', uid).maybeSingle();
+    setProfile(error || !data ? null : data as Profile);
+  }, []);
 
   // After every sign-in: create the profile, accept invitations, and make a
   // personal workspace when the person has none (see on_login in the migration).
@@ -32,8 +42,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     const name = (s.user.user_metadata?.full_name as string | undefined) ?? null;
     const { data, error } = await db().rpc('on_login', { p_full_name: name });
     if (error) { setError(`Could not open your workspace: ${error.message}`); return; }
+    await loadProfile(s.user.id);
     setWorkspaces((data ?? []) as WorkspaceRef[]);
-  }, []);
+  }, [loadProfile]);
 
   useEffect(() => {
     const client = db();
@@ -59,6 +70,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     session, loading, error, workspaces, current,
     switchWorkspace: (id) => { setCurrentId(id); try { localStorage.setItem(LAST_WS, id); } catch { /* private mode */ } },
     signOut: async () => { await db().auth.signOut(); },
+    profile,
+    refreshProfile: async () => { if (session) await loadProfile(session.user.id); },
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

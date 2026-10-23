@@ -2,13 +2,14 @@ import { useEffect, useState } from 'react';
 import { UIProvider, useLocalPref, useUI } from '../lib/ui';
 import { LensProvider } from '../lib/lens';
 import { LensBar } from '../components/Lens';
+import { ProfileDialog, Welcome } from '../components/ProfileForm';
 import { TaskSheet } from '../components/TaskSheet';
 import { useSession } from '../auth/session';
 import { Login } from '../auth/Login';
 import { isConfigured } from '../lib/supabase';
 import { ACCESS_LABEL, canEdit } from '../lib/types';
 import { APP_NAME, DEFAULT_PALETTE, PALETTES } from '../config';
-import { Icon, Logo } from '../components/Logo';
+import { Avatar, Icon, Logo } from '../components/Logo';
 import { Projects } from '../pages/Projects';
 import { ProjectPage } from '../pages/ProjectPage';
 import { Tasks } from '../pages/Tasks';
@@ -37,11 +38,12 @@ export function App() {
 }
 
 function SignedInGate() {
-  const { session, loading, error, current } = useSession();
+  const { session, loading, error, current, profile } = useSession();
   if (loading) return <div className="auth"><span className="muted">Loading…</span></div>;
   if (!session) return <Login />;
   if (error) return <div className="auth"><div className="authbox"><b>Something went wrong</b><span className="err">{error}</span></div></div>;
   if (!current) return <div className="auth"><span className="muted">Opening your workspace…</span></div>;
+  if (profile && !profile.setup_done) return <Welcome />;
   return <UIProvider><LensProvider><Shell /></LensProvider></UIProvider>;
 }
 
@@ -66,6 +68,7 @@ function Shell() {
             <select className="field-in" aria-label="Workspace" value={current!.workspace_id} onChange={e => switchWorkspace(e.target.value)}>
               {workspaces.map(w => <option key={w.workspace_id} value={w.workspace_id}>{w.workspace_name} · {ACCESS_LABEL[w.access]}</option>)}
             </select>)}
+          <MeButton />
           <button className="btn sm ghost" onClick={() => void signOut()} title="Sign out"><Icon name="out" />Sign out</button>
         </div>
         <div className="stripe" aria-hidden="true"><i /><i /><i /><i /></div>
@@ -121,4 +124,18 @@ function SetupNeeded() {
       <p className="muted" style={{ margin: 0 }}>The README walks through creating the Supabase project.</p>
     </div></div>
   );
+}
+
+/** Your picture in the top bar; opens "Your profile". */
+function MeButton() {
+  const { profile, session } = useSession();
+  const ui = useUI();
+  const [open, setOpen] = useState(false);
+  if (!profile) return null;
+  return (
+    <>
+      <button className="mebtn" title={`Your profile (${session?.user.email ?? ''})`} aria-label="Your profile" onClick={() => setOpen(true)}>
+        <Avatar m={{ display_name: profile.full_name || '?', color: profile.color ?? '#5B83B5', title: profile.title, avatar_url: profile.avatar_url }} size="lg" /></button>
+      {open && <ProfileDialog onClose={() => setOpen(false)} onSaved={() => { setOpen(false); ui.changed(); }} />}
+    </>);
 }
