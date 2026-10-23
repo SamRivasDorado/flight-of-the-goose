@@ -83,6 +83,27 @@ do $$ begin
   exception when insufficient_privilege then raise notice 'ok  only admins invite people'; end;
 end $$;
 
+-- Profiles: each person saves their own name, title and picture; it reaches all their memberships
+select pg_temp.login('00000000-0000-0000-0000-00000000000b');
+select save_my_profile('Omar El-Sayed', 'Reservoir Engineer', '#3E9A94', 'https://example.com/omar.webp');
+select pg_temp.check((select setup_done and full_name = 'Omar El-Sayed' from profiles where id = auth.uid()), 'a person saves their own profile');
+select pg_temp.check((select display_name = 'Omar El-Sayed' and title = 'Reservoir Engineer' and avatar_url like 'https://%' from workspace_members where user_id = auth.uid()),
+  'the profile reaches their membership in every workspace');
+select pg_temp.check((select count(*) from profiles) = 1, 'people see only their own profile');
+do $$ begin
+  begin update workspace_members set display_name = 'Hacked' where email = 'sam@example.com';
+    if exists (select 1 from workspace_members where display_name = 'Hacked') then raise exception 'FAILED: a member renamed someone else'; end if;
+    raise notice 'ok  members cannot rename other people';
+  exception when insufficient_privilege then raise notice 'ok  members cannot rename other people'; end;
+  begin perform save_my_profile('  ', '', null, null); raise exception 'FAILED: empty name accepted';
+  exception when raise_exception then if sqlerrm like 'FAILED%' then raise; end if; raise notice 'ok  a name is required'; end;
+  begin perform save_my_profile('Omar', '', null, 'javascript:alert(1)'); raise exception 'FAILED: odd picture address accepted';
+  exception when raise_exception then if sqlerrm like 'FAILED%' then raise; end if; raise notice 'ok  picture must be a web address'; end;
+end $$;
+select pg_temp.login('00000000-0000-0000-0000-00000000000a');
+select save_my_profile('Sam Rivas Dorado', 'Senior Geoscientist', null, null);
+select pg_temp.check((select name from workspaces where created_by = auth.uid()) = 'Sam Rivas Dorado’s workspace', 'the personal workspace follows the new name');
+
 -- A stranger signs up: own empty workspace, sees nothing of Sam's
 select pg_temp.login('00000000-0000-0000-0000-00000000000e');
 select count(*) from on_login(null);
