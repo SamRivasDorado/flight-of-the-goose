@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSolo } from '../lib/solo';
 import { useWorkspace } from '../auth/session';
 import { addNote, createTask, deleteNote, listMembers, listNoteDates, listNotes, listProjectsFull, todayISO, updateNote, useLoad } from '../lib/data';
 import { canEdit, canManage, NOTE_KINDS, type Member, type Note, type NoteKind, type ProjectFull, type TaskFull } from '../lib/types';
@@ -14,6 +15,7 @@ import { AvStack, KindBadge, ProjectDims, projectPeople } from './Projects';
 type PTab = 'notebook' | 'list' | 'board' | 'calendar';
 
 export function ProjectPage({ id }: { id: string }) {
+  const { solo } = useSolo();
   const ws = useWorkspace();
   const ui = useUI();
   const { data, error, reload } = useLoad(async () => {
@@ -47,8 +49,8 @@ export function ProjectPage({ id }: { id: string }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}><h1>{p.name}</h1>
           <div className="meta"><KindBadge p={p} /><span>{dates}</span><span className="pill" style={{ ['--c' as string]: h.color }}>{h.label}</span><ProjectDims id={p.id} /></div></div>
         <span style={{ flex: 1 }} />
-        <div className="pagepeople"><span className="who">{owner && <Avatar m={owner} />}<span><b>{owner?.display_name ?? 'No owner'}</b><br /><span className="muted">Owner</span></span></span>
-          <AvStack list={projectPeople(p, data.members)} max={7} /></div>
+        {!solo && <div className="pagepeople"><span className="who">{owner && <Avatar m={owner} />}<span><b>{owner?.display_name ?? 'No owner'}</b><br /><span className="muted">Owner</span></span></span>
+          <AvStack list={projectPeople(p, data.members)} max={7} /></div>}
         {canSettings && <button className="btn sm" onClick={() => setSettings(true)}><Icon name="gear" />Project settings</button>}
       </div>
       <div className="tabs">{tabBtn('notebook', 'note', 'Notebook')}{tabBtn('list', 'list', 'List')}{tabBtn('board', 'board', 'Board')}{tabBtn('calendar', 'calendar', 'Calendar')}</div>
@@ -65,6 +67,7 @@ export function ProjectPage({ id }: { id: string }) {
 /* ---------- notebook ---------- */
 
 function Notebook({ p, tasks, members, onTasks }: { p: ProjectFull; tasks: TaskFull[]; members: Member[]; onTasks: () => void }) {
+  const { solo } = useSolo();
   const ws = useWorkspace();
   const ui = useUI();
   const editable = canEdit(ws.access);
@@ -133,7 +136,7 @@ function Notebook({ p, tasks, members, onTasks }: { p: ProjectFull; tasks: TaskF
                 <div className="when"><b>{parseISO(n.entry_date).getDate()}</b>{fmtDate(n.entry_date, { month: 'short', year: 'numeric' })}</div>
                 <div>
                   <div className="eh">{n.kind !== 'note' && <span className="pill" style={{ ['--c' as string]: n.kind === 'decision' ? '#C8634A' : '#5B83B5' }}>{k.label}</span>}
-                    {author && <span className="muted" style={{ fontSize: 12 }}>{author.display_name}</span>}<span className="grow" />
+                    {author && !solo && <span className="muted" style={{ fontSize: 12 }}>{author.display_name}</span>}<span className="grow" />
                     {editable && <><button className="iconbtn" onClick={() => setEditing(n)} aria-label="Edit entry"><Icon name="edit" /></button>
                       <button className="iconbtn" onClick={() => setDelId(n.id)} aria-label="Delete entry"><Icon name="trash" /></button></>}</div>
                   {delId === n.id && (

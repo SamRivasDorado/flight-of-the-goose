@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSolo } from '../lib/solo';
 import { useWorkspace } from '../auth/session';
 import { deleteProject, listGoalRefs, listMembers, listTeamRefs, saveProject, setProjectDefault, setProjectImage, todayISO, useLoad, type ProjectInput } from '../lib/data';
 import { useLens } from '../lib/lens';
@@ -35,6 +36,7 @@ export function ProjectDialog({ project, kind, count, onClose, onSaved, onDelete
   })());
   const [busy, setBusy] = useState(false);
   const lens = useLens();
+  const { solo } = useSolo();
   const [defs, setDefs] = useState<Record<string, string | null>>(() =>
     Object.fromEntries(lens.dims.map(dm => [dm.id, project ? lens.projectDefault(project.id, dm.id) : null])));
   const [err, setErr] = useState<string | null>(null);
@@ -111,7 +113,7 @@ export function ProjectDialog({ project, kind, count, onClose, onSaved, onDelete
               : <div><label className="lbl" htmlFor="pm-status">Status</label>{statusSel}</div>}
           </div>
           {d.kind === 'fixed' && <div className="row2"><div><label className="lbl" htmlFor="pm-status">Status</label>{statusSel}</div><div /></div>}
-          <div className="row2"><div><label className="lbl" htmlFor="pm-owner">Owner (project manager)</label>
+          {!solo && <><div className="row2"><div><label className="lbl" htmlFor="pm-owner">Owner (project manager)</label>
             <select id="pm-owner" className="field-in" style={{ width: '100%' }} value={d.owner_member_id ?? ''} onChange={e => set({ owner_member_id: e.target.value || null })}>
               {(lists?.members ?? []).filter(m => m.access !== 'guest').map(m => <option key={m.id} value={m.id}>{m.display_name}</option>)}</select></div><div /></div>
           <div><span className="lbl">Members</span>
@@ -121,7 +123,7 @@ export function ProjectDialog({ project, kind, count, onClose, onSaved, onDelete
                 <button key={m.id} type="button" className={`pp ${d.member_ids.includes(m.id) ? 'on' : ''}`} aria-pressed={d.member_ids.includes(m.id)} onClick={() => toggle('member_ids', m.id)}>
                   <Avatar m={m} size="sm" />{m.display_name}{m.access === 'guest' && <span className="muted"> (guest)</span>}</button>))}
               {lists && lists.members.filter(m => m.id !== d.owner_member_id).length === 0 && <span className="hint">No one else in the workspace yet. Invite people from the Team tab.</span>}
-            </div></div>
+            </div></div></>}
           <div><span className="lbl">Part of goals <span className="muted">· optional</span></span>
             {hint('Tick the goals this project supports. Leave all unticked if it stands on its own.')}
             <div className="pplpick">
@@ -130,14 +132,14 @@ export function ProjectDialog({ project, kind, count, onClose, onSaved, onDelete
                   <Icon name="target" />{g.parent_id ? '↳ ' : ''}{g.title}</button>))}
               {lists && lists.goals.length === 0 && <span className="hint">No goals yet. They will be created in Strategy.</span>}
             </div></div>
-          <div><span className="lbl">Shared with teams</span>
+          {!solo && <div><span className="lbl">Shared with teams</span>
             {hint('Everyone in a team you tick becomes a member, including people who join the team later.')}
             <div className="pplpick">
               {(lists?.teams ?? []).map(t => (
                 <button key={t.id} type="button" className={`pp ${d.team_ids.includes(t.id) ? 'on' : ''}`} aria-pressed={d.team_ids.includes(t.id)} onClick={() => toggle('team_ids', t.id)}>
                   <i className="dot" style={{ ['--c' as string]: t.color }} />{t.name}</button>))}
               {lists && lists.teams.length === 0 && <span className="hint">No teams yet. They will be created in the Team tab.</span>}
-            </div></div>
+            </div></div>}
           {lens.dims.length > 0 && <div><span className="lbl">Default dimensions</span>
             {hint('Tasks in this project inherit these values unless a task sets its own.')}
             <div className="row2">{lens.dims.map(dm => (

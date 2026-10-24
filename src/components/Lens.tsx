@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSolo } from '../lib/solo';
 import { createPortal } from 'react-dom';
 import { useWorkspace } from '../auth/session';
 import { useLens } from '../lib/lens';
@@ -26,14 +27,15 @@ export function LensBar({ page, self }: { page: string; self: boolean }) {
         <option value="">{label}: any</option>
         {opts.map(([id, l]) => <option key={id} value={id}>{label}: {l}</option>)}</select>);
   };
+  const { solo } = useSolo();
   const lockedSelf = self && (page === 'review' || page === 'insights');
   return (
     <div className="fbar gut">
       <span className="lab" title="The lens filters every screen at once"><Icon name="filter" />Lens</span>
-      {lockedSelf
+      {solo ? null : lockedSelf
         ? <span className="fsel on" title="Members see their own work in Review and Insights. Managers and admins can see anyone's.">Person: me</span>
         : sel('person', 'Person', lens.members.map(m => [m.id, m.id === ws.member_id ? `${m.display_name} (me)` : m.display_name]))}
-      {lens.teams.length > 0 && sel('team', 'Team', lens.teams.map(t => [t.id, t.name]))}
+      {!solo && lens.teams.length > 0 && sel('team', 'Team', lens.teams.map(t => [t.id, t.name]))}
       {page !== 'project' && sel('project', 'Project', [...lens.projects.map(p => [p.id, p.name] as [string, string]), ['none', 'No project']])}
       {lens.dims.map(d => sel(d.id, d.name, d.options.map(o => [o.id, o.label])))}
       {lens.any && <button className="btn sm ghost" onClick={lens.clear}><Icon name="x" />Clear</button>}

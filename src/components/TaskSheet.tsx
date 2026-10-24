@@ -1,4 +1,5 @@
 import { useEffect, useState, type KeyboardEvent } from 'react';
+import { useSolo } from '../lib/solo';
 import { useWorkspace } from '../auth/session';
 import {
   addSubtask, createTask, deleteSubtask, deleteTask, getTaskFull, listGoalRefs, listMembers, listProjects,
@@ -33,6 +34,7 @@ function Sheet({ id, defaults, close, changed }: SheetProps) {
   const isNew = id == null;
   const editable = canEdit(ws.access);
   const lens = useLens();
+  const { solo } = useSolo();
   /** Dimension values chosen in this panel (field id → option id, or null to inherit). */
   const [dimOwn, setDimOwn] = useState<Record<string, string | null>>({});
   const { data: lists } = useLoad(async () => {
@@ -194,7 +196,7 @@ function Sheet({ id, defaults, close, changed }: SheetProps) {
               {lists.goals.filter(g => !g.parent_id).flatMap(g => [
                 <option key={g.id} value={g.id}>{g.title}</option>,
                 ...lists.goals.filter(k => k.parent_id === g.id).map(k => <option key={k.id} value={k.id}>{'  ↳ ' + k.title}</option>)])}</select></dd>
-            <dt><label htmlFor="d-asg">Assignee</label></dt>
+            {!solo && <><dt><label htmlFor="d-asg">Assignee</label></dt>
             <dd><select id="d-asg" className="field-in" disabled={!editable} value={t.assignee_member_id ?? ''} onChange={e => patch({ assignee_member_id: e.target.value || null })}>
               <option value="">Nobody yet</option>
               {lists.members.filter(m => m.access !== 'guest' || m.id === t.assignee_member_id).map(m => <option key={m.id} value={m.id}>{m.display_name}</option>)}</select></dd>
@@ -206,7 +208,7 @@ function Sheet({ id, defaults, close, changed }: SheetProps) {
                   <Avatar m={m} size="sm" />{firstName(m.display_name)}</button>;
               })}
               {lists.members.length <= 1 && <span className="muted" style={{ fontSize: 13 }}>Invite people from Team to add them here.</span>}
-            </div></dd>
+            </div></dd></>}
             <dt><label htmlFor="d-due">Due date</label></dt>
             <dd><input id="d-due" className="field-in" type="date" disabled={!editable} value={t.due_date ?? ''} onChange={e => patch({ due_date: e.target.value || null })} /></dd>
             <dt><label htmlFor="d-st">Status</label></dt>

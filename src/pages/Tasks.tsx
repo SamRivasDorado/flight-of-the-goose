@@ -1,4 +1,5 @@
 import { useState, type DragEvent, type KeyboardEvent } from 'react';
+import { useSolo } from '../lib/solo';
 import { useWorkspace } from '../auth/session';
 import { createTask, listMembers, listProjects, listTasksFull, todayISO, updateTask, useLoad } from '../lib/data';
 import { canEdit, STATUSES, type Member, type Project, type Task, type TaskFull } from '../lib/types';
@@ -22,6 +23,8 @@ interface Ctx {
   /** Set on a project page: the views show only this project's tasks. */
   projectId: string | null;
   lens: ReturnType<typeof useLens>;
+  /** Solo mode: no assignee column or avatars. */
+  solo: boolean;
   open: (id: string) => void;
   save: (id: string, patch: Partial<Task>) => Promise<void>;
   add: (extra: Partial<Task>, openIt?: boolean) => Promise<void>;
@@ -32,6 +35,7 @@ export function useTaskViews(projectId: string | null = null) {
   const ws = useWorkspace();
   const ui = useUI();
   const lens = useLens();
+  const { solo } = useSolo();
   const editable = canEdit(ws.access);
   const { data, error, reload } = useLoad(async () => {
     const [tasks, projects, members] = await Promise.all([listTasksFull(ws.workspace_id), listProjects(ws.workspace_id), listMembers(ws.workspace_id)]);
@@ -42,7 +46,7 @@ export function useTaskViews(projectId: string | null = null) {
   const q = ui.q.trim().toLowerCase();
   const tasks = (data?.tasks ?? []).filter(t => (!projectId || t.project_id === projectId) && (!q || t.title.toLowerCase().includes(q)) && lens.task(t));
   const c: Ctx = {
-    tasks, projects: data?.projects ?? [], members: data?.members ?? [], editable, me: ws.member_id, showDone, projectId, lens,
+    tasks, projects: data?.projects ?? [], members: data?.members ?? [], editable, me: ws.member_id, showDone, projectId, lens, solo,
     open: id => ui.openTask(id),
     save: async (id, patch) => {
       try { setMsg(null); await updateTask(id, patch); await reload(); ui.changed(); }
@@ -112,7 +116,7 @@ function ListView({ c, tools }: { c: Ctx; tools: React.ReactNode }) {
     groups = [['overdue', 'Overdue'], ['today', 'Today'], ['week', 'Next 7 days'], ['later', 'Later'], ['nodate', 'No due date']]
       .map(([k, label]) => ({ k, label, items: openT.filter(t => b(t) === k) }));
   }
-  const cols = (c.projectId ? 4 : 5) + c.lens.dims.length;
+  const cols = (c.projectId ? 4 : 5) - (c.solo ? 1 : 0) + c.lens.dims.length;
   groups = groups.filter(g => g.items.length);
   if (c.showDone) groups.push({ k: 'done', label: 'Completed', items: shown.filter(t => t.status === 'done') });
 
@@ -133,7 +137,7 @@ function ListView({ c, tools }: { c: Ctx; tools: React.ReactNode }) {
         <span><span className="pill inh" style={{ ['--c' as string]: 'var(--accent)' }}>Dashed</span> inherited from the project’s default; set a value on the task to override it</span></div>}
       <div className="tbl-wrap">
         <table className="tl2">
-          <thead><tr><th>Name</th><th>Due date</th><th>Assignee</th>{!c.projectId && <th>Project</th>}<th>Time</th>{c.lens.dims.map(d => <th key={d.id}>{d.name}</th>)}</tr></thead>
+          <thead><tr><th>Name</th><th>Due date</th>{!c.solo && <th>Assignee</th>}{!c.projectId && <th>Project</th>}<th>Time</th>{c.lens.dims.map(d => <th key={d.id}>{d.name}</th>)}</tr></thead>
           <tbody>
             {groups.map(g => {
               const isClosed = !!closed[g.k];
@@ -168,8 +172,8 @@ function Row({ t, c }: { t: TaskFull; c: Ctx }) {
         {t.goal_id && <span className="subn" title="Linked to a goal"><Icon name="target" /></span>}
       </div></td>
       <td className="mono"><span className={due.cls}>{due.text}</span></td>
-      <td>{who ? <span className="who"><Avatar m={who} size="sm" />{firstName(who.display_name)}
-        {t.collaborator_ids.length > 0 && <span className="muted"> +{t.collaborator_ids.length}</span>}</span> : <span className="muted">—</span>}</td>
+      {!c.solo && <td>{who ? <span className="who"><Avatar m={who} size="sm" />{firstName(who.display_name)}
+        {t.collaborator_ids.length > 0 && <span className="muted"> +{t.collaborator_ids.length}</span>}</span> : <span className="muted">—</span>}</td>}
       {!c.projectId && <td><ProjectChip p={c.projects.find(p => p.id === t.project_id)} /></td>}
       <td className="mono">{t.hours ? `${hrs(t.hours)} h` : ''}</td>
       {c.lens.dims.map(d => { const v = c.lens.eff(t, d.id); return <td key={d.id}><OptPill dim={d} option={v.option} inherited={v.inherited} /></td>; })}
@@ -213,7 +217,7 @@ function BoardView({ c, tools }: { c: Ctx; tools: React.ReactNode }) {
               return (
                 <button key={t.id} className={`card ${t.status === 'done' ? 'done' : ''}`} onClick={() => c.open(t.id)} {...dragProps(t.id, c.editable)}>
                   <span className="t">{t.title || 'Untitled task'}</span>
-                  <span className="meta">{who && <Avatar m={who} size="sm" />}{p && !c.projectId && <ProjectChip p={p} />}{c.lens.dims[0] && (() => { const v = c.lens.eff(t, c.lens.dims[0].id); return <OptPill dim={c.lens.dims[0]} option={v.option} inherited={v.inherited} />; })()}
+                  <span className="meta">{who && !c.solo && <Avatar m={who} size="sm" />}{p && !c.projectId && <ProjectChip p={p} />}{c.lens.dims[0] && (() => { const v = c.lens.eff(t, c.lens.dims[0].id); return <OptPill dim={c.lens.dims[0]} option={v.option} inherited={v.inherited} />; })()}
                     {due.text && <span className={`mono ${due.cls}`}>{due.text}</span>}{t.hours ? <span className="mono muted">{hrs(t.hours)} h</span> : null}</span>
                 </button>);
             })}

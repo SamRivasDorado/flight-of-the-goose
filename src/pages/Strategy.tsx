@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSolo } from '../lib/solo';
 import { useWorkspace } from '../auth/session';
 import { listGoals, listMembers, listProjectsFull, listTasks, listTeams, useLoad } from '../lib/data';
 import { canEdit as canEditWs, canManage, GOAL_STATUSES, type Goal, type Member, type ProjectFull, type Task, type Team } from '../lib/types';
@@ -89,6 +90,7 @@ function GoalCard({ g, goals, projects, tasks, members, teams, canEdit, onEdit, 
   const ui = useUI();
   const ws = useWorkspace();
   const editor = canEditWs(ws.access);
+  const { solo } = useSolo();
   const st = goalStatus(g.status), pg = goalProgress(g, goals, tasks);
   const owner = members.find(m => m.id === g.owner_member_id);
   const kids = goals.filter(k => k.parent_id === g.id);
@@ -101,12 +103,12 @@ function GoalCard({ g, goals, projects, tasks, members, teams, canEdit, onEdit, 
     <article className={`goal tone-${st.tone}`}>
       <div className="gmain">
         <div className="gh"><span className="glevel">Goal</span><span className="pill" style={{ ['--c' as string]: st.color }}>{st.label}</span><span className="tag">{goalRange(g)}</span>
-          <span style={{ flex: 1 }} />{owner && <span className="who"><Avatar m={owner} size="sm" />{firstName(owner.display_name)}<span className="muted">owner</span></span>}</div>
+          <span style={{ flex: 1 }} />{owner && !solo && <span className="who"><Avatar m={owner} size="sm" />{firstName(owner.display_name)}<span className="muted">owner</span></span>}</div>
         <h3>{title(g)}</h3>
         {g.notes && <div className="hint">{g.notes}</div>}
         <div><div className="prog"><div className="bar2" style={{ ['--c' as string]: st.color }}><i style={{ width: `${pg}%` }} /></div><span className="mono muted">{pg}%</span></div>
           <div className="muted" style={{ fontSize: 12, marginTop: 3 }}>{progressSource(g, goals, tasks)}</div></div>
-        <div><div className="h3 gsect">People involved</div><AvStack list={goalPeople(g, goals, projects, tasks, members, teams)} max={10} /></div>
+        {!solo && <div><div className="h3 gsect">People involved</div><AvStack list={goalPeople(g, goals, projects, tasks, members, teams)} max={10} /></div>}
         <div><div className="h3 gsect">Projects</div>{g.project_ids.length ? <div className="links">{chips(g)}</div> : <span className="hint">No linked projects</span>}</div>
         <div><div className="h3 gsect">Tasks linked directly</div>
           <div className="gtasks">{direct.slice(0, 6).map(t => { const done = t.status === 'done', d = dueLabel(t.due_date, done); return (

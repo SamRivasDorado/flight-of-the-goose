@@ -2,6 +2,7 @@ import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import { useWorkspace } from '../auth/session';
 import { listCollaborations, listDims, listDimValues, listMembers, listProjectsFull, listTeams, useLoad } from './data';
 import { useLocalPref, useUI } from './ui';
+import { useSolo } from './solo';
 import type { Dim, Member, ProjectFull, Task, Team } from './types';
 
 /** The Lens: one set of filters (Person, Team, Project and each dimension) shared by every screen. */
@@ -36,6 +37,7 @@ const Ctx = createContext<LensState | null>(null);
 export function LensProvider({ children }: { children: ReactNode }) {
   const ws = useWorkspace();
   const ui = useUI();
+  const { solo } = useSolo();
   const [stored, setStored] = useLocalPref<Record<string, Filt>>('lens', {});
   const { data, reload } = useLoad(async () => {
     const [dims, values, collabs, members, teams, projects] = await Promise.all([
@@ -49,6 +51,8 @@ export function LensProvider({ children }: { children: ReactNode }) {
     const filt: Filt = {};
     if (data) for (const [k, v] of Object.entries(raw)) {
       if (!v) continue;
+      // in solo mode the Person and Team filters are hidden, so they must not filter either
+      if (solo && (k === 'person' || k === 'team')) continue;
       if (k === 'person' && !data.members.some(m => m.id === v)) continue;
       if (k === 'team' && !data.teams.some(t => t.id === v)) continue;
       if (k === 'project' && v !== 'none' && !data.projects.some(p => p.id === v)) continue;
@@ -95,7 +99,7 @@ export function LensProvider({ children }: { children: ReactNode }) {
     const clear = () => setStored({ ...stored, [ws.workspace_id]: {} });
     return { filt, setFilt, clear, any: Object.keys(filt).length > 0, dims, members: data?.members ?? [], teams, projects,
       eff, projectDefault, taskOwn, involved, task, project, ready: !!data, reload };
-  }, [data, stored, setStored, ws.workspace_id, reload]);
+  }, [data, stored, setStored, ws.workspace_id, reload, solo]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

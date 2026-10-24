@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSolo } from '../lib/solo';
 import { useWorkspace } from '../auth/session';
 import { listMembers, listNoteDates, listProjectsFull, listTasks, useLoad } from '../lib/data';
 import { canManage, type Member, type ProjectFull, type Task } from '../lib/types';
@@ -102,6 +103,7 @@ export const projectPeople = (p: ProjectFull, members: Member[]) =>
   members.filter(m => m.id !== p.owner_member_id && p.member_ids.includes(m.id));
 
 function ProjectCard({ p, h, tasks, members, noteDates }: { p: ProjectFull; h: Health; tasks: Task[]; members: Member[]; noteDates: { project_id: string; entry_date: string }[] }) {
+  const { solo } = useSolo();
   const ts = tasks.filter(t => t.project_id === p.id), open = ts.filter(t => t.status !== 'done');
   const overdue = open.filter(t => t.due_date && diffDays(t.due_date) < 0).length;
   const time = ts.reduce((s, t) => s + (Number(t.hours) || 0), 0);
@@ -125,8 +127,8 @@ function ProjectCard({ p, h, tasks, members, noteDates }: { p: ProjectFull; h: H
   return (
     <a className={`pcard tone-${h.tone}`} style={{ ['--c' as string]: p.color, textDecoration: 'none', color: 'inherit' }} href={projectHref(p.id)}>
       <div className="top"><ProjectIcon p={p} size="lg" /><b>{p.name}</b><KindBadge p={p} /></div>
-      <div className="ppl-row"><span className="who">{owner && <Avatar m={owner} size="sm" />}<span>{owner ? firstName(owner.display_name) : 'No owner'}</span><span className="muted">owner</span></span>
-        <AvStack list={projectPeople(p, members)} /></div>
+      {!solo && <div className="ppl-row"><span className="who">{owner && <Avatar m={owner} size="sm" />}<span>{owner ? firstName(owner.display_name) : 'No owner'}</span><span className="muted">owner</span></span>
+        <AvStack list={projectPeople(p, members)} /></div>}
       <div className="body">
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}><span className="pill" style={{ ['--c' as string]: h.color }}>{h.label}</span><ProjectDims id={p.id} /></div>
         {mid}

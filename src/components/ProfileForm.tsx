@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useSession } from '../auth/session';
+import { useSolo } from '../lib/solo';
 import { db } from '../lib/supabase';
 import { PERSON_COLORS, APP_NAME } from '../config';
 import { Avatar, Icon, Logo } from './Logo';
@@ -135,10 +136,43 @@ export function ProfileDialog({ onClose, onSaved }: { onClose: () => void; onSav
         <div className="mbody">
           <ProfileFields d={d} set={set} busy={busy} setBusy={setBusy} setErr={setErr} />
           <div className="hint">Signed in as {session?.user.email}. Your name, job title, colour and picture are the same in every workspace you belong to.</div>
+          <SoloSetting onError={setErr} />
         </div>
         <div className="mfoot">{err && <span className="err">{err}</span>}<span className="grow" />
           <button className="btn" onClick={onClose}>Cancel</button>
           <button className="btn primary" disabled={busy} onClick={() => void submit()}><Icon name="check" />Save</button></div>
       </div>
     </div>, document.body);
+}
+
+/** Workspace section of "Your profile": the solo mode switch (admins only). */
+function SoloSetting({ onError }: { onError: (e: string | null) => void }) {
+  const { current } = useSession();
+  const { solo, available, others, setSolo } = useSolo();
+  const [busy, setBusy] = useState(false);
+  /** Ticks at once; goes back if saving fails. */
+  const [shown, setShown] = useState<boolean | null>(null);
+  const on = shown ?? solo;
+  if (current?.access !== 'admin' || !available) return null;
+  const blocked = !on && others > 0;
+  async function flip(next: boolean) {
+    setShown(next); setBusy(true); onError(null);
+    try { await setSolo(next); } catch (e) { setShown(null); onError(e instanceof Error ? e.message : String(e)); }
+    finally { setBusy(false); }
+  }
+  return (
+    <div style={{ borderTop: '1px solid var(--line)', paddingTop: 12 }}>
+      <span className="lbl">Workspace · {current.workspace_name} <span className="muted">· applies straight away</span></span>
+      <label className="chk" style={{ color: 'var(--fg)', fontSize: 14 }}>
+        <input type="checkbox" checked={on} disabled={busy || blocked} onChange={e => void flip(e.target.checked)} />
+        I work on my own (solo mode)</label>
+      <div className="hint" style={{ marginTop: 4 }}>
+        {blocked
+          ? `Solo mode is available while you are the only person in this workspace. ${others} other ${others === 1 ? 'person is' : 'people are'} in it now; remove them from the Team page first.`
+          : on
+            ? 'Team, people and sharing options are hidden. Untick this to invite people and work together again; nothing is lost.'
+            : 'Hides the Team page and every option about other people and teams, for a simpler Goose when you work alone. You can switch it off at any time.'}
+      </div>
+      {busy && <span className="hint">Saving…</span>}
+    </div>);
 }

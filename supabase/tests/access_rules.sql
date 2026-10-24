@@ -143,6 +143,15 @@ do $$ begin
   exception when insufficient_privilege then raise notice 'ok  strangers cannot upload into a workspace'; end;
 end $$;
 
+-- Solo mode: only admins switch it
+select pg_temp.login('00000000-0000-0000-0000-00000000000b');
+update workspaces set solo = true;
+select pg_temp.check(not exists (select 1 from workspaces where solo), 'members cannot switch solo mode');
+select pg_temp.login('00000000-0000-0000-0000-00000000000a');
+update workspaces set solo = true where created_by = auth.uid();
+select pg_temp.check((select solo from workspaces where created_by = auth.uid()), 'the admin switches solo mode');
+update workspaces set solo = false where created_by = auth.uid();
+
 -- A stranger signs up: own empty workspace, sees nothing of Sam's
 select pg_temp.login('00000000-0000-0000-0000-00000000000e');
 select count(*) from on_login(null);

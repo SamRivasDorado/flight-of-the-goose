@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { UIProvider, useLocalPref, useUI } from '../lib/ui';
 import { LensProvider } from '../lib/lens';
+import { SoloProvider, useSolo } from '../lib/solo';
 import { LensBar } from '../components/Lens';
 import { ProfileDialog, Welcome } from '../components/ProfileForm';
 import { TaskSheet } from '../components/TaskSheet';
@@ -45,10 +46,11 @@ function SignedInGate() {
   if (error) return <div className="auth"><div className="authbox"><b>Something went wrong</b><span className="err">{error}</span></div></div>;
   if (!current) return <div className="auth"><span className="muted">Opening your workspace…</span></div>;
   if (profile && !profile.setup_done) return <Welcome />;
-  return <UIProvider><LensProvider><Shell /></LensProvider></UIProvider>;
+  return <UIProvider><SoloProvider><LensProvider><Shell /></LensProvider></SoloProvider></UIProvider>;
 }
 
 function Shell() {
+  const { solo } = useSolo();
   const { current, workspaces, switchWorkspace, signOut } = useSession();
   const [page, setPage] = useState(pageFromHash);
   const [projectId, setProjectId] = useState(projectIdFromHash);
@@ -62,7 +64,7 @@ function Shell() {
         <div className="bar gut">
           <div className="brand"><Logo />{APP_NAME}</div>
           <nav className="nav">
-            {navl(...NAV[0])}<i className="navsep" />{NAV.slice(1, 4).map(n => navl(...n))}<i className="navsep" />{NAV.slice(4).map(n => navl(...n))}
+            {navl(...NAV[0])}<i className="navsep" />{NAV.slice(1, 4).map(n => navl(...n))}<i className="navsep" />{NAV.slice(4).filter(n => !(solo && n[0] === 'team')).map(n => navl(...n))}
           </nav>
           <TopTools />
           {workspaces.length > 1 && (
@@ -79,7 +81,7 @@ function Shell() {
         {page === 'projects' && <Projects />}
         {page === 'project' && projectId && <ProjectPage key={projectId} id={projectId} />}
         {page === 'tasks' && <Tasks />}
-        {page === 'team' && <Team />}
+        {page === 'team' && (solo ? <SoloNote /> : <Team />)}
         {page === 'timeline' && <Timeline />}
         {page === 'strategy' && <Strategy />}
         {page === 'review' && <Review />}
@@ -139,4 +141,9 @@ function MeButton() {
         <Avatar m={{ display_name: profile.full_name || '?', color: profile.color ?? '#5B83B5', title: profile.title, avatar_url: profile.avatar_url }} size="lg" /></button>
       {open && <ProfileDialog onClose={() => setOpen(false)} onSaved={() => { setOpen(false); ui.changed(); }} />}
     </>);
+}
+
+/** Shown if someone opens the Team address while solo mode is on. */
+function SoloNote() {
+  return <div className="empty">Solo mode is on, so the Team page is hidden. To work with other people, switch solo mode off in <b>Your profile</b> (your picture at the top right).</div>;
 }

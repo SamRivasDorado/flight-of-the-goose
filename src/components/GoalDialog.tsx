@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSolo } from '../lib/solo';
 import { useWorkspace } from '../auth/session';
 import { deleteGoal, saveGoal, todayISO, type GoalInput } from '../lib/data';
 import { GOAL_STATUSES, type Goal, type Member, type Project } from '../lib/types';
@@ -11,6 +12,7 @@ export function GoalDialog({ goal, parentId, goals, members, projects, onClose, 
   onClose: () => void; onSaved: () => void;
 }) {
   const ws = useWorkspace();
+  const { solo } = useSolo();
   const [d, setD] = useState<GoalInput>(() => goal
     ? { title: goal.title, start_date: goal.start_date, end_date: goal.end_date, status: goal.status, parent_id: goal.parent_id,
         owner_member_id: goal.owner_member_id, manual_progress: goal.manual_progress, notes: goal.notes, project_ids: goal.project_ids }
@@ -62,9 +64,9 @@ export function GoalDialog({ goal, parentId, goals, members, projects, onClose, 
           </div>
           <label className="chk" style={{ marginTop: -6 }}><input type="checkbox" checked={openEnded} onChange={e => { setOpenEnded(e.target.checked); setErr(null); }} />
             No end date. The goal stays open until you mark it achieved.</label>
-          <div className="row2"><div><label className="lbl" htmlFor="gm-owner">Owner (accountable)</label>
+          {!solo && <div className="row2"><div><label className="lbl" htmlFor="gm-owner">Owner (accountable)</label>
             <select id="gm-owner" className="field-in" style={{ width: '100%' }} value={d.owner_member_id ?? ''} onChange={e => set({ owner_member_id: e.target.value || null })}>
-              {members.filter(m => m.access !== 'guest').map(m => <option key={m.id} value={m.id}>{m.display_name}</option>)}</select></div><div /></div>
+              {members.filter(m => m.access !== 'guest').map(m => <option key={m.id} value={m.id}>{m.display_name}</option>)}</select></div><div /></div>}
           <div className="row2">
             <div><label className="lbl" htmlFor="gm-status">Status</label>
               <select id="gm-status" className="field-in" style={{ width: '100%' }} value={d.status} onChange={e => set({ status: e.target.value as GoalInput['status'] })}>
