@@ -11,6 +11,9 @@ interface SessionState {
   current: WorkspaceRef | null;
   switchWorkspace: (id: string) => void;
   signOut: () => Promise<void>;
+  /** True after someone opens a password-reset link: the app asks for a new password first. */
+  recovering: boolean;
+  doneRecovering: () => void;
   /** The person's own profile; null until loaded, or when the database has no profile columns yet. */
   profile: Profile | null;
   refreshProfile: () => Promise<void>;
@@ -25,6 +28,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [workspaces, setWorkspaces] = useState<WorkspaceRef[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [recovering, setRecovering] = useState(false);
   const [currentId, setCurrentId] = useState<string | null>(() => {
     try { return localStorage.getItem(LAST_WS); } catch { return null; }
   });
@@ -55,8 +59,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     });
     const { data: sub } = client.auth.onAuthStateChange((event, s) => {
       setSession(s);
+      if (event === 'PASSWORD_RECOVERY') setRecovering(true);
       if (event === 'SIGNED_IN' && s) void bootstrap(s);
-      if (event === 'SIGNED_OUT') setWorkspaces([]);
+      if (event === 'SIGNED_OUT') { setWorkspaces([]); setRecovering(false); }
     });
     return () => sub.subscription.unsubscribe();
   }, [bootstrap]);
@@ -70,6 +75,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     session, loading, error, workspaces, current,
     switchWorkspace: (id) => { setCurrentId(id); try { localStorage.setItem(LAST_WS, id); } catch { /* private mode */ } },
     signOut: async () => { await db().auth.signOut(); },
+    recovering,
+    doneRecovering: () => setRecovering(false),
     profile,
     refreshProfile: async () => { if (session) await loadProfile(session.user.id); },
   };

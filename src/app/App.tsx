@@ -5,7 +5,7 @@ import { LensBar } from '../components/Lens';
 import { ProfileDialog, Welcome } from '../components/ProfileForm';
 import { TaskSheet } from '../components/TaskSheet';
 import { useSession } from '../auth/session';
-import { Login } from '../auth/Login';
+import { Login, SetNewPassword } from '../auth/Login';
 import { isConfigured } from '../lib/supabase';
 import { ACCESS_LABEL, canEdit } from '../lib/types';
 import { APP_NAME, DEFAULT_PALETTE, PALETTES } from '../config';
@@ -38,9 +38,10 @@ export function App() {
 }
 
 function SignedInGate() {
-  const { session, loading, error, current, profile } = useSession();
+  const { session, loading, error, current, profile, recovering } = useSession();
   if (loading) return <div className="auth"><span className="muted">Loading…</span></div>;
   if (!session) return <Login />;
+  if (recovering) return <SetNewPassword />;
   if (error) return <div className="auth"><div className="authbox"><b>Something went wrong</b><span className="err">{error}</span></div></div>;
   if (!current) return <div className="auth"><span className="muted">Opening your workspace…</span></div>;
   if (profile && !profile.setup_done) return <Welcome />;
