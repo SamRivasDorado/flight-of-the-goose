@@ -4,7 +4,7 @@ The public website for Goose: one page with five tabs (Overview, Features, Why G
 
 - `index.html` — the whole site. Colours follow the app's "Goose feather" palette; fonts are Fraunces and Geologica, as in the app.
 - `img/app/` — screenshots of the app, light and dark (`*-dark.webp`), taken from a demo workspace for an invented company, Alder Ridge Consulting. Every person, client and project in them is made up.
-- `img/goose.svg` — the goose traced as a vector drawing from `public/goose-tile-512.png`, so it stays sharp at any size. The page embeds the same drawing.
+- `img/goose.webp` — the goose mascot (transparent background), shown on Overview and Why Goose. The favicon and tiles are made from the same drawing. `img/goose.svg` is the older traced goose, no longer used by the page.
 
 ## How it is published
 
