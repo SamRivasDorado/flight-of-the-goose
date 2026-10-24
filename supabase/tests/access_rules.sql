@@ -177,4 +177,22 @@ select request_access('viaedge@example.com');
 reset role;
 select pg_temp.check(exists (select 1 from access_requests where email = 'viaedge@example.com'), 'the Edge Function role can still file a request');
 
+
+-- ---------------------------------------------------------------------
+-- Invitation email
+delete from net.calls;
+insert into vault.decrypted_secrets values ('resend_api_key', 're_test');
+insert into workspace_members (workspace_id, email, display_name, access, invited_by)
+  select w, 'newcolleague@example.com', 'Nia <x>', 'guest', sam from ids;
+select pg_temp.check((select count(*) from net.calls where body->'to' = '["newcolleague@example.com"]'::jsonb) = 1, 'inviting someone emails them');
+select pg_temp.check((select body->>'html' from net.calls limit 1) like '%Sam Rivas%' and (select body->>'html' from net.calls limit 1) like '%Nia &lt;x&gt;%', 'the email names the inviter and escapes the invited name');
+select pg_temp.check((select invite_emailed_at is not null from workspace_members where email = 'newcolleague@example.com'), 'the send is recorded');
+delete from net.calls;
+insert into workspace_members (workspace_id, user_id, email, display_name, access, status)
+  select w, '00000000-0000-0000-0000-00000000000e', 'someone@example.com', 'Someone', 'member', 'active' from ids;
+select pg_temp.check((select count(*) from net.calls) = 0, 'adding an already-active person sends no invitation');
+delete from vault.decrypted_secrets;
+insert into workspace_members (workspace_id, email, display_name) select w, 'nokey@example.com', 'No Key' from ids;
+select pg_temp.check((select count(*) from workspace_members where email = 'nokey@example.com') = 1 and (select count(*) from net.calls) = 0, 'without a Resend key the invitation is still saved');
+
 select 'ALL ACCESS TESTS PASSED' as result;

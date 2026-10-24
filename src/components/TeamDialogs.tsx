@@ -124,7 +124,7 @@ export function PersonDialog({ person, teams, count, onClose, onSaved }: {
       {err && <span className="err">{err}</span>}<span className="grow" />
       <button className="btn" onClick={onClose}>Cancel</button>
       <button className="btn primary" disabled={busy} onClick={() => void save()}>{busy ? 'Saving…' : person ? 'Save' : <><Icon name="plus" />Invite</>}</button></>}>
-      {!person && <div className="hint">The person joins this workspace with the access level you choose as soon as they sign in to Goose with this email address. Sending the invitation email itself comes later; for now, tell them to sign in.</div>}
+      {!person && <div className="hint">The person joins this workspace with the access level you choose as soon as they sign in to Goose with this email address. We email them the invitation when you click Invite.</div>}
       <div className="row2"><div><label className="lbl" htmlFor="pe-email">Email</label>
         <input id="pe-email" type="email" className="field-in" style={{ width: '100%' }} value={d.email} disabled={!!person} placeholder="name@company.com" autoFocus={!person}
           onChange={e => set({ email: e.target.value })} /></div><div /></div>
