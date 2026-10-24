@@ -7,7 +7,7 @@ import { Icon, Logo, type IconName } from './Logo';
 interface Topic { id: string; title: string; icon: IconName; page?: string; go?: string; body: ReactNode; team?: boolean }
 
 const TOPICS: Topic[] = [
-  { id: 'start', title: `How ${APP_NAME} is organised`, icon: 'target', body: <>
+  { id: 'start', title: `How ${APP_NAME} is organised`, icon: 'book', body: <>
     <p className="lead">{APP_NAME} works on three levels, from the long term to today:</p>
     <ol className="steps">
       <li><b>Strategy: goals.</b> The outcomes you are working towards, for example “Grow our presence in North Africa”. A goal has a period (or no end date) and can be split into sub-goals.</li>
