@@ -668,8 +668,19 @@ dialog.zoom button{font:inherit;font-size:14px;border:0;border-radius:9px;paddin
     var p = el && el.closest('.panel');
     return p ? p.dataset.panel : 'overview';
   }
+  // bring the request form back to a fresh state (after a sent request, or when leaving the tab)
+  function resetRequest() {
+    var f = document.getElementById('reqform'), d = document.getElementById('reqdone');
+    if (!f || !d || (f.hidden === false && d.hidden)) return;
+    f.reset(); f.hidden = false; d.hidden = true;
+    document.getElementById('reqmsg').hidden = true;
+    var b = document.getElementById('reqbtn'); b.disabled = false; b.textContent = 'Request access';
+    if (window.turnstile) { try { turnstile.reset(); } catch (_) {} }
+    tsToken = '';
+  }
   function show(id, scrollTo) {
     var tab = tabFor(id);
+    if (tab !== 'request' || document.getElementById('reqdone').hidden === false) resetRequest();
     TABS.forEach(function (t) { panels[t].classList.toggle('on', t === tab); });
     document.querySelectorAll('.tab').forEach(function (a) {
       if (a.dataset.tab === tab) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
