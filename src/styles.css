@@ -565,3 +565,20 @@ textarea.notes{width:100%;min-height:90px;border:1px solid var(--line);border-ra
 .authlinks .btn.sm:hover{color:var(--fg)}
 .authback{font-size:13px;color:var(--muted);text-decoration:none;align-self:flex-start}
 .authback:hover{color:var(--fg);text-decoration:underline}
+
+/* ===== Help panel ===== */
+button.brand{cursor:pointer;border-radius:10px;padding:2px 6px 2px 2px;margin-left:-2px}
+button.brand:hover{background:var(--bar-hi)}
+.sheet.help{z-index:35;height:min(560px,calc(100vh - 150px))}
+.helpbody{flex:1;min-height:0;display:grid;grid-template-columns:240px minmax(0,1fr)}
+.helpnav{border-right:1px solid var(--raise-line);padding:10px;display:flex;flex-direction:column;gap:2px;overflow:auto}
+.helpnav .tsel:hover,.helpnav .tsel.on{background:var(--raise-2)}
+.helptext{overflow:auto;padding:16px 24px 24px;display:flex;flex-direction:column;gap:10px;max-width:760px;line-height:1.55}
+.helptext h2{margin:0;font-size:20px}
+.helptext p{margin:0}
+.helptext .lead{font-size:15px}
+.helptext ul,.helptext ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px}
+.helptext .btn{align-self:flex-start;margin-top:6px;text-decoration:none}
+@media (max-width:760px){.helpbody{grid-template-columns:minmax(0,1fr)}.helpnav{flex-direction:row;flex-wrap:wrap;border-right:0;border-bottom:1px solid var(--raise-line)}}
+.dropask{position:fixed;z-index:55;width:min(340px,calc(100vw - 24px));background:var(--raise);border:1px solid var(--raise-line);border-radius:12px;box-shadow:0 14px 40px rgb(0 0 0 / .3);padding:12px 14px;display:flex;flex-direction:column;gap:10px;font-size:13.5px}
+.dropask .dq{overflow-wrap:anywhere}

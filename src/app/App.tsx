@@ -3,6 +3,7 @@ import { UIProvider, useLocalPref, useUI } from '../lib/ui';
 import { LensProvider } from '../lib/lens';
 import { SoloProvider, useSolo } from '../lib/solo';
 import { LensBar } from '../components/Lens';
+import { HelpPanel } from '../components/HelpPanel';
 import { ProfileDialog, Welcome } from '../components/ProfileForm';
 import { TaskSheet } from '../components/TaskSheet';
 import { useSession } from '../auth/session';
@@ -51,6 +52,7 @@ function SignedInGate() {
 
 function Shell() {
   const { solo } = useSolo();
+  const [help, setHelp] = useState(false);
   const { current, workspaces, switchWorkspace, signOut } = useSession();
   const [page, setPage] = useState(pageFromHash);
   const [projectId, setProjectId] = useState(projectIdFromHash);
@@ -62,7 +64,7 @@ function Shell() {
     <div className="app">
       <header>
         <div className="bar gut">
-          <div className="brand"><Logo />{APP_NAME}</div>
+          <button className="brand" onClick={() => setHelp(h => !h)} title={`${APP_NAME} help`} aria-label={`${APP_NAME} help`}><Logo />{APP_NAME}</button>
           <nav className="nav">
             {navl(...NAV[0])}<i className="navsep" />{NAV.slice(1, 4).map(n => navl(...n))}<i className="navsep" />{NAV.slice(4).filter(n => !(solo && n[0] === 'team')).map(n => navl(...n))}
           </nav>
@@ -71,6 +73,7 @@ function Shell() {
             <select className="field-in" aria-label="Workspace" value={current!.workspace_id} onChange={e => switchWorkspace(e.target.value)}>
               {workspaces.map(w => <option key={w.workspace_id} value={w.workspace_id}>{w.workspace_name} · {ACCESS_LABEL[w.access]}</option>)}
             </select>)}
+          <button className="btn sm ghost" onClick={() => setHelp(h => !h)} title="Help"><Icon name="help" />Help</button>
           <MeButton />
           <button className="btn sm ghost" onClick={() => void signOut()} title="Sign out"><Icon name="out" />Sign out</button>
         </div>
@@ -88,6 +91,7 @@ function Shell() {
         {page === 'insights' && <Insights />}
       </main>
       <TaskSheet />
+      {help && <HelpPanel page={page} onClose={() => setHelp(false)} />}
     </div>
   );
 }

@@ -341,3 +341,15 @@ export async function setProjectImage(id: string, image_path: string | null, ima
 export async function setTeamImage(id: string, image_path: string | null) {
   check(await db().from('teams').update({ image_path }).eq('id', id).select('id').single());
 }
+
+/** Copies a task to another date: a new open task with the same project, goal, assignee, description,
+    collaborators, dimension values and subtasks (all unticked); time spent starts at zero. */
+export async function copyTask(ws: string, me: string, t: TaskFull, dueDate: string): Promise<Task> {
+  const c = await createTask(ws, me, { title: t.title, description: t.description, project_id: t.project_id, goal_id: t.goal_id,
+    assignee_member_id: t.assignee_member_id, due_date: dueDate, status: 'todo' });
+  for (const [i, s] of t.subtasks.entries()) await addSubtask(c.id, s.title, i);
+  for (const m of t.collaborator_ids) await setCollaborator(c.id, m, true);
+  const vals = check(await db().from('task_values').select('field_id, option_id').eq('task_id', t.id)) as { field_id: string; option_id: string | null }[];
+  for (const v of vals) if (v.option_id) await setTaskValue(c.id, v.field_id, v.option_id);
+  return c;
+}

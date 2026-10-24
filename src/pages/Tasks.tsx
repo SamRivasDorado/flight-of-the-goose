@@ -1,7 +1,8 @@
-import { useState, type DragEvent, type KeyboardEvent } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type DragEvent, type KeyboardEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { useSolo } from '../lib/solo';
 import { useWorkspace } from '../auth/session';
-import { createTask, listMembers, listProjects, listTasksFull, todayISO, updateTask, useLoad } from '../lib/data';
+import { copyTask, createTask, listMembers, listProjects, listTasksFull, todayISO, updateTask, useLoad } from '../lib/data';
 import { canEdit, STATUSES, type Member, type Project, type Task, type TaskFull } from '../lib/types';
 import { useLocalPref, useUI } from '../lib/ui';
 import { useLens } from '../lib/lens';
@@ -183,20 +184,20 @@ function Row({ t, c }: { t: TaskFull; c: Ctx }) {
 
 /* ---------- board ---------- */
 
-function useDrop(onDrop: (taskId: string, target: string) => void) {
+function useDrop(onDrop: (taskId: string, target: string, e: DragEvent) => void) {
   const [over, setOver] = useState<string | null>(null);
   return {
     over,
     props: (target: string) => ({
       onDragOver: (e: DragEvent) => { e.preventDefault(); setOver(target); },
       onDragLeave: () => setOver(o => (o === target ? null : o)),
-      onDrop: (e: DragEvent) => { e.preventDefault(); setOver(null); const id = e.dataTransfer.getData('text/task'); if (id) onDrop(id, target); },
+      onDrop: (e: DragEvent) => { e.preventDefault(); setOver(null); const id = e.dataTransfer.getData('text/task'); if (id) onDrop(id, target, e); },
     }),
   };
 }
 const dragProps = (id: string, editable: boolean) => editable ? {
   draggable: true,
-  onDragStart: (e: DragEvent) => { e.dataTransfer.setData('text/task', id); e.dataTransfer.effectAllowed = 'move'; (e.currentTarget as HTMLElement).classList.add('dragging'); },
+  onDragStart: (e: DragEvent) => { e.dataTransfer.setData('text/task', id); e.dataTransfer.effectAllowed = 'copyMove'; (e.currentTarget as HTMLElement).classList.add('dragging'); },
   onDragEnd: (e: DragEvent) => (e.currentTarget as HTMLElement).classList.remove('dragging'),
 } : {};
 
@@ -233,7 +234,23 @@ function BoardView({ c, tools }: { c: Ctx; tools: React.ReactNode }) {
 function CalendarView({ c, tools }: { c: Ctx; tools: React.ReactNode }) {
   const [weekStart, setWeekStart] = useLocalPref<0 | 1>('weekStart', 1);
   const [month, setMonth] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
-  const drop = useDrop((id, k) => { const t = c.tasks.find(x => x.id === id); if (t && t.due_date !== k) void c.save(id, { due_date: k }); });
+  const [askOn, setAskOn] = useLocalPref('dropAsk', true);
+  const [ask, setAsk] = useState<{ t: TaskFull; date: string; x: number; y: number } | null>(null);
+  const [note, setNote] = useState<string | null>(null);
+  const ws = useWorkspace(), ui = useUI();
+  const dayName = (k: string) => parseISO(k).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+  async function copyTo(t: TaskFull, k: string) {
+    try { await copyTask(ws.workspace_id, ws.member_id, t, k); setNote(`Copied “${t.title || 'Untitled task'}” to ${dayName(k)}.`); ui.changed(); }
+    catch (e) { setNote(e instanceof Error ? e.message : String(e)); }
+  }
+  const drop = useDrop((id, k, e) => {
+    const t = c.tasks.find(x => x.id === id);
+    if (!t) return;
+    if (e.altKey) { void copyTo(t, k); return; } // Alt while dropping: copy straight away
+    if (t.due_date === k) return;
+    if (askOn) setAsk({ t, date: k, x: e.clientX, y: e.clientY });
+    else void c.save(id, { due_date: k });
+  });
 
   const last = new Date(month.getFullYear(), month.getMonth() + 1, 0);
   const start = new Date(month); start.setDate(1 - ((month.getDay() - weekStart + 7) % 7));
@@ -251,11 +268,16 @@ function CalendarView({ c, tools }: { c: Ctx; tools: React.ReactNode }) {
         <button className="btn sm" onClick={() => shift(0)}>Today</button>
         <button className="iconbtn" onClick={() => shift(1)} aria-label="Next month"><Icon name="right" /></button>
         <span className="month">{month.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}</span><span className="grow" />
+        <label className="chk" title="When you drag a task to another day"><input type="checkbox" checked={askOn} onChange={e => setAskOn(e.target.checked)} />Ask to move or copy</label>
         <span className="seg" role="group" aria-label="Week starts on">
           <button className={weekStart === 0 ? 'on' : ''} onClick={() => setWeekStart(0)}>Sun</button>
           <button className={weekStart === 1 ? 'on' : ''} onClick={() => setWeekStart(1)}>Mon</button></span>
         {tools}
       </div>
+      {note && <div className="note" style={{ marginBottom: 10 }}>{note}</div>}
+      {ask && <DropAsk a={ask} onClose={() => setAsk(null)}
+        onMove={() => { setAsk(null); void c.save(ask.t.id, { due_date: ask.date }); setNote(`Moved “${ask.t.title || 'Untitled task'}” to ${dayName(ask.date)}.`); }}
+        onCopy={() => { setAsk(null); void copyTo(ask.t, ask.date); }} />}
       <div className="cal-wrap"><div className="cal">
         {Array.from({ length: 7 }, (_, i) => <div key={`h${i}`} className="dow">{names[(i + weekStart) % 7]}</div>)}
         {days.map(d => {
@@ -279,4 +301,29 @@ function CalendarView({ c, tools }: { c: Ctx; tools: React.ReactNode }) {
       </div></div>
     </>
   );
+}
+
+/** "Move here / Copy here" after dropping a task on another day (as in the prototype). */
+function DropAsk({ a, onMove, onCopy, onClose }: { a: { t: TaskFull; date: string; x: number; y: number }; onMove: () => void; onCopy: () => void; onClose: () => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState({ left: a.x + 12, top: a.y + 12 });
+  useLayoutEffect(() => {
+    const r = ref.current!.getBoundingClientRect();
+    setPos({ left: Math.max(12, Math.min(a.x + 12, innerWidth - r.width - 12)), top: Math.max(12, Math.min(a.y + 12, innerHeight - r.height - 12)) });
+    ref.current!.querySelector<HTMLButtonElement>('.btn.primary')?.focus();
+  }, [a]);
+  useEffect(() => {
+    const key = (e: globalThis.KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    const click = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) onClose(); };
+    addEventListener('keydown', key); addEventListener('mousedown', click);
+    return () => { removeEventListener('keydown', key); removeEventListener('mousedown', click); };
+  }, [onClose]);
+  const when = parseISO(a.date).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+  return createPortal(
+    <div ref={ref} className="dropask" role="dialog" aria-label="Move or copy task" style={pos}>
+      <div className="dq">“{a.t.title || 'Untitled task'}” to <b>{when}</b></div>
+      <div className="drow"><button className="btn primary sm" onClick={onMove}>Move here</button><button className="btn sm" onClick={onCopy}>Copy here</button>
+        <button className="btn sm ghost" onClick={onClose}>Cancel</button></div>
+      <div className="hint" style={{ fontSize: 12 }}>A copy is a new open task with the same project, goal, dimensions and subtasks. Tip: hold Alt while dropping to copy straight away.</div>
+    </div>, document.body);
 }
