@@ -75,6 +75,18 @@ p{margin:0}
 .eyebrow{font-size:12.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--beak-text)}
 .lede{font-size:19px;color:var(--muted);max-width:60ch}
 
+
+/* ---------- request access ---------- */
+.reqform{display:grid;gap:16px;max-width:520px}
+.reqform label{display:grid;gap:6px;font-weight:550;font-size:15px}
+.reqform input,.reqform textarea{font:inherit;font-weight:400;color:var(--fg);background:var(--surface);border:1px solid var(--feather-2);border-radius:10px;padding:11px 13px;width:100%}
+.reqform textarea{min-height:92px;resize:vertical}
+.reqform .hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+.reqform .msg{font-size:15px;color:var(--muted)}
+.reqform .msg.bad{color:var(--beak-text)}
+.reqdone{max-width:520px;padding:22px;border:1px solid var(--feather-2);border-radius:14px;background:var(--surface)}
+.reqdone h3{margin-bottom:8px}
+
 /* ---------- top bar ---------- */
 .top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--ink);color:var(--ink-fg)}
 .top .wrap{display:flex;align-items:center;gap:18px;padding-block:12px}
@@ -265,7 +277,7 @@ dialog.zoom button{font:inherit;font-size:14px;border:0;border-radius:9px;paddin
     </nav>
     <!-- The app lives under /app/ on the same domain. -->
     <a class="signin" href="/app/">Sign in</a>
-    <a class="btn btn-beak" href="/app/">Get started</a>
+    <a class="btn btn-beak" href="#request">Request access</a>
   </div>
   <div class="stripe" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
 </header>
@@ -282,7 +294,7 @@ dialog.zoom button{font:inherit;font-size:14px;border:0;border-radius:9px;paddin
         <h1>Goals, projects and tasks, <em>flying in formation.</em></h1>
         <p class="lede">Goose links what your team wants to achieve with the projects and tasks that get it there. Everyone sees the same plan, each person sees the work they are part of, and reviewing a week takes a minute.</p>
         <div class="cta">
-          <a class="btn btn-beak" href="/app/">Create your workspace</a>
+          <a class="btn btn-beak" href="#request">Request access</a>
           <a class="btn btn-line" href="#features" data-tab-link="features">See what it does</a>
         </div>
         <div class="trio" aria-label="How Goose is organised"><b>Strategy</b><span class="arr">→</span><b>Projects</b><span class="arr">→</span><b>Tasks</b><span>· one plan, three levels of detail</span></div>
@@ -488,7 +500,7 @@ dialog.zoom button{font:inherit;font-size:14px;border:0;border-radius:9px;paddin
       <ul>
         <li>Filters by person and team across every screen</li>
         <li>Custom labels such as priority, client or region, for tasks and projects</li>
-        <li>Profile pictures and project images</li>
+        <li>An email to you the moment your access is approved</li>
       </ul>
     </div>
   </div>
@@ -574,6 +586,30 @@ dialog.zoom button{font:inherit;font-size:14px;border:0;border-radius:9px;paddin
   </div>
 </section>
 
+<!-- ===================== REQUEST ACCESS ===================== -->
+<section class="panel" data-panel="request" aria-label="Request access">
+  <div class="wrap">
+    <div class="panel-head">
+      <span class="eyebrow">Request access</span>
+      <h2>Goose is invite-only for now</h2>
+      <p class="lede">Tell us who you are and we will let you know when your place is ready. It is free to ask, and a person reads every request.</p>
+    </div>
+    <form class="reqform" id="reqform" novalidate>
+      <label>Your email<input type="email" name="email" autocomplete="email" required maxlength="200" placeholder="name@company.com"></label>
+      <label>Your name<input type="text" name="name" autocomplete="name" maxlength="120"></label>
+      <label>What would you use Goose for? (optional)<textarea name="note" maxlength="1000"></textarea></label>
+      <div class="hp" aria-hidden="true"><label>Leave this empty<input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>
+      <p class="msg bad" id="reqmsg" role="alert" hidden></p>
+      <div><button class="btn btn-beak" type="submit" id="reqbtn">Request access</button></div>
+      <p class="msg">Already approved or invited? <a href="/app/">Sign in</a>.</p>
+    </form>
+    <div class="reqdone" id="reqdone" hidden>
+      <h3>Request received</h3>
+      <p>Thank you. We will email you at the address you gave once your place is ready.</p>
+    </div>
+  </div>
+</section>
+
 <!-- ===================== FAQ ===================== -->
 <section class="panel" data-panel="faq" aria-label="Frequently asked questions">
   <div class="wrap">
@@ -583,7 +619,7 @@ dialog.zoom button{font:inherit;font-size:14px;border:0;border-radius:9px;paddin
     </div>
     <div class="faq">
       <details open><summary>Can I use Goose on my own?</summary>
-        <div><p>Yes. Everyone who signs up gets their own workspace, where they are the admin and can plan goals, projects and tasks alone. Invite people whenever you are ready.</p></div></details>
+        <div><p>Yes. Everyone who is approved gets their own workspace, where they are the admin and can plan goals, projects and tasks alone. Invite people whenever you are ready.</p></div></details>
       <details><summary>Can I be part of more than one workspace?</summary>
         <div><p>Yes. Your own workspace and every workspace you are invited to sit under one sign-in, and you switch between them. Your access level can differ in each.</p></div></details>
       <details><summary>Can my clients see their project?</summary>
@@ -622,7 +658,7 @@ dialog.zoom button{font:inherit;font-size:14px;border:0;border-radius:9px;paddin
 <script>
 (function () {
   document.documentElement.classList.add('js');
-  var TABS = ['overview', 'features', 'why', 'security', 'faq'];
+  var TABS = ['overview', 'features', 'why', 'security', 'faq', 'request'];
   var panels = {}; TABS.forEach(function (t) { panels[t] = document.querySelector('[data-panel="' + t + '"]'); });
   // which tab holds a given anchor (e.g. #f-tasks lives in Features)
   function tabFor(id) {
@@ -652,6 +688,32 @@ dialog.zoom button{font:inherit;font-size:14px;border:0;border-radius:9px;paddin
   });
   window.addEventListener('hashchange', function () { show(location.hash.slice(1), true); });
   show(location.hash.slice(1), true);
+
+
+  // request access form -> request_access() in the database
+  var SB = 'https://ywhuaooebqklcmlmgqpl.supabase.co', KEY = 'sb_publishable_j4Kih7cgv3e_2hpSykJp6g_lraj9oHz';
+  var rf = document.getElementById('reqform');
+  if (rf) rf.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var msg = document.getElementById('reqmsg'), btn = document.getElementById('reqbtn'), f = rf.elements;
+    function bad(t) { msg.textContent = t; msg.hidden = false; }
+    msg.hidden = true;
+    var email = f.email.value.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { bad('Please enter a valid email address.'); return; }
+    if (f.website.value) { rf.hidden = true; document.getElementById('reqdone').hidden = false; return; } // bots fill the hidden field
+    btn.disabled = true; btn.textContent = 'Sending…';
+    fetch(SB + '/rest/v1/rpc/request_access', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: KEY, Authorization: 'Bearer ' + KEY },
+      body: JSON.stringify({ p_email: email, p_name: f.name.value, p_note: f.note.value })
+    }).then(function (r) {
+      if (!r.ok) throw new Error('bad');
+      rf.hidden = true; document.getElementById('reqdone').hidden = false;
+    }).catch(function () {
+      bad('Sorry, that did not go through. Please try again in a moment.');
+      btn.disabled = false; btn.textContent = 'Request access';
+    });
+  });
 
   // screenshot switches (Tasks, Projects, Team)
   document.querySelectorAll('.switch').forEach(function (sw) {

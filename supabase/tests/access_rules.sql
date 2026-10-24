@@ -3,6 +3,10 @@
 grant usage on schema public to authenticated;
 grant select, insert, update, delete on all tables in schema public to authenticated;
 
+-- Sign-up is invite-only: approve these addresses first (the gate itself is tested at the end).
+insert into access_requests (email, status) values
+  ('sam@example.com','approved'),('omar@example.com','approved'),('julia@example.com','approved'),
+  ('karim@example.com','approved'),('stranger@example.com','approved');
 insert into auth.users values
   ('00000000-0000-0000-0000-00000000000a','sam@example.com'),
   ('00000000-0000-0000-0000-00000000000b','omar@example.com'),
@@ -109,5 +113,33 @@ select pg_temp.login('00000000-0000-0000-0000-00000000000e');
 select count(*) from on_login(null);
 select pg_temp.check((select count(*) from projects) = 0 and (select count(*) from tasks) = 0 and (select count(*) from workspace_members) = 1, 'other workspaces are invisible');
 
+reset role;
+
+-- ---------------------------------------------------------------------
+-- Invite-only gate
+reset role;
+create or replace function pg_temp.signup_ok(e text) returns boolean language plpgsql as $$
+begin insert into auth.users values (gen_random_uuid(), e); return true;
+exception when others then return false; end $$;
+select pg_temp.check(not pg_temp.signup_ok('random@example.com'), 'an unknown address cannot create an account');
+select pg_temp.check(not pg_temp.signup_ok('RANDOM@example.com'), 'an unknown address in capitals cannot either');
+set role anon;
+select request_access('Newbie@Example.com', 'New Bie', 'hello');
+select request_access('newbie@example.com');
+reset role;
+select pg_temp.check((select count(*) from access_requests where email = 'newbie@example.com' and status = 'pending') = 1, 'a request is stored once, as pending');
+select pg_temp.check(not pg_temp.signup_ok('newbie@example.com'), 'a pending request cannot sign up');
+update access_requests set status = 'approved' where email = 'newbie@example.com';
+select pg_temp.check(pg_temp.signup_ok('Newbie@example.com'), 'an approved request can sign up');
+insert into access_requests (email, status) values ('nope@example.com','declined');
+select pg_temp.check(not pg_temp.signup_ok('nope@example.com'), 'a declined request cannot sign up');
+select pg_temp.check(not (select email_may_sign_up('x@example.com')), 'email_may_sign_up says no to strangers');
+set role anon;
+do $$ begin
+  begin perform 1 from access_requests; raise exception 'FAILED: anon can read requests';
+  exception when insufficient_privilege then null; end;
+  begin perform request_access('not an email'); raise exception 'FAILED: bad email accepted';
+  exception when raise_exception then if sqlerrm like 'FAILED%' then raise; end if; end;
+end $$;
 reset role;
 select 'ALL ACCESS TESTS PASSED' as result;

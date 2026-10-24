@@ -16,6 +16,8 @@ function friendly(message: string): string {
   const m = message.toLowerCase();
   if (m.includes('invalid login')) return 'That email and password do not match. If you signed in before with an email link, use “Forgot password?” to choose a password.';
   if (m.includes('email not confirmed')) return 'Please confirm your email first: open the confirmation email we sent you, then sign in.';
+  if (m.includes('database error saving new user') || m.includes('invite-only'))
+    return 'Goose is invite-only for now. This address has not been approved yet: ask for access at flightofthegoose.com, or use the address your invitation went to.';
   if (m.includes('rate limit') || m.includes('too many')) return 'Too many attempts. Please wait a few minutes and try again.';
   if (m.includes('password should be') || m.includes('weak')) return `Choose a longer password (at least ${MIN_PASSWORD} characters).`;
   return message;
@@ -105,6 +107,7 @@ export function Login() {
                 <button type="button" className="btn ghost sm" onClick={() => go('forgot')}>Forgot password?</button>
                 <button type="button" className="btn ghost sm" onClick={() => go('link')}>Email me a link instead</button>
                 <button type="button" className="btn ghost sm" onClick={() => go('signup')}>Create an account</button>
+                {websiteHref && <a className="btn ghost sm" href={websiteHref + '#request'}>Request access</a>}
               </>}
               {mode !== 'signin' && <button type="button" className="btn ghost sm" onClick={() => go('signin')}>Back to sign in</button>}
             </div>
