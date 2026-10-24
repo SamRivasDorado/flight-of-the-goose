@@ -109,7 +109,7 @@ export function PersonDialog({ person, teams, count, onClose, onSaved }: {
       if (person) await updateMember(person.id, { display_name: d.display_name.trim(), title: d.title.trim(), ...(self ? {} : { access: d.access }) });
       else id = (await inviteMemberChecked(ws.workspace_id, ws.member_id, { email, display_name: d.display_name.trim(), title: d.title.trim(), access: d.access, color: PERSON_COLORS[count % PERSON_COLORS.length] })).id;
       await setPersonTeams(id!, teams, d.team_ids);
-      onSaved(person ? undefined : `Invited ${email}. They join this workspace when they sign in to Goose with that address. (Invitation emails come later.)`);
+      onSaved(person ? undefined : `Invited ${email}. We emailed them the invitation; they join this workspace when they create an account or sign in with that address.`);
     } catch (e) { setErr(e instanceof Error ? e.message : String(e)); setBusy(false); }
   }
   async function remove() {
