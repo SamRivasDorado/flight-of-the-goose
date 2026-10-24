@@ -123,7 +123,7 @@ begin insert into auth.users values (gen_random_uuid(), e); return true;
 exception when others then return false; end $$;
 select pg_temp.check(not pg_temp.signup_ok('random@example.com'), 'an unknown address cannot create an account');
 select pg_temp.check(not pg_temp.signup_ok('RANDOM@example.com'), 'an unknown address in capitals cannot either');
-set role anon;
+set role service_role;
 select request_access('Newbie@Example.com', 'New Bie', 'hello');
 select request_access('newbie@example.com');
 reset role;
@@ -138,6 +138,10 @@ set role anon;
 do $$ begin
   begin perform 1 from access_requests; raise exception 'FAILED: anon can read requests';
   exception when insufficient_privilege then null; end;
+end $$;
+reset role;
+set role service_role;
+do $$ begin
   begin perform request_access('not an email'); raise exception 'FAILED: bad email accepted';
   exception when raise_exception then if sqlerrm like 'FAILED%' then raise; end if; end;
 end $$;
@@ -145,4 +149,32 @@ reset role;
 
 -- Approving works even where no email can be sent (no Vault key here)
 select pg_temp.check((select decided_at is not null and emailed_at is null from access_requests where email = 'newbie@example.com'), 'approval is recorded and survives a missing email setup');
+
+-- ---------------------------------------------------------------------
+-- Approval email (the stand-in net.http_post records what would be sent)
+insert into vault.decrypted_secrets values ('resend_api_key', 're_test');
+insert into access_requests (email, name, status) values ('mail1@example.com', 'Mia <b>', 'pending');
+select pg_temp.check((select count(*) from net.calls) = 0, 'a pending request sends no email');
+update access_requests set status = 'approved' where email = 'mail1@example.com';
+select pg_temp.check((select count(*) from net.calls where body->'to' = '["mail1@example.com"]'::jsonb and headers->>'Authorization' = 'Bearer re_test') = 1, 'approving sends one email to the requester');
+select pg_temp.check((select body->>'html' from net.calls limit 1) like '%Mia &lt;b&gt;%' and (select emailed_at is not null from access_requests where email = 'mail1@example.com'), 'the name is escaped in the email and the send is recorded');
+update access_requests set note = 'x' where email = 'mail1@example.com';
+select pg_temp.check((select count(*) from net.calls) = 1, 'editing an approved request does not email again');
+delete from vault.decrypted_secrets;
+insert into access_requests (email, status) values ('mail2@example.com', 'pending');
+update access_requests set status = 'approved' where email = 'mail2@example.com';
+select pg_temp.check((select status from access_requests where email = 'mail2@example.com') = 'approved' and (select count(*) from net.calls) = 1 and (select emailed_at is null from access_requests where email = 'mail2@example.com'), 'without a Resend key the approval still works, silently');
+
+-- The form is locked behind the CAPTCHA function (last migration): browsers cannot call it directly
+set role anon;
+do $$ begin
+  begin perform request_access('late@example.com'); raise exception 'FAILED: anon can still call request_access';
+  exception when insufficient_privilege then null; end;
+end $$;
+reset role;
+set role service_role;
+select request_access('viaedge@example.com');
+reset role;
+select pg_temp.check(exists (select 1 from access_requests where email = 'viaedge@example.com'), 'the Edge Function role can still file a request');
+
 select 'ALL ACCESS TESTS PASSED' as result;

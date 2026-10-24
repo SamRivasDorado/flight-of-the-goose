@@ -599,6 +599,7 @@ dialog.zoom button{font:inherit;font-size:14px;border:0;border-radius:9px;paddin
       <label>Your name<input type="text" name="name" autocomplete="name" maxlength="120"></label>
       <label>What would you use Goose for? (optional)<textarea name="note" maxlength="1000"></textarea></label>
       <div class="hp" aria-hidden="true"><label>Leave this empty<input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>
+      <div class="cf-turnstile" id="reqcaptcha" hidden></div>
       <p class="msg bad" id="reqmsg" role="alert" hidden></p>
       <div><button class="btn btn-beak" type="submit" id="reqbtn">Request access</button></div>
       <p class="msg">Already approved or invited? <a href="/app/">Sign in</a>.</p>
@@ -692,7 +693,15 @@ dialog.zoom button{font:inherit;font-size:14px;border:0;border-radius:9px;paddin
 
   // request access form -> request_access() in the database
   var SB = 'https://ywhuaooebqklcmlmgqpl.supabase.co', KEY = 'sb_publishable_j4Kih7cgv3e_2hpSykJp6g_lraj9oHz';
+  // CAPTCHA (Cloudflare Turnstile). Leave TS_KEY empty to run without it.
+  var TS_KEY = '', tsToken = '';
   var rf = document.getElementById('reqform');
+  if (TS_KEY) {
+    var box = document.getElementById('reqcaptcha'); box.hidden = false;
+    var sc = document.createElement('script'); sc.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'; sc.async = true;
+    sc.onload = function () { turnstile.render(box, { sitekey: TS_KEY, callback: function (t) { tsToken = t; }, 'expired-callback': function () { tsToken = ''; } }); };
+    document.head.appendChild(sc);
+  }
   if (rf) rf.addEventListener('submit', function (e) {
     e.preventDefault();
     var msg = document.getElementById('reqmsg'), btn = document.getElementById('reqbtn'), f = rf.elements;
@@ -701,17 +710,23 @@ dialog.zoom button{font:inherit;font-size:14px;border:0;border-radius:9px;paddin
     var email = f.email.value.trim();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { bad('Please enter a valid email address.'); return; }
     if (f.website.value) { rf.hidden = true; document.getElementById('reqdone').hidden = false; return; } // bots fill the hidden field
+    if (TS_KEY && !tsToken) { bad('Please complete the check above.'); return; }
     btn.disabled = true; btn.textContent = 'Sending…';
-    fetch(SB + '/rest/v1/rpc/request_access', {
+    // With the CAPTCHA on, the request goes through the "request-access" function, which checks it first.
+    var url = SB + (TS_KEY ? '/functions/v1/request-access' : '/rest/v1/rpc/request_access');
+    var body = TS_KEY ? { email: email, name: f.name.value, note: f.note.value, token: tsToken }
+                      : { p_email: email, p_name: f.name.value, p_note: f.note.value };
+    fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', apikey: KEY, Authorization: 'Bearer ' + KEY },
-      body: JSON.stringify({ p_email: email, p_name: f.name.value, p_note: f.note.value })
+      body: JSON.stringify(body)
     }).then(function (r) {
       if (!r.ok) throw new Error('bad');
       rf.hidden = true; document.getElementById('reqdone').hidden = false;
     }).catch(function () {
-      bad('Sorry, that did not go through. Please try again in a moment.');
+      bad('Sorry, that did not go through. Please complete the check again and retry.');
       btn.disabled = false; btn.textContent = 'Request access';
+      if (window.turnstile) { try { turnstile.reset(); } catch (_) {} tsToken = ''; }
     });
   });
 
