@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useWorkspace } from '../auth/session';
-import { deleteProject, listGoalRefs, listMembers, listTeamRefs, saveProject, setProjectDefault, todayISO, useLoad, type ProjectInput } from '../lib/data';
+import { deleteProject, listGoalRefs, listMembers, listTeamRefs, saveProject, setProjectDefault, setProjectImage, todayISO, useLoad, type ProjectInput } from '../lib/data';
 import { useLens } from '../lib/lens';
+import { removeImage, uploadImage } from '../lib/images';
+import { ImagePicker, NO_PICK, useRevoke, type PickedImage } from './ImagePicker';
+import { ProjectIcon } from './ProjectChip';
 import { canManage, type ProjectFull } from '../lib/types';
 import { PROJECT_COLORS } from '../config';
 import { Avatar, Icon, PROJECT_ICONS } from './Logo';
@@ -36,6 +39,13 @@ export function ProjectDialog({ project, kind, count, onClose, onSaved, onDelete
     Object.fromEntries(lens.dims.map(dm => [dm.id, project ? lens.projectDefault(project.id, dm.id) : null])));
   const [err, setErr] = useState<string | null>(null);
   const [confirmDel, setConfirmDel] = useState(false);
+  const [img, setImg] = useState<PickedImage>(NO_PICK);
+  const [fit, setFit] = useState<'fit' | 'fill'>(project?.image_fit ?? 'fit');
+  useRevoke(img);
+  /** Set once a new project exists, so pressing the button again (after an image error) saves instead of creating a second one. */
+  const [created, setCreated] = useState<ProjectFull | null>(null);
+  const base = project ?? created;
+  const hasImage = !!img.blob || (!!base?.image_path && !img.cleared);
   const set = (p: Partial<ProjectInput>) => setD(cur => ({ ...cur, ...p }));
   const toggle = (k: 'member_ids' | 'team_ids' | 'goal_ids', v: string) =>
     setD(cur => ({ ...cur, [k]: cur[k].includes(v) ? cur[k].filter(x => x !== v) : [...cur[k], v] }));
@@ -50,8 +60,18 @@ export function ProjectDialog({ project, kind, count, onClose, onSaved, onDelete
     if (d.kind === 'fixed' && d.start_date && d.end_date && d.end_date < d.start_date) { setErr('The end date is before the start date.'); return; }
     setBusy(true); setErr(null);
     try {
-      const id = await saveProject(ws.workspace_id, project, { ...d, name: d.name.trim(), end_date: d.kind === 'fixed' ? d.end_date : null });
-      for (const [f, o] of Object.entries(defs)) if ((project ? lens.projectDefault(project.id, f) : null) !== o) await setProjectDefault(id, f, o);
+      const row = { ...d, name: d.name.trim(), end_date: d.kind === 'fixed' ? d.end_date : null };
+      const id = await saveProject(ws.workspace_id, base, row);
+      if (!base) setCreated({ ...(row as unknown as ProjectFull), id, image_path: null, image_fit: 'fit', member_ids: row.member_ids.filter(x => x !== row.owner_member_id) });
+      for (const [f, o] of Object.entries(defs)) if ((base ? lens.projectDefault(base.id, f) : null) !== o) await setProjectDefault(id, f, o);
+      // the image goes last: the project must exist before its picture can be stored
+      if (img.blob) {
+        const path = await uploadImage(ws.workspace_id, 'projects', id, img.blob);
+        await setProjectImage(id, path, fit);
+        void removeImage(base?.image_path);
+      } else if (img.cleared && base?.image_path) {
+        await setProjectImage(id, null, fit); void removeImage(base.image_path);
+      } else if (base?.image_path && fit !== base.image_fit) await setProjectImage(id, base.image_path, fit);
       onSaved(id);
     } catch (e) { setErr(e instanceof Error ? e.message : String(e)); setBusy(false); }
   }
@@ -131,7 +151,16 @@ export function ProjectDialog({ project, kind, count, onClose, onSaved, onDelete
           <div><span className="lbl">Symbol</span><div className="icons">
             {PROJECT_ICONS.map(n => <button key={n} type="button" className={d.icon === n ? 'on' : ''} aria-label={n} onClick={() => set({ icon: n })}
               style={d.icon === n ? { color: d.color } : undefined}><Icon name={n} /></button>)}
-          </div><div className="hint" style={{ marginTop: 6 }}>Your own image as a symbol comes later, with profile pictures.</div></div>
+          </div>
+            <div style={{ marginTop: 10 }}>
+              <ImagePicker hasImage={hasImage} onError={setErr}
+                preview={<ProjectIcon p={{ ...d, image_fit: fit, image_path: img.cleared ? null : base?.image_path }} size="lg" src={img.blob ? img.preview : undefined} />}
+                onPick={setImg} onClear={() => setImg({ ...NO_PICK, cleared: true })}
+                extra={hasImage && <span className="seg" role="group" aria-label="How the image fits">
+                  <button type="button" className={fit === 'fit' ? 'on' : ''} onClick={() => setFit('fit')}>Show whole image</button>
+                  <button type="button" className={fit === 'fill' ? 'on' : ''} onClick={() => setFit('fill')}>Fill the square</button></span>}
+                hint={hasImage ? 'The image replaces the symbol everywhere the project appears.' : 'A logo or photo instead of a symbol: PNG, JPG, GIF, WebP, SVG and more. The whole image is kept.'} />
+            </div></div>
           {confirmDel && (
             <div className="confirm">Delete this project? Its tasks stay, without a project. Its notebook entries are deleted.<span style={{ flex: 1 }} />
               <button className="btn sm" onClick={() => setConfirmDel(false)}>Keep</button>
@@ -142,7 +171,7 @@ export function ProjectDialog({ project, kind, count, onClose, onSaved, onDelete
           {err && <span className="err">{err}</span>}
           <span className="grow" />
           <button className="btn" onClick={onClose}>Cancel</button>
-          <button className="btn primary" disabled={busy} onClick={() => void save()}>{busy ? 'Saving…' : project ? 'Save' : <><Icon name="plus" />Create project</>}</button>
+          <button className="btn primary" disabled={busy} onClick={() => void save()}>{busy ? 'Saving…' : base ? 'Save' : <><Icon name="plus" />Create project</>}</button>
         </div>
       </div>
     </div>

@@ -332,3 +332,12 @@ export async function addOption(ws: string, fieldId: string, label: string, colo
 }
 export async function updateOption(id: string, patch: Partial<Pick<FieldOption, 'label' | 'color'>>) { check(await db().from('field_options').update(patch).eq('id', id)); }
 export async function deleteOption(id: string) { check(await db().from('field_options').delete().eq('id', id)); }
+
+// ---------- project and team images ----------
+
+export async function setProjectImage(id: string, image_path: string | null, image_fit: 'fit' | 'fill') {
+  check(await db().from('projects').update({ image_path, image_fit }).eq('id', id).select('id').single());
+}
+export async function setTeamImage(id: string, image_path: string | null) {
+  check(await db().from('teams').update({ image_path }).eq('id', id).select('id').single());
+}

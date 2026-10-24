@@ -108,6 +108,41 @@ select pg_temp.login('00000000-0000-0000-0000-00000000000a');
 select save_my_profile('Sam Rivas Dorado', 'Senior Geoscientist', null, null);
 select pg_temp.check((select name from workspaces where created_by = auth.uid()) = 'Sam Rivas Dorado’s workspace', 'the personal workspace follows the new name');
 
+-- Images for project symbols and team badges: only people who may edit the project or team can upload
+reset role;
+grant usage on schema storage to authenticated;
+grant select, insert, update, delete on storage.objects to authenticated;
+set role authenticated;
+select pg_temp.login('00000000-0000-0000-0000-00000000000a');
+insert into teams (workspace_id, name, color, lead_member_id) select w, 'Modelling', '#555', (select id from workspace_members where email = 'omar@example.com') from ids;
+create temp table img as select w,
+  (select id from projects where name = 'P1 with Omar') p1, (select id from teams where name = 'Modelling') t1 from ids;
+insert into storage.objects (bucket_id, name) select 'images', w || '/projects/' || p1 || '/a.webp' from img;
+select pg_temp.check(true, 'admin uploads a project image');
+select pg_temp.login('00000000-0000-0000-0000-00000000000b');
+do $$ begin
+  begin insert into storage.objects (bucket_id, name) select 'images', w || '/projects/' || p1 || '/b.webp' from img;
+    raise exception 'FAILED: a member changed the image of a project they do not own';
+  exception when insufficient_privilege then raise notice 'ok  members cannot change project images'; end;
+  begin insert into storage.objects (bucket_id, name) select 'images', w || '/projects/not-a-uuid/c.webp' from img;
+    raise exception 'FAILED: odd image path accepted';
+  exception when insufficient_privilege then raise notice 'ok  image paths must point at a real project or team'; end;
+end $$;
+insert into storage.objects (bucket_id, name) select 'images', w || '/teams/' || t1 || '/d.webp' from img;
+select pg_temp.check(true, 'a team lead uploads the team badge');
+select pg_temp.login('00000000-0000-0000-0000-00000000000c');
+do $$ begin
+  begin insert into storage.objects (bucket_id, name) select 'images', w || '/teams/' || t1 || '/e.webp' from img;
+    raise exception 'FAILED: a guest changed a team badge';
+  exception when insufficient_privilege then raise notice 'ok  others cannot change team badges'; end;
+end $$;
+select pg_temp.login('00000000-0000-0000-0000-00000000000e');
+do $$ begin
+  begin insert into storage.objects (bucket_id, name) select 'images', w || '/projects/' || p1 || '/f.webp' from img;
+    raise exception 'FAILED: a stranger uploaded into another workspace';
+  exception when insufficient_privilege then raise notice 'ok  strangers cannot upload into a workspace'; end;
+end $$;
+
 -- A stranger signs up: own empty workspace, sees nothing of Sam's
 select pg_temp.login('00000000-0000-0000-0000-00000000000e');
 select count(*) from on_login(null);

@@ -1,10 +1,13 @@
 import type { Project } from '../lib/types';
+import { imageUrl } from '../lib/images';
 import { Icon, type IconName } from './Logo';
 
-type P = Pick<Project, 'name' | 'color'> & Partial<Pick<Project, 'icon'>>;
+type P = Pick<Project, 'name' | 'color'> & Partial<Pick<Project, 'icon' | 'image_path' | 'image_fit'>>;
 
-/** The coloured square with the project's symbol. */
-export function ProjectIcon({ p, size = '' }: { p: P; size?: '' | 'lg' }) {
+/** The coloured square with the project's symbol, or its own image. `src` shows an image not saved yet. */
+export function ProjectIcon({ p, size = '', src }: { p: P; size?: '' | 'lg'; src?: string | null }) {
+  const url = src !== undefined ? src : imageUrl(p.image_path);
+  if (url) return <span className={`picon img ${size}`} style={{ ['--c' as string]: p.color }}><img src={url} alt="" className={p.image_fit === 'fill' ? 'fill' : ''} /></span>;
   return <span className={`picon ${size}`} style={{ ['--c' as string]: p.color }}><Icon name={(p.icon || 'folder') as IconName} /></span>;
 }
 

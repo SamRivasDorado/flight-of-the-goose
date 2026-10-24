@@ -1,17 +1,20 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useWorkspace } from '../auth/session';
-import { deleteTeam, inviteMemberChecked, removeMember, saveTeam, setPersonTeams, updateMember, type TeamInput } from '../lib/data';
+import { deleteTeam, inviteMemberChecked, removeMember, saveTeam, setPersonTeams, setTeamImage, updateMember, type TeamInput } from '../lib/data';
 import { ACCESS_DESC, ACCESS_LABEL, type Access, type Member, type Team } from '../lib/types';
 import { PERSON_COLORS, PROJECT_COLORS } from '../config';
 import { Avatar, Icon } from './Logo';
+import { imageUrl, removeImage, uploadImage } from '../lib/images';
+import { ImagePicker, NO_PICK, useRevoke, type PickedImage } from './ImagePicker';
 
 /** Team colours: three extra strong colours plus the project palette (as in the prototype). */
 export const TEAM_COLORS = ['#D0453A', '#8E5CC2', '#4A7FC1', ...PROJECT_COLORS];
 
 /** A team's square badge: its initials on its colour. */
-export function TeamAvatar({ t, size = '' }: { t: Pick<Team, 'name' | 'color'>; size?: '' | 'xs' | 'sm' | 'lg' | 'xl' }) {
+export function TeamAvatar({ t, size = '', src }: { t: Pick<Team, 'name' | 'color'> & { image_path?: string | null }; size?: '' | 'xs' | 'sm' | 'lg' | 'xl'; src?: string | null }) {
+  const url = src !== undefined ? src : imageUrl(t.image_path);
   const initials = (t.name || 'T').split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
-  return <span className={`tav ${size}`} style={{ ['--c' as string]: t.color }}>{initials}</span>;
+  return <span className={`tav ${size}`} style={{ ['--c' as string]: t.color }}>{url ? <img src={url} alt="" /> : initials}</span>;
 }
 
 function Modal({ title, onClose, children, foot }: { title: string; onClose: () => void; children: ReactNode; foot: ReactNode }) {
@@ -39,6 +42,12 @@ export function TeamDialog({ team, members, count, canDelete, onClose, onSaved }
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
+  const [img, setImg] = useState<PickedImage>(NO_PICK);
+  useRevoke(img);
+  /** Set once a new team exists, so pressing the button again (after an image error) saves instead of creating a second team. */
+  const [created, setCreated] = useState<Team | null>(null);
+  const base = team ?? created;
+  const hasImage = !!img.blob || (!!base?.image_path && !img.cleared);
   const set = (p: Partial<TeamInput>) => { setD(cur => ({ ...cur, ...p })); setErr(null); };
   const toggle = (id: string) => setD(cur => {
     const on = cur.member_ids.includes(id);
@@ -48,8 +57,15 @@ export function TeamDialog({ team, members, count, canDelete, onClose, onSaved }
   async function save() {
     if (!d.name.trim()) { setErr('Give the team a name.'); return; }
     setBusy(true);
-    try { onSaved(await saveTeam(ws.workspace_id, team, { ...d, name: d.name.trim() })); }
-    catch (e) { setErr(e instanceof Error ? e.message : String(e)); setBusy(false); }
+    try {
+      const row = { ...d, name: d.name.trim() };
+      const id = await saveTeam(ws.workspace_id, base, row);
+      if (!base) setCreated({ ...row, id, workspace_id: ws.workspace_id, image_path: null });
+      // the image goes last: the team must exist before its badge can be stored
+      if (img.blob) { const path = await uploadImage(ws.workspace_id, 'teams', id, img.blob); await setTeamImage(id, path); void removeImage(base?.image_path); }
+      else if (img.cleared && base?.image_path) { await setTeamImage(id, null); void removeImage(base.image_path); }
+      onSaved(id);
+    } catch (e) { setErr(e instanceof Error ? e.message : String(e)); setBusy(false); }
   }
   async function remove() {
     if (!team) return; setBusy(true);
@@ -62,7 +78,7 @@ export function TeamDialog({ team, members, count, canDelete, onClose, onSaved }
       {team && canDelete && <button className="btn danger ghost" onClick={() => setConfirmDel(true)}><Icon name="trash" />Delete</button>}
       {err && <span className="err">{err}</span>}<span className="grow" />
       <button className="btn" onClick={onClose}>Cancel</button>
-      <button className="btn primary" disabled={busy} onClick={() => void save()}>{busy ? 'Saving…' : team ? 'Save' : <><Icon name="plus" />Create team</>}</button></>}>
+      <button className="btn primary" disabled={busy} onClick={() => void save()}>{busy ? 'Saving…' : base ? 'Save' : <><Icon name="plus" />Create team</>}</button></>}>
       <div><label className="lbl" htmlFor="te-name">Name</label>
         <input id="te-name" className="field-in" style={{ width: '100%' }} value={d.name} autoFocus placeholder="e.g. Reservoir modelling"
           onChange={e => set({ name: e.target.value })} onKeyDown={e => { if (e.key === 'Enter') void save(); }} /></div>
@@ -77,8 +93,10 @@ export function TeamDialog({ team, members, count, canDelete, onClose, onSaved }
         {TEAM_COLORS.map(c => <button key={c} type="button" className={`swt ${d.color.toLowerCase() === c.toLowerCase() ? 'on' : ''}`} style={{ ['--c' as string]: c }} aria-label={`Colour ${c}`} onClick={() => set({ color: c })} />)}
         <label className="swt custom" title="Any colour" style={{ position: 'relative' }}>+<input type="color" value={d.color} onChange={e => set({ color: e.target.value })} aria-label="Pick any colour" /></label>
       </div></div>
-      <div><span className="lbl">Badge</span><div className="row" style={{ flexWrap: 'nowrap', gap: 12 }}><TeamAvatar t={{ name: d.name || 'Team', color: d.color }} size="lg" />
-        <span className="hint">The team shows its initials on its colour. Uploading your own image comes later, with profile pictures.</span></div></div>
+      <div><span className="lbl">Badge</span>
+        <ImagePicker hasImage={hasImage} onError={setErr} onPick={setImg} onClear={() => setImg({ ...NO_PICK, cleared: true })}
+          preview={<TeamAvatar t={{ name: d.name || 'Team', color: d.color, image_path: img.cleared ? null : base?.image_path }} size="lg" src={img.blob ? img.preview : undefined} />}
+          hint={hasImage ? 'The image replaces the initials everywhere the team appears.' : 'Without an image, the team shows its initials on its colour.'} /></div>
       {confirmDel && <div className="confirm">Delete this team? People stay; projects shared with it lose those members unless they are added directly.<span style={{ flex: 1 }} />
         <button className="btn sm" onClick={() => setConfirmDel(false)}>Keep</button>
         <button className="btn sm danger" disabled={busy} onClick={() => void remove()}>Delete team</button></div>}
