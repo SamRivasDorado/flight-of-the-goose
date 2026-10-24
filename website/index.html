@@ -713,7 +713,7 @@ dialog.zoom button{font:inherit;font-size:14px;border:0;border-radius:9px;paddin
     if (TS_KEY && !tsToken) { bad('Please complete the check above.'); return; }
     btn.disabled = true; btn.textContent = 'Sending…';
     // With the CAPTCHA on, the request goes through the "request-access" function, which checks it first.
-    var url = SB + (TS_KEY ? '/functions/v1/dynamic-api' : '/rest/v1/rpc/request_access');
+    var url = SB + (TS_KEY ? '/functions/v1/request-access' : '/rest/v1/rpc/request_access');
     var body = TS_KEY ? { email: email, name: f.name.value, note: f.note.value, token: tsToken }
                       : { p_email: email, p_name: f.name.value, p_note: f.note.value };
     fetch(url, {
