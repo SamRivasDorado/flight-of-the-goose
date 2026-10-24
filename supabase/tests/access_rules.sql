@@ -142,4 +142,7 @@ do $$ begin
   exception when raise_exception then if sqlerrm like 'FAILED%' then raise; end if; end;
 end $$;
 reset role;
+
+-- Approving works even where no email can be sent (no Vault key here)
+select pg_temp.check((select decided_at is not null and emailed_at is null from access_requests where email = 'newbie@example.com'), 'approval is recorded and survives a missing email setup');
 select 'ALL ACCESS TESTS PASSED' as result;
