@@ -152,6 +152,25 @@ update workspaces set solo = true where created_by = auth.uid();
 select pg_temp.check((select solo from workspaces where created_by = auth.uid()), 'the admin switches solo mode');
 update workspaces set solo = false where created_by = auth.uid();
 
+-- More workspaces: anyone creates one and becomes its admin; a name and picture can differ per workspace
+select pg_temp.login('00000000-0000-0000-0000-00000000000b');
+create temp table ws2 as select create_workspace('Omar side projects') id;
+select pg_temp.check((select access from workspace_members where workspace_id = (select id from ws2) and user_id = auth.uid()) = 'admin', 'creating a workspace makes you its admin');
+select pg_temp.check((select display_name from workspace_members where workspace_id = (select id from ws2) and user_id = auth.uid()) = 'Omar El-Sayed', 'a new workspace starts from your profile');
+select pg_temp.check((select count(*) from field_options where workspace_id = (select id from ws2)) = 3, 'a new workspace gets the Priority dimension');
+select save_my_membership((select id from ws2), 'Omar (personal)', 'Hobbyist', null, null);
+select pg_temp.check((select display_name from workspace_members where workspace_id = (select id from ws2) and user_id = auth.uid()) = 'Omar (personal)'
+  and (select display_name from workspace_members where workspace_id = (select w from ids) and user_id = auth.uid()) = 'Omar El-Sayed', 'a name can differ per workspace');
+select pg_temp.check((select access from workspace_members where workspace_id = (select w from ids) and user_id = auth.uid()) = 'member', 'changing your name does not change your role');
+do $$ begin
+  begin perform save_my_membership(gen_random_uuid(), 'X', '', null, null); raise exception 'FAILED: renamed in a workspace they are not in';
+  exception when raise_exception then if sqlerrm like 'FAILED%' then raise; end if; raise notice 'ok  only in your own workspaces'; end;
+  begin perform create_workspace('   '); raise exception 'FAILED: empty workspace name accepted';
+  exception when raise_exception then if sqlerrm like 'FAILED%' then raise; end if; raise notice 'ok  a workspace needs a name'; end;
+end $$;
+select pg_temp.login('00000000-0000-0000-0000-00000000000a');
+select pg_temp.check(not exists (select 1 from workspaces where name = 'Omar side projects'), 'other people do not see your new workspace');
+
 -- A stranger signs up: own empty workspace, sees nothing of Sam's
 select pg_temp.login('00000000-0000-0000-0000-00000000000e');
 select count(*) from on_login(null);

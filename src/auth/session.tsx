@@ -17,6 +17,8 @@ interface SessionState {
   /** The person's own profile; null until loaded, or when the database has no profile columns yet. */
   profile: Profile | null;
   refreshProfile: () => Promise<void>;
+  /** Re-reads the workspaces you belong to (after creating one). */
+  reloadWorkspaces: () => Promise<void>;
 }
 
 const Ctx = createContext<SessionState | null>(null);
@@ -79,6 +81,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     doneRecovering: () => setRecovering(false),
     profile,
     refreshProfile: async () => { if (session) await loadProfile(session.user.id); },
+    reloadWorkspaces: async () => { if (session) await bootstrap(session); },
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

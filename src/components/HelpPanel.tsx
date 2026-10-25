@@ -15,6 +15,7 @@ const TOPICS: Topic[] = [
       <li><b>Tasks.</b> The concrete things to do, with a due date, an assignee and the time spent. A task usually sits in a project; it can also be linked straight to a goal.</li>
     </ol>
     <p>Progress flows upwards: finishing tasks moves the project forward, and the project’s tasks move its goals forward. So you plan from the top and work from the bottom.</p>
+    <p><b>Workspaces</b> keep separate worlds apart, for example your company and an association: each has its own goals, projects, tasks and people. Click your picture (top right) to switch between them or create a new one. Your role can differ per workspace, and so can the name and picture people see.</p>
     <p className="hint">The top bar follows the same order: Timeline for the overview, then Strategy, Projects and Tasks, then Review, Team and Insights to look back and share.</p></> },
   { id: 'timeline', title: 'Timeline', icon: 'timeline', page: 'timeline', go: '#/timeline', body: <>
     <p className="lead">The home screen: everything on one time line, so you see at a glance what is running, what is coming and what has slipped.</p>

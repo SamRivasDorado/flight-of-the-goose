@@ -4,14 +4,15 @@ import { LensProvider } from '../lib/lens';
 import { SoloProvider, useSolo } from '../lib/solo';
 import { LensBar } from '../components/Lens';
 import { HelpPanel } from '../components/HelpPanel';
-import { ProfileDialog, Welcome } from '../components/ProfileForm';
+import { Welcome } from '../components/ProfileForm';
+import { WorkspaceMenu } from '../components/WorkspaceMenu';
 import { TaskSheet } from '../components/TaskSheet';
 import { useSession } from '../auth/session';
 import { Login, SetNewPassword } from '../auth/Login';
 import { isConfigured } from '../lib/supabase';
-import { ACCESS_LABEL, canEdit } from '../lib/types';
+import { canEdit } from '../lib/types';
 import { APP_NAME, DEFAULT_PALETTE, PALETTES } from '../config';
-import { Avatar, Icon, Logo } from '../components/Logo';
+import { Icon, Logo } from '../components/Logo';
 import { Projects } from '../pages/Projects';
 import { ProjectPage } from '../pages/ProjectPage';
 import { Tasks } from '../pages/Tasks';
@@ -53,7 +54,7 @@ function SignedInGate() {
 function Shell() {
   const { solo } = useSolo();
   const [help, setHelp] = useState(false);
-  const { current, workspaces, switchWorkspace, signOut } = useSession();
+  const { signOut, current } = useSession();
   const [page, setPage] = useState(pageFromHash);
   const [projectId, setProjectId] = useState(projectIdFromHash);
   useEffect(() => { const f = () => { setPage(pageFromHash()); setProjectId(projectIdFromHash()); }; addEventListener('hashchange', f); return () => removeEventListener('hashchange', f); }, []);
@@ -69,12 +70,8 @@ function Shell() {
             {navl(...NAV[0])}<i className="navsep" />{NAV.slice(1, 4).map(n => navl(...n))}<i className="navsep" />{NAV.slice(4).filter(n => !(solo && n[0] === 'team')).map(n => navl(...n))}
           </nav>
           <TopTools />
-          {workspaces.length > 1 && (
-            <select className="field-in" aria-label="Workspace" value={current!.workspace_id} onChange={e => switchWorkspace(e.target.value)}>
-              {workspaces.map(w => <option key={w.workspace_id} value={w.workspace_id}>{w.workspace_name} · {ACCESS_LABEL[w.access]}</option>)}
-            </select>)}
           <button className="btn sm ghost" onClick={() => setHelp(h => !h)} title="Help"><Icon name="help" />Help</button>
-          <MeButton />
+          <WorkspaceMenu />
           <button className="btn sm ghost" onClick={() => void signOut()} title="Sign out"><Icon name="out" />Sign out</button>
         </div>
         <div className="stripe" aria-hidden="true"><i /><i /><i /><i /></div>
@@ -131,20 +128,6 @@ function SetupNeeded() {
       <p className="muted" style={{ margin: 0 }}>The README walks through creating the Supabase project.</p>
     </div></div>
   );
-}
-
-/** Your picture in the top bar; opens "Your profile". */
-function MeButton() {
-  const { profile, session } = useSession();
-  const ui = useUI();
-  const [open, setOpen] = useState(false);
-  if (!profile) return null;
-  return (
-    <>
-      <button className="mebtn" title={`Your profile (${session?.user.email ?? ''})`} aria-label="Your profile" onClick={() => setOpen(true)}>
-        <Avatar m={{ display_name: profile.full_name || '?', color: profile.color ?? '#5B83B5', title: profile.title, avatar_url: profile.avatar_url }} size="lg" /></button>
-      {open && <ProfileDialog onClose={() => setOpen(false)} onSaved={() => { setOpen(false); ui.changed(); }} />}
-    </>);
 }
 
 /** Shown if someone opens the Team address while solo mode is on. */

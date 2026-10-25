@@ -582,3 +582,15 @@ button.brand:hover{background:var(--bar-hi)}
 @media (max-width:760px){.helpbody{grid-template-columns:minmax(0,1fr)}.helpnav{flex-direction:row;flex-wrap:wrap;border-right:0;border-bottom:1px solid var(--raise-line)}}
 .dropask{position:fixed;z-index:55;width:min(340px,calc(100vw - 24px));background:var(--raise);border:1px solid var(--raise-line);border-radius:12px;box-shadow:0 14px 40px rgb(0 0 0 / .3);padding:12px 14px;display:flex;flex-direction:column;gap:10px;font-size:13.5px}
 .dropask .dq{overflow-wrap:anywhere}
+
+/* ===== You and your workspaces (menu on your picture) ===== */
+.wsmenu{position:relative}
+.wspop{position:absolute;right:0;top:calc(100% + 8px);z-index:45;width:300px;background:var(--raise);color:var(--fg);border:1px solid var(--raise-line);border-radius:12px;box-shadow:0 14px 40px rgb(0 0 0 / .3);padding:6px;display:flex;flex-direction:column;gap:1px;max-height:calc(100vh - 90px);overflow:auto}
+.wshead{display:flex;gap:10px;align-items:center;padding:8px 8px 10px}
+.wsitem{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:8px;text-align:left;font-size:14px;color:var(--fg)}
+.wsitem:hover{background:var(--raise-2)}
+.wsitem.on{font-weight:600}
+.wsitem .tn{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wscheck{width:16px;display:inline-grid;place-items:center;color:var(--accent)}
+.wssep{border-top:1px solid var(--raise-line);margin:4px 2px;padding:8px 6px 2px;font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.wssep:empty{padding:0}
