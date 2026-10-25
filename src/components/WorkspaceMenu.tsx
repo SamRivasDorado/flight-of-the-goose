@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useSession } from '../auth/session';
 import { db } from '../lib/supabase';
@@ -16,10 +16,25 @@ export function WorkspaceMenu() {
   const [open, setOpen] = useState(false);
   const [dialog, setDialog] = useState<null | 'profile' | 'new' | 'rename'>(null);
   const box = useRef<HTMLDivElement>(null);
+  const pop = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+  // Place the menu under your picture, but always inside the window: the top bar wraps
+  // in narrow windows, so the picture is not always at the right-hand edge.
+  useLayoutEffect(() => {
+    if (!open) { setPos(null); return; }
+    const place = () => {
+      const b = box.current?.getBoundingClientRect(), w = pop.current?.offsetWidth ?? 300;
+      if (!b) return;
+      const left = Math.max(8, Math.min(b.right - w, innerWidth - w - 8));
+      setPos({ left, top: b.bottom + 8 });
+    };
+    place(); addEventListener('resize', place); addEventListener('scroll', place, true);
+    return () => { removeEventListener('resize', place); removeEventListener('scroll', place, true); };
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
-    const click = (e: MouseEvent) => { if (!box.current?.contains(e.target as Node)) setOpen(false); };
+    const click = (e: MouseEvent) => { const t = e.target as Node; if (!box.current?.contains(t) && !pop.current?.contains(t)) setOpen(false); };
     const key = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
     addEventListener('mousedown', click); addEventListener('keydown', key);
     return () => { removeEventListener('mousedown', click); removeEventListener('keydown', key); };
@@ -41,7 +56,7 @@ export function WorkspaceMenu() {
         title={`${who.display_name} · ${current.workspace_name}`} onClick={() => setOpen(o => !o)}>
         <Avatar m={who} size="lg" /></button>
       {open && (
-        <div className="wspop" role="menu">
+        createPortal(<div className="wspop" role="menu" ref={pop} style={pos ?? { visibility: 'hidden', left: 0, top: 0 }}>
           <div className="wshead"><Avatar m={who} size="xl" />
             <div style={{ minWidth: 0 }}><b>{who.display_name}</b>
               <div className="muted" style={{ fontSize: 12 }}>{ACCESS_LABEL[current.access]} in {current.workspace_name}</div>
@@ -55,7 +70,7 @@ export function WorkspaceMenu() {
               <span className="tn">{w.workspace_name}</span><span className="tag">{ACCESS_LABEL[w.access]}</span></button>))}
           <button className="wsitem" role="menuitem" onClick={() => { setOpen(false); setDialog('new'); }}><Icon name="plus" />New workspace</button>
           {current.access === 'admin' && <button className="wsitem" role="menuitem" onClick={() => { setOpen(false); setDialog('rename'); }}><Icon name="gear" />Rename this workspace</button>}
-        </div>)}
+        </div>, document.body))}
       {dialog === 'profile' && <ProfileDialog onClose={() => setDialog(null)} onSaved={() => { setDialog(null); ui.changed(); }} />}
       {(dialog === 'new' || dialog === 'rename') && <NameDialog mode={dialog} onClose={() => setDialog(null)} onDone={id => { setDialog(null); if (id) go(id); }} />}
     </div>);

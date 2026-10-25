@@ -585,7 +585,7 @@ button.brand:hover{background:var(--bar-hi)}
 
 /* ===== You and your workspaces (menu on your picture) ===== */
 .wsmenu{position:relative}
-.wspop{position:absolute;right:0;top:calc(100% + 8px);z-index:45;width:300px;background:var(--raise);color:var(--fg);border:1px solid var(--raise-line);border-radius:12px;box-shadow:0 14px 40px rgb(0 0 0 / .3);padding:6px;display:flex;flex-direction:column;gap:1px;max-height:calc(100vh - 90px);overflow:auto}
+.wspop{position:fixed;z-index:45;width:min(300px,calc(100vw - 16px));background:var(--raise);color:var(--fg);border:1px solid var(--raise-line);border-radius:12px;box-shadow:0 14px 40px rgb(0 0 0 / .3);padding:6px;display:flex;flex-direction:column;gap:1px;max-height:calc(100vh - 90px);overflow:auto}
 .wshead{display:flex;gap:10px;align-items:center;padding:8px 8px 10px}
 .wsitem{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:8px;text-align:left;font-size:14px;color:var(--fg)}
 .wsitem:hover{background:var(--raise-2)}

@@ -123,17 +123,15 @@ export function ProfileDialog({ onClose, onSaved }: { onClose: () => void; onSav
   return <ProfileDialogInner me={me} onClose={onClose} onSaved={onSaved} />;
 }
 
-/** True when your name or picture in this workspace differs from your general profile. */
-const differs = (me: Member, p: { full_name: string; title: string; color: string | null; avatar_url: string | null } | null) =>
-  !!p && (me.display_name !== p.full_name || (me.title ?? '') !== (p.title ?? '') || (me.avatar_url ?? null) !== (p.avatar_url ?? null) || (p.color != null && me.color !== p.color));
-
 function ProfileDialogInner({ me, onClose, onSaved }: { me: Member; onClose: () => void; onSaved: () => void }) {
-  const { refreshProfile, session, workspaces, current, profile } = useSession();
+  const { refreshProfile, session, workspaces, current } = useSession();
   // start from what people see in THIS workspace
   const [d, setD] = useState<Draft>({ name: me.display_name, title: me.title ?? '', color: me.color, avatar_url: me.avatar_url ?? null });
   const set = (p: Partial<Draft>) => setD(cur => ({ ...cur, ...p }));
   const several = workspaces.length > 1;
-  const [scope, setScope] = useState<'all' | 'here'>(() => (several && differs(me, profile) ? 'here' : 'all'));
+  // With several workspaces, a change stays in this one unless you choose otherwise:
+  // overwriting the others without noticing is the surprise to avoid.
+  const [scope, setScope] = useState<'all' | 'here'>(several ? 'here' : 'all');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   useEffect(() => {
@@ -156,16 +154,16 @@ function ProfileDialogInner({ me, onClose, onSaved }: { me: Member; onClose: () 
     <div className="scrim" onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal" role="dialog" aria-label="Your profile"><h2>Your profile</h2>
         <div className="mbody">
-          <ProfileFields d={d} set={set} busy={busy} setBusy={setBusy} setErr={setErr} />
           {several
-            ? <div><span className="lbl">Use this name and picture in</span>
+            ? <div><span className="lbl">Change your name, job title and picture in</span>
                 <div className="kindpick">
                   <label className={scope === 'all' ? 'on' : ''}><input type="radio" name="pf-scope" checked={scope === 'all'} onChange={() => setScope('all')} />
-                    <span><b>All my workspaces</b>The same in all {workspaces.length}, replacing any different name or picture you use elsewhere.</span></label>
+                    <span><b>All my workspaces</b>The same in all {workspaces.length}, replacing what you use in the others.</span></label>
                   <label className={scope === 'here' ? 'on' : ''}><input type="radio" name="pf-scope" checked={scope === 'here'} onChange={() => setScope('here')} />
-                    <span><b>Only in {current?.workspace_name}</b>The other workspaces keep their own.</span></label>
+                    <span><b>Only in {current?.workspace_name}</b>Your other workspaces keep their own.</span></label>
                 </div></div>
             : null}
+          <ProfileFields d={d} set={set} busy={busy} setBusy={setBusy} setErr={setErr} />
           <div className="hint">Signed in as {session?.user.email}. Your role in {current?.workspace_name} is <b>{ACCESS_LABEL[current!.access]}</b>{current?.access === 'admin' ? '.' : '; the workspace’s admins set it.'}</div>
           <SoloSetting onError={setErr} />
         </div>
