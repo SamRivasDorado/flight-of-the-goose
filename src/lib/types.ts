@@ -33,6 +33,8 @@ export interface Project {
   created_at: string;
   kind: 'fixed' | 'ongoing';
   status: 'active' | 'paused' | 'closed';
+  /** The day it was marked done (migration 20261026100000; absent before it runs). */
+  completed_at?: string | null;
   start_date: string | null;
   end_date: string | null;
   owner_member_id: string | null;

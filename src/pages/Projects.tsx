@@ -37,7 +37,7 @@ export function Projects() {
 
   return (
     <>
-      <div className="ph"><h1>Projects</h1>{data && <span className="sub">{live.length} live · {closed.length} closed</span>}<span className="grow" />
+      <div className="ph"><h1>Projects</h1>{data && <span className="sub">{live.length} live · {closed.length} done</span>}<span className="grow" />
         {manager && <button className="btn primary" onClick={() => setDialog({})}><Icon name="plus" />New project</button>}</div>
       {error && <div className="err">{error}</div>}
       {data && (
@@ -47,7 +47,7 @@ export function Projects() {
             <span className="tonedot tone-warn"><b>{tally.warn}</b> need attention</span>
             <span className="tonedot tone-quiet"><b>{tally.quiet}</b> quiet</span>
             <span className="tonedot tone-bad"><b>{tally.bad}</b> off track</span>
-            <span className="tonedot tone-idle"><b>{tally.idle}</b> paused or closed</span>
+            <span className="tonedot tone-idle"><b>{tally.idle}</b> paused or done</span>
           </div>
           <details className="criteria" open={critOpen} onToggle={e => setCritOpen((e.target as HTMLDetailsElement).open)}>
             <summary>How project status is decided</summary>
@@ -60,7 +60,7 @@ export function Projects() {
                 <li><span className="tonedot tone-good">Active</span><span>Something happened in the last 30 days (a task created or completed, or a notebook entry) and nothing is overdue.</span></li>
                 <li><span className="tonedot tone-warn">Overdue</span><span>At least one open task is past its due date.</span></li>
                 <li><span className="tonedot tone-quiet">Quiet</span><span>Nothing has happened for more than 30 days.</span></li></ul>
-                <h4 style={{ marginTop: 10 }}>Any project</h4><ul><li><span className="tonedot tone-idle">Paused, Closed</span><span>Set by you in the project settings.</span></li></ul></div>
+                <h4 style={{ marginTop: 10 }}>Any project</h4><ul><li><span className="tonedot tone-idle">Paused, Done</span><span>Set by you: <b>Mark as done</b> on the project, or its settings.</span></li></ul></div>
             </div>
           </details>
           {ps.length === 0 && !manager && <div className="empty">You are not part of any project yet.</div>}
@@ -70,7 +70,7 @@ export function Projects() {
           <div className="sech">Ongoing <span className="muted" style={{ fontSize: 13 }}>· support, internal work and anything without an end date</span></div>
           <div className="wall">{ongoing.map(card)}
             {manager && <button className="newcard" onClick={() => setDialog({ kind: 'ongoing' })}><Icon name="plus" />New ongoing project</button>}</div>
-          {closed.length > 0 && <><div className="sech">Closed</div><div className="wall">{closed.map(card)}</div></>}
+          {closed.length > 0 && <><div className="sech">Done</div><div className="wall">{closed.map(card)}</div></>}
         </>
       )}
       {dialog && <ProjectDialog project={null} kind={dialog.kind} count={ps.length} onClose={() => setDialog(null)}
@@ -91,7 +91,7 @@ function Sparkline({ vals, color }: { vals: number[]; color: string }) {
 }
 
 export function KindBadge({ p }: { p: Pick<ProjectFull, 'status' | 'kind'> }) {
-  return <span className="tag">{p.status === 'closed' ? 'Closed' : p.status === 'paused' ? 'Paused' : p.kind === 'fixed' ? 'Fixed term' : 'Ongoing'}</span>;
+  return <span className="tag">{p.status === 'closed' ? 'Done' : p.status === 'paused' ? 'Paused' : p.kind === 'fixed' ? 'Fixed term' : 'Ongoing'}</span>;
 }
 
 export function AvStack({ list, max = 5 }: { list: Member[]; max?: number }) {

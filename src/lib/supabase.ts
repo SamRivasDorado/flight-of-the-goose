@@ -1,10 +1,14 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { createDemoClient } from '../demo/client';
+
+/** The prototype build (VITE_DEMO=1): same app, sample data in the browser, no real database. */
+export const isDemo = import.meta.env.VITE_DEMO === '1';
 
 const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const key = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
 /** True when .env.local holds the project URL and anon key. */
-export const isConfigured = Boolean(url && key && !url.includes('your-project-ref'));
+export const isConfigured = isDemo || Boolean(url && key && !url.includes('your-project-ref'));
 
 /**
  * What the page address said when it was opened, read BEFORE the client below tidies it away:
@@ -21,7 +25,7 @@ export const landingLinkError: string | null = (() => {
 })();
 
 /** Null until the app is configured; the app shows a setup screen instead. */
-export const supabase: SupabaseClient | null = isConfigured ? createClient(url!, key!) : null;
+export const supabase: SupabaseClient | null = isDemo ? createDemoClient() : isConfigured ? createClient(url!, key!) : null;
 
 export function db(): SupabaseClient {
   if (!supabase) throw new Error('Supabase is not configured. Copy .env.example to .env.local.');

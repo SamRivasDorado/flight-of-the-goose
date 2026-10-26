@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useSolo } from '../lib/solo';
 import { useWorkspace } from '../auth/session';
-import { addNote, createTask, deleteNote, listMembers, listNoteDates, listNotes, listProjectsFull, todayISO, updateNote, useLoad } from '../lib/data';
+import { addNote, createTask, deleteNote, listMembers, listNoteDates, listNotes, listProjectsFull, setProjectDone, todayISO, updateNote, useLoad } from '../lib/data';
 import { canEdit, canManage, NOTE_KINDS, type Member, type Note, type NoteKind, type ProjectFull, type TaskFull } from '../lib/types';
 import { useLocalPref, useUI } from '../lib/ui';
 import { byDue, dueLabel, parseISO } from '../lib/format';
@@ -25,6 +25,8 @@ export function ProjectPage({ id }: { id: string }) {
   const v = useTaskViews(id);
   const [tab, setTab] = useLocalPref<PTab>('projectTab', 'notebook');
   const [settings, setSettings] = useState(false);
+  const [doneErr, setDoneErr] = useState<string | null>(null);
+  const [doneBusy, setDoneBusy] = useState(false);
 
   if (error) return <div className="err">{error}</div>;
   if (!data) return <span className="muted">Loading…</span>;
@@ -38,6 +40,12 @@ export function ProjectPage({ id }: { id: string }) {
   const dates = p.kind === 'fixed'
     ? (p.start_date || p.end_date ? `${p.start_date ? fmtDate(p.start_date, long) : '?'} – ${p.end_date ? fmtDate(p.end_date, long) : '?'}` : 'No dates set')
     : (p.start_date ? `Running since ${fmtDate(p.start_date, { month: 'long', year: 'numeric' })}` : 'Ongoing');
+  async function markDone(done: boolean) {
+    setDoneBusy(true); setDoneErr(null);
+    try { await setProjectDone(p!, done); ui.changed(); await reload(); }
+    catch (e) { setDoneErr(e instanceof Error ? e.message : String(e)); }
+    finally { setDoneBusy(false); }
+  }
   const tabBtn = (t: PTab, ic: IconName, label: string) =>
     <button className={`tab ${tab === t ? 'on' : ''}`} onClick={() => setTab(t)}><Icon name={ic} />{label}</button>;
 
@@ -47,12 +55,17 @@ export function ProjectPage({ id }: { id: string }) {
       <div className="phead">
         <ProjectIcon p={p} size="lg" />
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}><h1>{p.name}</h1>
-          <div className="meta"><KindBadge p={p} /><span>{dates}</span><span className="pill" style={{ ['--c' as string]: h.color }}>{h.label}</span><ProjectDims id={p.id} /></div></div>
+          <div className="meta"><KindBadge p={p} /><span>{dates}</span>{p.status !== 'closed' && <span className="pill" style={{ ['--c' as string]: h.color }}>{h.label}</span>}<ProjectDims id={p.id} /></div></div>
         <span style={{ flex: 1 }} />
         {!solo && <div className="pagepeople"><span className="who">{owner && <Avatar m={owner} />}<span><b>{owner?.display_name ?? 'No owner'}</b><br /><span className="muted">Owner</span></span></span>
           <AvStack list={projectPeople(p, data.members)} max={7} /></div>}
+        {canSettings && (p.status === 'closed'
+          ? <span className="donebadge"><Icon name="check" />Done{p.completed_at ? ` · ${fmtDate(p.completed_at, long)}` : ''}
+              <button className="btn sm ghost" disabled={doneBusy} onClick={() => void markDone(false)}>Reopen</button></span>
+          : <button className="btn sm" disabled={doneBusy} onClick={() => void markDone(true)}><Icon name="check" />Mark as done</button>)}
         {canSettings && <button className="btn sm" onClick={() => setSettings(true)}><Icon name="gear" />Project settings</button>}
       </div>
+      {doneErr && <div className="err" style={{ marginBottom: 8 }}>{doneErr}</div>}
       <div className="tabs">{tabBtn('notebook', 'note', 'Notebook')}{tabBtn('list', 'list', 'List')}{tabBtn('board', 'board', 'Board')}{tabBtn('calendar', 'calendar', 'Calendar')}</div>
       {tab === 'notebook'
         ? <Notebook p={p} tasks={v.c.tasks} members={data.members} onTasks={() => setTab('list')} />

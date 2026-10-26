@@ -26,7 +26,7 @@ export function elapsed(p: Project): number {
 export function health(p: Project, tasks: Task[], noteDates: { project_id: string; entry_date: string }[]): Health {
   const ts = tasks.filter(t => t.project_id === p.id), open = ts.filter(t => t.status !== 'done');
   const overdue = open.filter(t => t.due_date && diffDays(t.due_date) < 0).length;
-  if (p.status === 'closed') return { label: 'Closed', color: '#7C8577', tone: 'idle' };
+  if (p.status === 'closed') return { label: 'Done', color: '#7C8577', tone: 'idle' };
   if (p.status === 'paused') return { label: 'Paused', color: '#B89A6A', tone: 'idle' };
   if (p.kind === 'fixed' && p.end_date) {
     if (diffDays(p.end_date) < 0 && open.length) return { label: 'Past end date', color: '#C8634A', tone: 'bad' };

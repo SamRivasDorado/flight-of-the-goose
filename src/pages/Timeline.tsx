@@ -7,6 +7,7 @@ import { useLens } from '../lib/lens';
 import { byDue, parseISO } from '../lib/format';
 import { fmtDate } from '../lib/projects';
 import { goalProgress, goalRange, goalStatus } from '../lib/goals';
+import { legProgress } from '../lib/legs';
 import { Icon } from '../components/Logo';
 import { NO_PROJECT_COLOR, ProjectIcon } from '../components/ProjectChip';
 import { GoalDialog } from '../components/GoalDialog';
@@ -80,10 +81,14 @@ export function Timeline() {
         <div key="gl" className="lname" style={{ height: h }}><a href="#/strategy"><span className="picon" style={{ ['--c' as string]: 'var(--sun)' }}><Icon name="target" /></span><span>Goals</span></a>
           <span className="lm">{goals.length} in view</span></div>,
         <div key="gt" className="track" style={{ height: h, width: W }}>{shading}{items.map(({ g, l, w, row }) => {
-          const st = goalStatus(g.status), pg = goalProgress(g, data.goals, data.tasks);
+          const st = goalStatus(g.status);
+          // open-ended goals are measured per quarter (legs), so their bar is not filled
+          const lp = !g.end_date && g.status !== 'achieved' ? legProgress(g, data.goals, data.tasks, data.projects) : null;
+          const pg = lp ? lp.pg : goalProgress(g, data.goals, data.tasks);
+          const txt = lp ? (lp.target == null ? `${lp.leg.short} first leg` : `${lp.leg.short} leg ${pg}%`) : `${pg}%`;
           return <button key={g.id} className={`gbar ${g.end_date ? '' : 'open'}`} style={{ ['--c' as string]: st.color, left: l, width: w, top: 8 + row * 28 }}
-            title={`${g.title} · ${goalRange(g)} · ${pg}%`} onClick={() => canManage(ws.access) ? setGoalDlg(g) : (location.hash = '#/strategy')}>
-            <i style={{ width: `${pg}%` }} /><span style={{ paddingLeft: Math.max(8, x(today) - 150 - l) }}>{g.title} · {pg}%</span></button>;
+            title={`${g.title} · ${goalRange(g)} · ${txt}`} onClick={() => canManage(ws.access) ? setGoalDlg(g) : (location.hash = '#/strategy')}>
+            {!lp && <i style={{ width: `${pg}%` }} />}<span style={{ paddingLeft: Math.max(8, x(today) - 150 - l) }}>{g.title} · {txt}</span></button>;
         })}</div>);
     }
     // project lanes: fixed term first, then ongoing, paused, closed

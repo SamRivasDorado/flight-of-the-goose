@@ -85,6 +85,12 @@ export async function saveProject(ws: string, existing: ProjectFull | null, d: P
   return p.id;
 }
 
+/** Marks a project done (status closed; the database records the day) or reopens it. */
+export async function setProjectDone(p: Pick<Project, 'id' | 'name' | 'status'>, done: boolean) {
+  check(await db().from('projects').update({ status: done ? 'closed' : 'active' }).eq('id', p.id).select('id').single());
+  if (done && p.status !== 'closed') celebrateProject(p.name);
+}
+
 export async function deleteProject(id: string) {
   check(await db().from('projects').delete().eq('id', id));
 }

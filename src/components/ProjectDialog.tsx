@@ -86,7 +86,7 @@ export function ProjectDialog({ project, kind, count, onClose, onSaved, onDelete
 
   const statusSel = (
     <select id="pm-status" className="field-in" style={{ width: '100%' }} value={d.status} onChange={e => set({ status: e.target.value as ProjectInput['status'] })}>
-      <option value="active">Active</option><option value="paused">Paused</option><option value="closed">Closed</option></select>);
+      <option value="active">Active</option><option value="paused">Paused</option><option value="closed">Done</option></select>);
   const hint = (t: string) => <div className="hint" style={{ margin: '-2px 0 8px' }}>{t}</div>;
 
   return (
