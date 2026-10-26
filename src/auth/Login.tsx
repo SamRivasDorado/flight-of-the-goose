@@ -12,6 +12,11 @@ const backTo = () => window.location.origin + import.meta.env.BASE_URL;
 /** The public website sits one level above the app (only when the app is served under /app/). */
 const websiteHref = import.meta.env.BASE_URL === '/' ? null : '/';
 
+/** Links in the approval and invitation emails open the "Create account" form with the address filled in: /app/?join=1&email=... */
+const joinParams = (() => {
+  try { const q = new URLSearchParams(window.location.search); return q.get('join') ? { email: q.get('email') ?? '' } : null; } catch { return null; }
+})();
+
 function friendly(message: string): string {
   const m = message.toLowerCase();
   if (m.includes('invalid login')) return 'That email and password do not match. If you signed in before with an email link, use “Forgot password?” to choose a password.';
@@ -25,8 +30,8 @@ function friendly(message: string): string {
 
 /** Sign in with email and password, create an account, reset a password, or get a one-time email link. */
 export function Login() {
-  const [mode, setMode] = useState<Mode>('signin');
-  const [email, setEmail] = useState('');
+  const [mode, setMode] = useState<Mode>(joinParams ? 'signup' : 'signin');
+  const [email, setEmail] = useState(joinParams?.email ?? '');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);

@@ -258,4 +258,47 @@ delete from vault.decrypted_secrets;
 insert into workspace_members (workspace_id, email, display_name) select w, 'nokey@example.com', 'No Key' from ids;
 select pg_temp.check((select count(*) from workspace_members where email = 'nokey@example.com') = 1 and (select count(*) from net.calls) = 0, 'without a Resend key the invitation is still saved');
 
+
+-- ---------------------------------------------------------------------
+-- Sign-up link in the emails, and "send again"
+select pg_temp.check(join_link('a+b@x.com') = 'https://flightofthegoose.com/app/?join=1&email=a%2Bb%40x.com', 'the sign-up link carries the email address, encoded');
+delete from net.calls; delete from vault.decrypted_secrets;
+insert into vault.decrypted_secrets values ('resend_api_key', 're_test');
+insert into access_requests (email, name) values ('link1@example.com', 'Lin');
+update access_requests set status = 'approved' where email = 'link1@example.com';
+select pg_temp.check((select body->>'html' from net.calls order by id desc limit 1) like '%?join=1&email=link1%40example.com%' and (select body->>'html' from net.calls order by id desc limit 1) like '%Create your account%', 'the approval email opens the create-account form');
+insert into workspace_members (workspace_id, email, display_name, access, invited_by)
+  select w, 'again@example.com', 'Again', 'member', sam from ids;
+select pg_temp.check((select body->>'html' from net.calls order by id desc limit 1) like '%?join=1&email=again%40example.com%', 'the invitation email opens the create-account form');
+
+set role authenticated;
+select pg_temp.login('00000000-0000-0000-0000-00000000000a');
+do $$ begin
+  begin perform resend_invitation((select id from workspace_members where email = 'again@example.com'));
+    raise exception 'FAILED: resent twice in a row';
+  exception when raise_exception then if sqlerrm like 'FAILED%' then raise; end if; end;
+end $$;
+reset role;
+update workspace_members set invite_emailed_at = now() - interval '1 hour' where email = 'again@example.com';
+delete from net.calls;
+set role authenticated;
+select resend_invitation((select id from workspace_members where email = 'again@example.com'));
+reset role;
+select pg_temp.check((select count(*) from net.calls where body->'to' = '["again@example.com"]'::jsonb) = 1, 'an admin can send an invitation again');
+select pg_temp.check((select invite_emailed_at > now() - interval '1 minute' from workspace_members where email = 'again@example.com'), 'sending again is recorded');
+set role authenticated;
+select pg_temp.login('00000000-0000-0000-0000-00000000000b');
+do $$ begin
+  begin perform resend_invitation((select id from workspace_members where email = 'again@example.com'));
+    raise exception 'FAILED: a member resent an invitation';
+  exception when raise_exception then if sqlerrm like 'FAILED%' then raise; end if; end;
+end $$;
+select pg_temp.login('00000000-0000-0000-0000-00000000000a');
+do $$ begin
+  begin perform resend_invitation((select member_id from ws));
+    raise exception 'FAILED: invited someone who already joined';
+  exception when raise_exception then if sqlerrm like 'FAILED%' then raise; end if; end;
+end $$;
+reset role;
+
 select 'ALL ACCESS TESTS PASSED' as result;

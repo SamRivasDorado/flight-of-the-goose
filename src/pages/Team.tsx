@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useWorkspace } from '../auth/session';
+import { db } from '../lib/supabase';
 import { listMembers, listProjectsFull, listTasks, listTeams, useLoad } from '../lib/data';
 import { ACCESS_DESC, ACCESS_LABEL, canManage, type Member, type ProjectFull, type Task, type Team } from '../lib/types';
 import { useLocalPref, useUI } from '../lib/ui';
@@ -34,6 +35,13 @@ export function Team() {
   const canEditTeam = (t: Team) => isAdmin || t.lead_member_id === ws.member_id;
   const roleIn = (p: ProjectFull, id: string): Role | null =>
     p.owner_member_id === id ? 'owner' : p.member_ids.includes(id) ? 'member' : p.team_ids.some(tid => teams.find(t => t.id === tid)?.member_ids.includes(id)) ? 'team' : null;
+  const [resending, setResending] = useState<string | null>(null);
+  async function resend(m: Member) {
+    setResending(m.id); setMsg(null);
+    const { error } = await db().rpc('resend_invitation', { p_member: m.id });
+    setResending(null);
+    setMsg(error ? (error.message.includes('resend_invitation') ? 'Sending again is not available yet: the database update has not been applied.' : error.message) : `We sent the invitation to ${m.email} again.`);
+  }
   const done = () => { setTeamDlg(null); setPersonDlg(null); ui.changed(); void reload(); };
 
   return (
@@ -59,7 +67,8 @@ export function Team() {
             : <div className="pcgrid">{people.map(m => (
                 <PersonCard key={m.id} m={m} me={m.id === ws.member_id} teams={teams} tasks={tasks} roleIn={roleIn}
                   projects={projects.filter(p => p.status !== 'closed' && roleIn(p, m.id))}
-                  onTeam={setSel} onEdit={isAdmin ? () => setPersonDlg(m) : undefined} />))}
+                  onTeam={setSel} onEdit={isAdmin ? () => setPersonDlg(m) : undefined}
+                  onResend={isAdmin && m.status === 'invited' ? () => void resend(m) : undefined} resending={resending === m.id} />))}
                 {people.length === 0 && <div className="empty">No one in this team yet.</div>}</div>}
         </div>
       </div>
@@ -88,9 +97,9 @@ function TeamHero({ t, members, projects, canEdit, onEdit }: { t: Team; members:
     </header>);
 }
 
-function PersonCard({ m, me, teams, tasks, projects, roleIn, onTeam, onEdit }: {
+function PersonCard({ m, me, teams, tasks, projects, roleIn, onTeam, onEdit, onResend, resending }: {
   m: Member; me: boolean; teams: Team[]; tasks: Task[]; projects: ProjectFull[]; roleIn: (p: ProjectFull, id: string) => Role | null;
-  onTeam: (id: string) => void; onEdit?: () => void;
+  onTeam: (id: string) => void; onEdit?: () => void; onResend?: () => void; resending?: boolean;
 }) {
   const mine = tasks.filter(t => t.assignee_member_id === m.id), open = mine.filter(t => t.status !== 'done');
   const d30 = mine.filter(t => t.status === 'done' && t.completed_at && diffDays(t.completed_at) >= -30);
@@ -106,6 +115,7 @@ function PersonCard({ m, me, teams, tasks, projects, roleIn, onTeam, onEdit }: {
             {teams.filter(t => t.member_ids.includes(m.id)).map(t => (
               <button key={t.id} className="tchip" onClick={() => onTeam(t.id)}><TeamAvatar t={t} size="xs" />{t.name}{t.lead_member_id === m.id ? ' · lead' : ''}</button>))}</div>
         </div>
+        {onResend && <button className="btn sm" onClick={onResend} disabled={resending} title="Email the invitation to this person again">{resending ? 'Sending…' : 'Send again'}</button>}
         {onEdit && <button className="iconbtn" onClick={onEdit} aria-label={`Edit ${m.display_name}`}><Icon name="edit" /></button>}
       </div>
       <div className="pcstats">
