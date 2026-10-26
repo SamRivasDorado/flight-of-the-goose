@@ -43,7 +43,7 @@ export interface Tables { goals: Cell[][]; projects: Cell[][]; tasks: Cell[][] }
 
 const TASK_STATUS_LABEL = (s: string) => (STATUSES.find(x => x.id === s) ?? STATUSES[0]).label;
 const GOAL_STATUS_LABEL = (s: string) => (GOAL_STATUSES.find(x => x.id === s) ?? GOAL_STATUSES[0]).label;
-const PROJECT_STATUS: Record<string, string> = { active: 'Active', paused: 'Paused', closed: 'Closed' };
+const PROJECT_STATUS: Record<string, string> = { active: 'Active', paused: 'Paused', closed: 'Done' };
 
 /** Top-level goals, each followed by its sub-goals. */
 const ordered = (goals: Goal[]) => goals.filter(g => !g.parent_id).flatMap(g => [g, ...goals.filter(k => k.parent_id === g.id)]);
@@ -81,7 +81,7 @@ const README: string[] = [
   'Dimension columns (Priority, Region, …) use the option labels. A label Goose does not know yet is added as a new option.',
   'Subtasks: one per line inside the cell, written as “[x] done subtask” or “[ ] open subtask”. Linked projects: names separated by semicolons.',
   'People (Owner, Assignee, Members, Collaborators) are matched by their name as shown on the Team page, or by email. Several are separated by semicolons.',
-  'An empty End on a goal means open-ended. Status values: To do, In progress, Done for tasks; Active, Paused, Closed for projects; On track, At risk, Off track, Achieved for goals.',
+  'An empty End on a goal means open-ended. Status values: To do, In progress, Done for tasks; Active, Paused, Done for projects; On track, At risk, Off track, Achieved for goals.',
   'Importing adds and updates items; it never deletes anything.',
 ];
 
@@ -287,7 +287,7 @@ export async function runImport(tables: ImportTables, d: WsData, ctx: { ws: stri
       const was = psig(p);
       p.name = name;
       const kind = lc(val(r, 'Kind')); if (kind) p.kind = /fix/.test(kind) ? 'fixed' : 'ongoing';
-      const st = lc(val(r, 'Status')); if (st) p.status = /paus/.test(st) ? 'paused' : /clos/.test(st) ? 'closed' : 'active';
+      const st = lc(val(r, 'Status')); if (st) p.status = /paus/.test(st) ? 'paused' : /clos|done|complet/.test(st) ? 'closed' : 'active';
       const sd = date(r, 'Start', name); if (sd !== undefined) p.start_date = sd || null;
       const ed = date(r, 'End', name); if (ed !== undefined) p.end_date = ed || null;
       if (p.kind !== 'fixed') p.end_date = null; else if (!p.end_date) W.push(`Project “${name}” is fixed term but has no end date.`);

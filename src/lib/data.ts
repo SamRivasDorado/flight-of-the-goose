@@ -85,6 +85,19 @@ export async function saveProject(ws: string, existing: ProjectFull | null, d: P
   return p.id;
 }
 
+/** Ids of a project's open tasks (whatever the Lens or search shows). */
+export async function listOpenTaskIds(projectId: string): Promise<string[]> {
+  return (check(await db().from('tasks').select('id').eq('project_id', projectId).neq('status', 'done')) as { id: string }[]).map(t => t.id);
+}
+
+/** Marks a project complete (status closed; the database records the day) or reopens it.
+    `alsoTasks` are its open tasks to complete at the same time (one V of geese, not a goose each). */
+export async function setProjectDone(p: Pick<Project, 'id' | 'name' | 'status'>, done: boolean, alsoTasks: string[] = []) {
+  if (done && alsoTasks.length) check(await db().from('tasks').update({ status: 'done', completed_at: todayISO() }).in('id', alsoTasks));
+  check(await db().from('projects').update({ status: done ? 'closed' : 'active' }).eq('id', p.id).select('id').single());
+  if (done && p.status !== 'closed') celebrateProject(p.name);
+}
+
 export async function deleteProject(id: string) {
   check(await db().from('projects').delete().eq('id', id));
 }

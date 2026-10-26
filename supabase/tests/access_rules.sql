@@ -301,4 +301,14 @@ do $$ begin
 end $$;
 reset role;
 
+-- ---------------------------------------------------------------------
+-- A project records when it was marked done, and forgets it when reopened
+update projects set status = 'closed' where name = 'P3 client';
+select pg_temp.check((select completed_at = current_date from projects where name = 'P3 client'), 'marking a project done records the day');
+update projects set status = 'closed', completed_at = date '2026-01-15' where name = 'P2 private';
+update projects set name = 'P2 private' , status = 'closed' where name = 'P2 private';
+select pg_temp.check((select completed_at = date '2026-01-15' from projects where name = 'P2 private'), 'a done project keeps its day when saved again');
+update projects set status = 'active' where name = 'P3 client';
+select pg_temp.check((select completed_at is null from projects where name = 'P3 client'), 'reopening clears the day');
+
 select 'ALL ACCESS TESTS PASSED' as result;
