@@ -11,7 +11,8 @@ import { TaskSheet } from '../components/TaskSheet';
 import { useSession } from '../auth/session';
 import { Login, SetNewPassword } from '../auth/Login';
 import { isConfigured } from '../lib/supabase';
-import { canEdit } from '../lib/types';
+import { canEdit, canManage } from '../lib/types';
+import { DataDialog } from '../components/DataDialog';
 import { APP_NAME, DEFAULT_PALETTE, PALETTES } from '../config';
 import { Icon, Logo } from '../components/Logo';
 import { Projects } from '../pages/Projects';
@@ -104,6 +105,7 @@ function TopTools() {
   const { current } = useSession();
   const ui = useUI();
   const [palette, setPalette] = useLocalPref<string>('palette', DEFAULT_PALETTE);
+  const [dataOpen, setDataOpen] = useState(false);
   useEffect(() => { document.documentElement.dataset.palette = palette; }, [palette]);
   const ws = current!;
 
@@ -115,6 +117,8 @@ function TopTools() {
         <input type="search" placeholder="Search tasks" aria-label="Search tasks" value={ui.q}
           onChange={e => { ui.setQ(e.target.value); if (e.target.value && !showsTasks()) location.hash = '#/tasks'; }} /></label>
       {canEdit(ws.access) && <button className="btn primary" onClick={newTask}><Icon name="plus" />New task</button>}
+      {canManage(ws.access) && <button className="iconbtn databtn" title="Data: export, import and backup" aria-label="Data: export, import and backup" onClick={() => setDataOpen(true)}><Icon name="save" /></button>}
+      {dataOpen && <DataDialog onClose={() => setDataOpen(false)} />}
       <label className="palbtn" title={`Colour palette: ${PALETTES[palette as keyof typeof PALETTES] ?? ''}`}>
         <span className="logo" aria-hidden="true"><i /><i /><i /><i /></span><Icon name="down" />
         <select aria-label="Colour palette" value={palette} onChange={e => setPalette(e.target.value)}>

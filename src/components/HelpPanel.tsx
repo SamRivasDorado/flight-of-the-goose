@@ -84,6 +84,13 @@ const TOPICS: Topic[] = [
       <li><b>Dimensions</b> (button on the right of the Lens) are shared labels such as Priority, Region or Client. Add your own, rename them and pick colours.</li>
       <li>Set default values per project; its tasks inherit them unless a task sets its own.</li>
     </ul></> },
+  { id: 'data', title: 'Export, import and backup', icon: 'save', body: <>
+    <p className="lead">Everything is saved as you work. The <b>Data</b> button in the top bar (managers and admins) takes a copy out or brings work in.</p>
+    <ul>
+      <li><b>Export</b> an Excel workbook (Goals, Projects and Tasks sheets) or CSV files, for reports or to edit in bulk.</li>
+      <li><b>Import</b> that workbook back, or CSV files: rows keep their ID, so edits update the right items and rows without an ID are added. You see what will change before anything is saved, and importing never deletes.</li>
+      <li><b>Full backup</b> saves the whole workspace, including notebooks, dimensions and teams, as one file. Restoring it creates a new workspace, so it never overwrites the one you have.</li>
+    </ul></> },
 ];
 
 /** Help, opened from the goose (top left) or the Help button. Rises from the bottom like the task panel. */
