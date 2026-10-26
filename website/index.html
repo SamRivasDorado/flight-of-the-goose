@@ -151,7 +151,7 @@ p{margin:0}
 .flight .eyebrow{color:var(--yolk)}
 .flight-intro{display:flex;flex-direction:column;gap:16px}
 .flight-intro p{color:var(--ink-muted);max-width:46ch}
-.vee{width:100%;max-width:420px;height:auto;margin:auto auto 0;padding-top:24px}
+.vee{width:100%;max-width:420px;height:auto;margin:auto;padding-block:24px}
 .vee .bird{fill:var(--ink-soft)}
 .vee .lead{fill:var(--yolk)}
 .vee .air{stroke:var(--ink-faint);stroke-width:1.4;fill:none;stroke-dasharray:3 5}
@@ -193,22 +193,6 @@ p{margin:0}
 .switch{display:inline-flex;gap:2px;padding:3px;border-radius:10px;background:var(--feather);justify-self:start}
 .switch button{font:inherit;font-size:14px;border:0;background:none;color:var(--muted);padding:6px 12px;border-radius:8px;cursor:pointer}
 .switch button[aria-pressed="true"]{background:var(--surface);color:var(--fg);font-weight:550;box-shadow:0 1px 2px rgb(0 0 0 / .12)}
-/* dimensions illustration (drawn in HTML, no screenshot) */
-.dimfig{cursor:default}
-.dim-lens{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line);font-size:13px;color:var(--muted)}
-.dim-lens .sel{border:1px solid var(--feather-2);border-radius:8px;padding:4px 10px;background:var(--surface);color:var(--fg)}
-.dim-lens .sel b{font-weight:600}
-.dim-lens .lbl{font-weight:600;letter-spacing:.08em;text-transform:uppercase;font-size:11.5px;color:var(--faint);margin-right:2px}
-.dimtab{width:100%;min-width:0;font-size:14px;border-collapse:collapse}
-.dimtab th,.dimtab td{padding:11px 16px;border-top:1px solid var(--line);vertical-align:middle}
-.dimtab thead th{border-top:0;font-size:11.5px;background:none;padding-block:10px 8px}
-.dimtab td:first-child{font-weight:450;white-space:normal}
-.dimtab .grp td{background:var(--feather);font-weight:600;font-size:13px;padding-block:7px}
-.pill{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;padding:2px 9px;border-radius:999px;white-space:nowrap;background:color-mix(in srgb,var(--c) 18%,transparent);border:1px solid color-mix(in srgb,var(--c) 45%,transparent)}
-.pill::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--c)}
-.pill.inh{background:none;border-style:dashed;color:var(--muted)}
-.dimkey{display:flex;gap:16px;flex-wrap:wrap;padding:10px 16px 14px;border-top:1px solid var(--line);font-size:12.5px;color:var(--muted)}
-@media (max-width:560px){.dimtab .opt{display:none}}
 .soon{margin-top:24px;padding:28px;border-radius:16px;background:var(--yolk-soft);display:grid;gap:10px}
 .soon h3{font-size:22px}
 .soon ul{margin:0;padding-left:20px;color:var(--fg);display:grid;gap:4px;font-size:15px}
@@ -392,8 +376,8 @@ dialog.zoom button{font:inherit;font-size:14px;border:0;border-radius:9px;paddin
       <p class="lede">These screens come from a demo workspace for an invented consultancy, Alder Ridge Consulting. The people, clients and projects are made up.</p>
     </div>
     <nav class="subnav" aria-label="Features">
-      <a class="chip" href="#f-timeline">Timeline</a><a class="chip" href="#f-tasks">Tasks</a><a class="chip" href="#f-projects">Projects and notebooks</a>
-      <a class="chip" href="#f-strategy">Strategy</a><a class="chip" href="#f-team">Team</a><a class="chip" href="#f-review">Review</a><a class="chip" href="#f-insights">Insights</a><a class="chip" href="#f-dimensions">Dimensions and the Lens</a>
+      <a class="chip" href="#f-timeline">Timeline</a><a class="chip" href="#f-strategy">Strategy</a><a class="chip" href="#f-projects">Projects and notebooks</a><a class="chip" href="#f-tasks">Tasks</a>
+      <a class="chip" href="#f-review">Review</a><a class="chip" href="#f-team">Team</a><a class="chip" href="#f-insights">Insights</a><a class="chip" href="#f-dimensions">Dimensions and the Lens</a>
     </nav>
 
     <article class="feature" id="f-timeline">
@@ -410,25 +394,18 @@ dialog.zoom button{font:inherit;font-size:14px;border:0;border-radius:9px;paddin
         <picture><source srcset="img/app/timeline-dark.webp" media="(prefers-color-scheme: dark)"><img src="img/app/timeline.webp" alt="Timeline with goal bands and project lanes" width="1600" height="965" loading="lazy"></picture></button></figure>
     </article>
 
-    <article class="feature" id="f-tasks">
+    <article class="feature" id="f-strategy">
       <div class="feature-text">
-        <span class="eyebrow">Tasks</span><h3>List, board or calendar</h3>
-        <p class="what">The same tasks in the view that suits the moment.</p>
+        <span class="eyebrow">Strategy</span><h3>Goals that measure themselves</h3>
+        <p class="what">Set goals and sub-goals with an owner and a time span, and link the projects that serve them.</p>
         <ul class="ticks">
-          <li>List grouped by due date (overdue, today, next 7 days) or by project</li>
-          <li>Board: drag between To do, In progress and Done</li>
-          <li>Calendar: drag a task to another day to move it</li>
-          <li>Task panel with assignee, collaborators, subtasks, goal and time spent</li>
+          <li>Progress comes from linked projects, tasks and sub-goals, or a value you set</li>
+          <li>On track, at risk or off track at a glance, for goals and sub-goals</li>
+          <li>See who is involved in each goal</li>
         </ul>
-        <div class="switch" role="group" aria-label="Task view">
-          <button type="button" aria-pressed="true" data-shot="tasks-list">List</button>
-          <button type="button" aria-pressed="false" data-shot="tasks-board">Board</button>
-          <button type="button" aria-pressed="false" data-shot="tasks-calendar">Calendar</button>
-          <button type="button" aria-pressed="false" data-shot="task-panel">Task panel</button>
-        </div>
       </div>
       <figure class="shot"><button class="frame" type="button" data-zoom aria-label="Enlarge"><span class="chrome" aria-hidden="true"><i></i><i></i><i></i></span>
-        <picture id="tasks-pic"><source srcset="img/app/tasks-list-dark.webp" media="(prefers-color-scheme: dark)"><img src="img/app/tasks-list.webp" alt="Tasks list grouped by due date" width="1600" height="965" loading="lazy"></picture></button></figure>
+        <picture><source srcset="img/app/strategy-dark.webp" media="(prefers-color-scheme: dark)"><img src="img/app/strategy.webp" alt="Strategy page with a goal, its progress and sub-goals" width="1600" height="965" loading="lazy"></picture></button></figure>
     </article>
 
     <article class="feature" id="f-projects">
@@ -449,18 +426,39 @@ dialog.zoom button{font:inherit;font-size:14px;border:0;border-radius:9px;paddin
         <picture><source srcset="img/app/project-notebook-dark.webp" media="(prefers-color-scheme: dark)"><img src="img/app/project-notebook.webp" alt="Project notebook with meeting notes, decisions and open tasks" width="1600" height="965" loading="lazy"></picture></button></figure>
     </article>
 
-    <article class="feature" id="f-strategy">
+    <article class="feature" id="f-tasks">
       <div class="feature-text">
-        <span class="eyebrow">Strategy</span><h3>Goals that measure themselves</h3>
-        <p class="what">Set goals and sub-goals with an owner and a time span, and link the projects that serve them.</p>
+        <span class="eyebrow">Tasks</span><h3>List, board or calendar</h3>
+        <p class="what">The same tasks in the view that suits the moment.</p>
         <ul class="ticks">
-          <li>Progress comes from linked projects, tasks and sub-goals, or a value you set</li>
-          <li>On track, at risk or off track at a glance, for goals and sub-goals</li>
-          <li>See who is involved in each goal</li>
+          <li>List grouped by due date, by project or by any dimension</li>
+          <li>Board: drag between To do, In progress and Done</li>
+          <li>Calendar: drop a task on another day to move it, or copy it there</li>
+          <li>Task panel with assignee, collaborators, subtasks, goal and time spent</li>
+        </ul>
+        <div class="switch" role="group" aria-label="Task view">
+          <button type="button" aria-pressed="true" data-shot="tasks-list">List</button>
+          <button type="button" aria-pressed="false" data-shot="tasks-board">Board</button>
+          <button type="button" aria-pressed="false" data-shot="tasks-calendar">Calendar</button>
+          <button type="button" aria-pressed="false" data-shot="task-panel">Task panel</button>
+        </div>
+      </div>
+      <figure class="shot"><button class="frame" type="button" data-zoom aria-label="Enlarge"><span class="chrome" aria-hidden="true"><i></i><i></i><i></i></span>
+        <picture id="tasks-pic"><source srcset="img/app/tasks-list-dark.webp" media="(prefers-color-scheme: dark)"><img src="img/app/tasks-list.webp" alt="Tasks list grouped by due date" width="1600" height="965" loading="lazy"></picture></button></figure>
+    </article>
+
+    <article class="feature" id="f-review">
+      <div class="feature-text">
+        <span class="eyebrow">Review</span><h3>The weekly look back, done in a minute</h3>
+        <p class="what">Pick a period and Goose lays out what slipped, what got done and what is coming up.</p>
+        <ul class="ticks">
+          <li>Slipped tasks with one-click fixes: done, next Monday, one week later</li>
+          <li>Where the time went, by goal and by project</li>
+          <li>A ready-made summary to copy into an email or chat</li>
         </ul>
       </div>
       <figure class="shot"><button class="frame" type="button" data-zoom aria-label="Enlarge"><span class="chrome" aria-hidden="true"><i></i><i></i><i></i></span>
-        <picture><source srcset="img/app/strategy-dark.webp" media="(prefers-color-scheme: dark)"><img src="img/app/strategy.webp" alt="Strategy page with a goal, its progress and sub-goals" width="1600" height="965" loading="lazy"></picture></button></figure>
+        <picture><source srcset="img/app/review-dark.webp" media="(prefers-color-scheme: dark)"><img src="img/app/review.webp" alt="Review page for the last 30 days" width="1600" height="965" loading="lazy"></picture></button></figure>
     </article>
 
     <article class="feature" id="f-team">
@@ -479,20 +477,6 @@ dialog.zoom button{font:inherit;font-size:14px;border:0;border-radius:9px;paddin
       </div>
       <figure class="shot"><button class="frame" type="button" data-zoom aria-label="Enlarge"><span class="chrome" aria-hidden="true"><i></i><i></i><i></i></span>
         <picture><source srcset="img/app/team-dark.webp" media="(prefers-color-scheme: dark)"><img src="img/app/team.webp" alt="Team page with a card for each person" width="1600" height="965" loading="lazy"></picture></button></figure>
-    </article>
-
-    <article class="feature" id="f-review">
-      <div class="feature-text">
-        <span class="eyebrow">Review</span><h3>The weekly look back, done in a minute</h3>
-        <p class="what">Pick a period and Goose lays out what slipped, what got done and what is coming up.</p>
-        <ul class="ticks">
-          <li>Slipped tasks with one-click fixes: done, next Monday, one week later</li>
-          <li>Where the time went, by goal and by project</li>
-          <li>A ready-made summary to copy into an email or chat</li>
-        </ul>
-      </div>
-      <figure class="shot"><button class="frame" type="button" data-zoom aria-label="Enlarge"><span class="chrome" aria-hidden="true"><i></i><i></i><i></i></span>
-        <picture><source srcset="img/app/review-dark.webp" media="(prefers-color-scheme: dark)"><img src="img/app/review.webp" alt="Review page for the last 30 days" width="1600" height="965" loading="lazy"></picture></button></figure>
     </article>
 
     <article class="feature" id="f-insights">
@@ -519,35 +503,21 @@ dialog.zoom button{font:inherit;font-size:14px;border:0;border-radius:9px;paddin
           <li>The Lens bar filters every screen by person, team, project or dimension</li>
         </ul>
       </div>
-      <figure class="shot">
-        <div class="frame dimfig" role="img" aria-label="Illustration: a task list grouped by region, with priority and client labels, and the Lens bar filtering by team">
-          <span class="chrome" aria-hidden="true"><i></i><i></i><i></i></span>
-          <div class="dim-lens" aria-hidden="true"><span class="lbl">Lens</span><span class="sel">Team: <b>Subsurface</b></span><span class="sel">Priority: <b>All</b></span><span class="sel">Region: <b>All</b></span></div>
-          <table class="dimtab" aria-hidden="true">
-            <thead><tr><th>Task</th><th>Priority</th><th class="opt">Client</th></tr></thead>
-            <tbody>
-              <tr class="grp"><td colspan="3">Region: North Sea</td></tr>
-              <tr><td>Update fault model with new well</td><td><span class="pill" style="--c:#E5484D">High</span></td><td class="opt"><span class="pill inh" style="--c:#3E8ED0">Nordvik Energy</span></td></tr>
-              <tr><td>Client workshop slides</td><td><span class="pill inh" style="--c:#F28C28">Medium</span></td><td class="opt"><span class="pill inh" style="--c:#3E8ED0">Nordvik Energy</span></td></tr>
-              <tr class="grp"><td colspan="3">Region: Middle East</td></tr>
-              <tr><td>Fracture density review</td><td><span class="pill" style="--c:#E5484D">High</span></td><td class="opt"><span class="pill" style="--c:#2BA37A">Desert Basin Co.</span></td></tr>
-              <tr><td>Write up core description notes</td><td><span class="pill" style="--c:#8F887C">Low</span></td><td class="opt"><span class="pill inh" style="--c:#2BA37A">Desert Basin Co.</span></td></tr>
-            </tbody>
-          </table>
-          <div class="dimkey" aria-hidden="true"><span><span class="pill" style="--c:#8F887C">Filled</span> set on the task</span><span><span class="pill inh" style="--c:#8F887C">Dashed</span> from its project</span></div>
-        </div>
-        <figcaption>An illustration of Dimensions in the task list: grouped by region, with labels set on the task or taken from the project.</figcaption>
-      </figure>
+      <figure class="shot"><button class="frame" type="button" data-zoom aria-label="Enlarge"><span class="chrome" aria-hidden="true"><i></i><i></i><i></i></span>
+        <picture><source srcset="img/app/dimensions-dark.webp" media="(prefers-color-scheme: dark)"><img src="img/app/dimensions.webp" alt="Task list grouped by region, with Priority, Region and Client labels and the Lens bar on top" width="1600" height="965" loading="lazy"></picture></button>
+        <figcaption>The task list grouped by Region. Filled labels are set on the task; dashed ones come from its project.</figcaption></figure>
     </article>
 
     <div class="soon">
       <span class="eyebrow">In the works</span>
       <h3>Next on the flight plan</h3>
       <ul>
-        <li>Extra project fields for text, numbers and dates</li>
-        <li>Totals of number fields in Insights</li>
+        <li>Extra project fields for text, numbers and dates, with totals in Insights</li>
         <li>A person's tasks and review, one click from their Team card</li>
         <li>Your colour palette and view choices following you to every device</li>
+        <li>Live updates when a colleague changes something</li>
+        <li>Import and export with Excel and CSV</li>
+        <li>Email notifications, for example when a task is assigned to you</li>
       </ul>
     </div>
   </div>
@@ -559,7 +529,7 @@ dialog.zoom button{font:inherit;font-size:14px;border:0;border-radius:9px;paddin
     <div class="why">
       <aside class="why-side">
         <div class="goose-stage"><img src="img/goose.webp" alt="The Goose mascot" width="640" height="857"></div>
-        <blockquote>Most task tools track tasks. Goose tracks where the tasks are taking you.</blockquote>
+        <blockquote>Other tools list your tasks. Goose shows where they are taking you.</blockquote>
       </aside>
       <div>
         <div class="panel-head">
@@ -667,7 +637,7 @@ dialog.zoom button{font:inherit;font-size:14px;border:0;border-radius:9px;paddin
     </div>
     <div class="faq">
       <details open><summary>Can I use Goose on my own?</summary>
-        <div><p>Yes. Everyone who is approved gets their own workspace, where they are the admin and can plan goals, projects and tasks alone. Invite people whenever you are ready.</p></div></details>
+        <div><p>Yes. Everyone who is approved gets their own workspace, where they are the admin and can plan goals, projects and tasks alone. While you work alone, solo mode hides everything about teams. Invite people whenever you are ready.</p></div></details>
       <details><summary>Can I be part of more than one workspace?</summary>
         <div><p>Yes. Your own workspace and every workspace you are invited to sit under one sign-in, and you switch between them. Your access level can differ in each.</p></div></details>
       <details><summary>Can my clients see their project?</summary>
