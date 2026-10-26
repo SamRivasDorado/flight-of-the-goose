@@ -31,6 +31,8 @@ const TOPICS: Topic[] = [
       <li><b>Status</b> (On track, At risk, Off track, Achieved) is your judgement.</li>
       <li><b>Progress</b> is calculated: the share of done tasks in the linked projects and the tasks linked directly to the goal. Without tasks it is the average of the sub-goals; otherwise the value you set by hand.</li>
       <li>Link projects to a goal in the goal itself or in Project settings. <b>Add task to this goal</b> creates a task linked straight to it.</li>
+      <li>The small <b>V of seven geese</b> next to each goal is its progress: a goose joins for every seventh done, from the back of the V, and the leader joins at 100%.</li>
+      <li><b>Journey</b> (top right) shows each goal as a route from a nest to a flag, with the people on it flying as a flock at the goal's progress. The dashed line is where the flock should be by now, going by the goal's dates. Whoever finished most this week leads; people with overdue tasks trail at the back. Hover a goose to see why.</li>
       <li>The year tabs show the goals running in each year.</li>
     </ul></> },
   { id: 'projects', title: 'Projects and notebooks', icon: 'wall', page: 'projects', go: '#/projects', body: <>
@@ -47,6 +49,7 @@ const TOPICS: Topic[] = [
       <li>In the calendar, drag a task to another day and choose <b>Move here</b> or <b>Copy here</b> (hold Alt while dropping to copy at once). Untick “Ask to move or copy” to always move.</li>
       <li><b>New task</b> (top bar) opens a draft that is only saved when you press <b>Create task</b>. Existing tasks save as you edit.</li>
       <li>Log <b>Time spent</b> on each task: Review and Insights use it to show where your time went.</li>
+      <li>Finishing a task sends a goose across the screen; finishing a project or reaching a goal sends a whole V. Switch them off in Your profile (your picture, top right).</li>
       <li>Coloured labels such as <b>Priority</b> are dimensions. A dashed label comes from the project’s default; a filled one is set on the task itself.</li>
     </ul></> },
   { id: 'review', title: 'Review', icon: 'review', page: 'review', go: '#/review', body: <>

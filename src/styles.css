@@ -437,7 +437,7 @@ textarea.notes{width:100%;min-height:90px;border:1px solid var(--line);border-ra
 .goal h3 button{text-align:left}
 .bar2{height:8px;border-radius:99px;background:var(--surface-2);overflow:hidden}
 .bar2 i{display:block;height:100%;background:var(--c,var(--sage));border-radius:99px}
-.prog{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;font-size:12px}
+.prog{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;font-size:12px}
 .children{display:flex;flex-direction:column;gap:10px}
 .child{display:flex;flex-direction:column;gap:6px}
 .child .ct{display:flex;gap:8px;align-items:center}
@@ -599,3 +599,55 @@ button.brand:hover{background:var(--bar-hi)}
 .pwrow .field-in{padding-right:64px}
 .pwshow{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:0;background:none;color:var(--muted);font:inherit;font-size:13px;padding:6px 8px;border-radius:6px;cursor:pointer}
 .pwshow:hover{color:var(--fg);background:var(--hover, rgb(128 128 128 / .12))}
+
+/* ===== flying geese (lib/geese.ts) ===== */
+.flyover{position:fixed;inset:0;pointer-events:none;z-index:80;overflow:hidden}
+.fgoose{display:block;width:100%;height:auto;overflow:visible}
+.fgoose .gw{transform-box:view-box;transform-origin:100px 60px;animation:flap .34s ease-in-out infinite alternate}
+@keyframes flap{from{transform:scaleY(1)}to{transform:scaleY(-.72)}}
+.flyer{position:absolute;left:0;will-change:transform;animation:crossing var(--dur,3.4s) cubic-bezier(.35,.05,.6,.95) forwards}
+@keyframes crossing{from{transform:translate(calc(-100% - 40px),0)}to{transform:translate(calc(100vw + 40px),var(--y1,-70px))}}
+.flyer .bob{animation:bob .9s ease-in-out infinite alternate}
+@keyframes bob{from{transform:translateY(-5px)}to{transform:translateY(5px)}}
+.flyer.one{width:clamp(64px,8vw,104px)}
+.flyer.flock .bird{position:absolute;width:var(--g)}
+.toast.geese{z-index:81}
+/* goal progress as a small V of seven geese */
+.vprog{display:inline-flex;vertical-align:middle;flex:none}
+.vprog svg{display:block;overflow:visible}
+.vprog .mg{fill:#fff;stroke:var(--fg);stroke-width:.9;stroke-linejoin:round}
+.vprog .mg .bk{fill:#F08A24;stroke:none}
+.vprog .mg.off{fill:var(--line);stroke:none}
+.vprog .mg.off .bk{fill:none}
+/* Strategy: Goals / Journey */
+.sview{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.sview button{border:0;background:none;padding:6px 12px;font:inherit;font-size:13px;color:var(--muted);cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+.sview button.on{background:var(--accent-soft);color:var(--fg);font-weight:600}
+.sview button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.journeys{display:flex;flex-direction:column;gap:16px}
+.jlane{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px 12px;min-width:0}
+.jhead{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.jhead h3{margin:0;font-size:16px}.jhead h3 button{all:unset;cursor:pointer}.jhead h3 button:hover{text-decoration:underline}
+.jhead h3 button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.jmap{position:relative;height:190px;margin:10px 0 6px;border-radius:10px;overflow:hidden;background:linear-gradient(180deg,color-mix(in srgb,var(--surface-2) 55%,var(--surface)) 0%,var(--surface-2) 100%)}
+.jmap .land{position:absolute;inset:0;width:100%;height:100%}
+.jmap .land .h1{fill:color-mix(in srgb,var(--accent) 9%,transparent)}
+.jmap .land .h2{fill:color-mix(in srgb,var(--accent) 15%,transparent)}
+.jmap .land .route{fill:none;stroke:var(--faint);stroke-width:2;stroke-dasharray:2 7;stroke-linecap:round;vector-effect:non-scaling-stroke}
+.jmap .land .flown{fill:none;stroke:var(--accent);stroke-width:2.5;stroke-linecap:round;vector-effect:non-scaling-stroke;opacity:.7}
+.jpin{position:absolute;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:2px;font-size:12px;color:var(--muted);white-space:nowrap}
+.jstart{left:6%;top:112px}.jdest{left:94%;top:72px}
+.jtoday{position:absolute;top:10px;bottom:36px;border-left:2px dashed color-mix(in srgb,var(--fg) 30%,transparent)}
+.jtoday span{position:absolute;top:-2px;left:6px;font-size:11px;color:var(--muted);white-space:nowrap;background:color-mix(in srgb,var(--surface) 80%,transparent);padding:0 4px;border-radius:4px}
+.jflock{position:absolute;width:0;height:0}
+.jflock .bird{position:absolute;width:50px;transform:translate(-50%,-50%)}
+.jflock .gwrap{display:block}
+.jflock .fgoose .gw{animation-duration:.6s}
+.jflock .bird .bob{animation:bob 1.6s ease-in-out infinite alternate}
+.jflock .bird .av{position:absolute;left:-6px;bottom:-8px;width:20px;height:20px;font-size:9px;box-shadow:0 0 0 2px var(--surface)}
+.jflock .bird.lead .av{box-shadow:0 0 0 2px var(--primary)}
+.jflock .bird.late .av::after{content:'!';position:absolute;right:-7px;top:-7px;width:12px;height:12px;border-radius:50%;background:var(--danger);color:#fff;font-size:9px;line-height:12px;text-align:center;font-weight:700}
+.jflock .more{position:absolute;transform:translate(-50%,-50%);font-size:12px;color:var(--muted)}
+.jsay{font-size:13px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 14px}
+.jsay b{color:var(--fg)}
+@media (prefers-reduced-motion:reduce){.fgoose .gw,.jflock .bird .bob{animation:none}}

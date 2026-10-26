@@ -5,6 +5,8 @@ import { useSolo } from '../lib/solo';
 import { useMe } from '../lib/me';
 import { ACCESS_LABEL, type Member } from '../lib/types';
 import { db } from '../lib/supabase';
+import { useLocalPref } from '../lib/ui';
+import { flyOne, GEESE_KEY } from '../lib/geese';
 import { PERSON_COLORS, APP_NAME } from '../config';
 import { Avatar, Icon, Logo } from './Logo';
 
@@ -166,6 +168,7 @@ function ProfileDialogInner({ me, onClose, onSaved }: { me: Member; onClose: () 
           <ProfileFields d={d} set={set} busy={busy} setBusy={setBusy} setErr={setErr} />
           <div className="hint">Signed in as {session?.user.email}. Your role in {current?.workspace_name} is <b>{ACCESS_LABEL[current!.access]}</b>{current?.access === 'admin' ? '.' : '; the workspace’s admins set it.'}</div>
           <SoloSetting onError={setErr} />
+          <GeeseSetting />
         </div>
         <div className="mfoot">{err && <span className="err">{err}</span>}<span className="grow" />
           <button className="btn" onClick={onClose}>Cancel</button>
@@ -203,5 +206,18 @@ function SoloSetting({ onError }: { onError: (e: string | null) => void }) {
             : 'Hides the Team page and every option about other people and teams, for a simpler Goose when you work alone. You can switch it off at any time.'}
       </div>
       {busy && <span className="hint">Saving…</span>}
+    </div>);
+}
+
+/** Personal: the geese that fly when work is done. Remembered in this browser, applies straight away. */
+function GeeseSetting() {
+  const [on, setOn] = useLocalPref<boolean>(GEESE_KEY, true);
+  return (
+    <div style={{ borderTop: '1px solid var(--line)', paddingTop: 12 }}>
+      <span className="lbl">On this computer <span className="muted">· applies straight away</span></span>
+      <label className="chk" style={{ color: 'var(--fg)', fontSize: 14 }}>
+        <input type="checkbox" checked={on} onChange={e => { setOn(e.target.checked); if (e.target.checked) setTimeout(flyOne, 50); }} />
+        Geese fly when work is done</label>
+      <div className="hint" style={{ marginTop: 4 }}>One goose crosses the screen when you finish a task, and a V of geese when a project is done or a goal is reached.</div>
     </div>);
 }

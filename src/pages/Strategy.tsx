@@ -10,6 +10,7 @@ import { Avatar, Icon } from '../components/Logo';
 import { ProjectChip } from '../components/ProjectChip';
 import { GoalDialog } from '../components/GoalDialog';
 import { AvStack, projectHref } from './Projects';
+import { Journey, VProg } from '../components/Geese';
 
 export function Strategy() {
   const ws = useWorkspace();
@@ -22,6 +23,8 @@ export function Strategy() {
   }, [ws.workspace_id, ui.version]);
   const [period, setPeriod] = useLocalPref<string>('goalPeriod', 'all');
   const [critOpen, setCritOpen] = useState(false);
+  const [view, setView] = useLocalPref<'goals' | 'journey'>('strategyView', 'goals');
+  const { solo } = useSolo();
   const [dialog, setDialog] = useState<null | { goal: Goal | null; parentId?: string | null }>(null);
 
   if (error) return <div className="err">{error}</div>;
@@ -36,6 +39,9 @@ export function Strategy() {
   return (
     <>
       <div className="ph"><h1>Strategy</h1><span className="grow" />
+        <span className="sview" role="group" aria-label="View">
+          <button className={view !== 'journey' ? 'on' : ''} aria-pressed={view !== 'journey'} onClick={() => setView('goals')}><Icon name="target" />Goals</button>
+          <button className={view === 'journey' ? 'on' : ''} aria-pressed={view === 'journey'} onClick={() => setView('journey')}><Icon name="map" />Journey</button></span>
         {manager && <button className="btn primary" onClick={() => setDialog({ goal: null })}><Icon name="plus" />New goal</button>}</div>
       <div className="tabs">
         <button className={`tab ${per === 'all' ? 'on' : ''}`} onClick={() => setPeriod('all')}>All goals</button>
@@ -59,7 +65,10 @@ export function Strategy() {
         {subs.length > 0 && <><span style={{ marginLeft: 10 }}><b>{subs.length}</b> sub-goal{subs.length === 1 ? '' : 's'}:</span>
           {tally(subs).map(({ st, n }) => <span key={st.id} className={`tonedot tone-${st.tone}`}><b>{n}</b> {st.label.toLowerCase()}</span>)}</>}
       </div>
-      {tops.length
+      {tops.length && view === 'journey'
+        ? <div className="journeys">{tops.map(g => <Journey key={g.id} g={g} goals={goals} tasks={tasks} solo={solo}
+            people={goalPeople(g, goals, projects, tasks, members, teams)} onEdit={manager ? goal => setDialog({ goal }) : undefined} />)}</div>
+        : tops.length
         ? <div className="goals">{tops.map(g => <GoalCard key={g.id} g={g} goals={goals} projects={projects} tasks={tasks} members={members} teams={teams}
             canEdit={manager} onEdit={goal => setDialog({ goal })} onAddSub={() => setDialog({ goal: null, parentId: g.id })} />)}</div>
         : <div className="empty">{goals.length ? 'No goals in this year.' : manager ? <>No goals yet. Create one with <b>New goal</b>.</> : 'No goals you are involved in yet.'}</div>}
@@ -106,7 +115,7 @@ function GoalCard({ g, goals, projects, tasks, members, teams, canEdit, onEdit, 
           <span style={{ flex: 1 }} />{owner && !solo && <span className="who"><Avatar m={owner} size="sm" />{firstName(owner.display_name)}<span className="muted">owner</span></span>}</div>
         <h3>{title(g)}</h3>
         {g.notes && <div className="hint">{g.notes}</div>}
-        <div><div className="prog"><div className="bar2" style={{ ['--c' as string]: st.color }}><i style={{ width: `${pg}%` }} /></div><span className="mono muted">{pg}%</span></div>
+        <div><div className="prog"><VProg pg={pg} /><div className="bar2" style={{ ['--c' as string]: st.color }}><i style={{ width: `${pg}%` }} /></div><span className="mono muted">{pg}%</span></div>
           <div className="muted" style={{ fontSize: 12, marginTop: 3 }}>{progressSource(g, goals, tasks)}</div></div>
         {!solo && <div><div className="h3 gsect">People involved</div><AvStack list={goalPeople(g, goals, projects, tasks, members, teams)} max={10} /></div>}
         <div><div className="h3 gsect">Projects</div>{g.project_ids.length ? <div className="links">{chips(g)}</div> : <span className="hint">No linked projects</span>}</div>
@@ -122,7 +131,7 @@ function GoalCard({ g, goals, projects, tasks, members, teams, canEdit, onEdit, 
         <div className="h3 gsect">Sub-goals</div>
         {kids.map(k => { const ks = goalStatus(k.status), kp = goalProgress(k, goals, tasks), kd = tasks.filter(t => t.goal_id === k.id).length; return (
           <div key={k.id} className={`child tone-${ks.tone}`}>
-            <div className="ct"><i className="dot" style={{ ['--c' as string]: ks.color }} title={ks.label} />{title(k)}<span className="mono muted" style={{ fontSize: 12 }}>{kp}%</span></div>
+            <div className="ct"><i className="dot" style={{ ['--c' as string]: ks.color }} title={ks.label} />{title(k)}<VProg pg={kp} /><span className="mono muted" style={{ fontSize: 12 }}>{kp}%</span></div>
             <div className="bar2" style={{ ['--c' as string]: ks.color, height: 5 }}><i style={{ width: `${kp}%` }} /></div>
             <div className="cmeta"><span className="tag">{goalRange(k)}</span>{chips(k)}
               {kd > 0 && <span className="muted" style={{ fontSize: 12 }}>{kd} direct task{kd > 1 ? 's' : ''}</span>}

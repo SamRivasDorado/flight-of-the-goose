@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { db } from './supabase';
+import { celebrateGoal, celebrateProject, celebrateTask } from './geese';
 import type { Dim, FieldOption, Goal, GoalRef, Member, Note, NoteKind, Project, ProjectFull, Subtask, Task, Team, TaskFull, TeamRef } from './types';
 
 /** Loads data for the current screen and reloads after a change. */
@@ -80,6 +81,7 @@ export async function saveProject(ws: string, existing: ProjectFull | null, d: P
   await syncLinks('project_members', 'project_id', p.id, 'member_id', existing?.member_ids ?? [], member_ids.filter(x => x !== row.owner_member_id));
   await syncLinks('project_teams', 'project_id', p.id, 'team_id', existing?.team_ids ?? [], team_ids);
   await syncLinks('goal_projects', 'project_id', p.id, 'goal_id', existing?.goal_ids ?? [], goal_ids);
+  if (existing && existing.status !== 'closed' && p.status === 'closed') celebrateProject(p.name);
   return p.id;
 }
 
@@ -175,7 +177,11 @@ export async function setCollaborator(taskId: string, memberId: string, on: bool
 export async function updateTask(id: string, patch: Partial<Task>) {
   const p: Partial<Task> = { ...patch };
   if (patch.status) p.completed_at = patch.status === 'done' ? todayISO() : null;
-  return check(await db().from('tasks').update(p).eq('id', id).select().single());
+  // only a task that was not done yet sends a goose
+  const was = patch.status === 'done' ? (await db().from('tasks').select('status').eq('id', id).maybeSingle()).data?.status : null;
+  const row = check(await db().from('tasks').update(p).eq('id', id).select().single());
+  if (patch.status === 'done' && was && was !== 'done') void celebrateTask(id);
+  return row;
 }
 
 
@@ -265,6 +271,7 @@ export async function saveGoal(ws: string, existing: Goal | null, d: GoalInput):
   const add = project_ids.filter(x => !before.includes(x)), drop = before.filter(x => !project_ids.includes(x));
   if (add.length) check(await db().from('goal_projects').insert(add.map(project_id => ({ goal_id: g.id, project_id }))));
   if (drop.length) check(await db().from('goal_projects').delete().eq('goal_id', g.id).in('project_id', drop));
+  if (existing && existing.status !== 'achieved' && g.status === 'achieved') celebrateGoal(g.title);
   return g.id;
 }
 
