@@ -4,6 +4,7 @@ import { LensProvider } from '../lib/lens';
 import { SoloProvider, useSolo } from '../lib/solo';
 import { LensBar } from '../components/Lens';
 import { HelpPanel } from '../components/HelpPanel';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 import { Welcome } from '../components/ProfileForm';
 import { WorkspaceMenu } from '../components/WorkspaceMenu';
 import { TaskSheet } from '../components/TaskSheet';
@@ -78,6 +79,7 @@ function Shell() {
         <LensBar page={page} self={current!.access === 'member' || current!.access === 'guest'} />
       </header>
       <main className={`view gut ${page === 'timeline' ? 'fill' : ''}`}>
+        <ErrorBoundary key={page + (projectId ?? '')}>
         {page === 'projects' && <Projects />}
         {page === 'project' && projectId && <ProjectPage key={projectId} id={projectId} />}
         {page === 'tasks' && <Tasks />}
@@ -86,6 +88,7 @@ function Shell() {
         {page === 'strategy' && <Strategy />}
         {page === 'review' && <Review />}
         {page === 'insights' && <Insights />}
+        </ErrorBoundary>
       </main>
       <TaskSheet />
       {help && <HelpPanel page={page} onClose={() => setHelp(false)} />}

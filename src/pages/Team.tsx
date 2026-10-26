@@ -26,6 +26,7 @@ export function Team() {
   const [teamDlg, setTeamDlg] = useState<Team | 'new' | null>(null);
   const [personDlg, setPersonDlg] = useState<Member | 'new' | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+  const [resending, setResending] = useState<string | null>(null);
 
   if (error) return <div className="err">{error}</div>;
   if (!data) return <span className="muted">Loading…</span>;
@@ -35,7 +36,6 @@ export function Team() {
   const canEditTeam = (t: Team) => isAdmin || t.lead_member_id === ws.member_id;
   const roleIn = (p: ProjectFull, id: string): Role | null =>
     p.owner_member_id === id ? 'owner' : p.member_ids.includes(id) ? 'member' : p.team_ids.some(tid => teams.find(t => t.id === tid)?.member_ids.includes(id)) ? 'team' : null;
-  const [resending, setResending] = useState<string | null>(null);
   async function resend(m: Member) {
     setResending(m.id); setMsg(null);
     const { error } = await db().rpc('resend_invitation', { p_member: m.id });
@@ -114,8 +114,8 @@ function PersonCard({ m, me, teams, tasks, projects, roleIn, onTeam, onEdit, onR
           <div className="pcbadges"><span className={`acc acc-${m.access}`} title={ACCESS_DESC[m.access]}>{ACCESS_LABEL[m.access]}</span>
             {teams.filter(t => t.member_ids.includes(m.id)).map(t => (
               <button key={t.id} className="tchip" onClick={() => onTeam(t.id)}><TeamAvatar t={t} size="xs" />{t.name}{t.lead_member_id === m.id ? ' · lead' : ''}</button>))}</div>
+          {onResend && <div><button className="btn sm" onClick={onResend} disabled={resending} title="Email the invitation to this person again">{resending ? 'Sending…' : 'Send the invitation again'}</button></div>}
         </div>
-        {onResend && <button className="btn sm" onClick={onResend} disabled={resending} title="Email the invitation to this person again">{resending ? 'Sending…' : 'Send again'}</button>}
         {onEdit && <button className="iconbtn" onClick={onEdit} aria-label={`Edit ${m.display_name}`}><Icon name="edit" /></button>}
       </div>
       <div className="pcstats">
