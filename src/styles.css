@@ -669,12 +669,25 @@ button.brand:hover{background:var(--bar-hi)}
 .demohead{display:flex;align-items:center;justify-content:space-between}.demorow{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .donebadge{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--ok);padding:2px 2px 2px 10px;border:1px solid color-mix(in srgb,var(--ok) 40%,var(--line));border-radius:8px}
 .donebadge .ic{width:15px;height:15px}
-/* quarterly stops on Strategy (lib/legs.ts) */
-.stops{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:10px;font-size:12px}
-.stops.compact{margin-top:6px}
-.stopslbl{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-right:2px}
-.stop{display:inline-flex;align-items:baseline;gap:5px;padding:3px 9px;border:1px solid var(--line);border-radius:999px;background:var(--surface-2);color:var(--muted);font-variant-numeric:tabular-nums}
-.stop b{color:var(--fg);font-weight:600}
-.stop.now{border-color:color-mix(in srgb,var(--accent) 45%,var(--line));background:var(--accent-soft)}
-.stop .sp{color:var(--ok)}
-.stop.older{border-style:dashed;background:none}
+/* flight log: tasks and projects finished per quarter (Geese.tsx Stops) */
+.flog{margin-top:10px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.flog.compact{margin-top:8px}
+.flogh{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:11.5px}
+.stopslbl{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.flogkey{display:inline-flex;align-items:center;gap:5px;color:var(--muted)}
+.flogkey .kb{display:inline-block;width:9px;height:9px;border-radius:2px;background:color-mix(in srgb,var(--accent) 45%,transparent)}
+.flogkey .fflag{margin-left:6px}
+.flogcols{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:6px;align-items:end;max-width:560px}
+.fcol{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;min-width:0;font-variant-numeric:tabular-nums}
+.fflags{display:flex;align-items:flex-end;gap:1px;min-height:12px;font-size:10px;color:var(--ok)}
+.fflag{width:9px;height:11px;fill:color-mix(in srgb,var(--ok) 70%,transparent);stroke:var(--ok);stroke-width:1.1;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.fval{font-size:11px;color:var(--muted);line-height:1.2}
+.fbarwrap{position:relative;width:min(100%,34px);display:flex;align-items:flex-end;justify-content:center}
+.fcbar{display:block;width:100%;border-radius:3px 3px 1px 1px;background:color-mix(in srgb,var(--accent) 38%,transparent)}
+.fcol.now .fcbar{background:var(--accent)}
+.fcol.now .fval{color:var(--fg);font-weight:600}
+.fghost{position:absolute;left:0;right:0;bottom:0;border:1.5px dashed color-mix(in srgb,var(--fg) 40%,transparent);border-bottom:0;border-radius:3px 3px 0 0}
+.flbl{font-size:10.5px;color:var(--muted);margin-top:3px;white-space:nowrap}
+.fcol.now .flbl{color:var(--fg);font-weight:600}
+.flog.compact .fval{font-size:10px}
+.askdone{margin-bottom:10px}

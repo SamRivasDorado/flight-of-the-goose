@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useSolo } from '../lib/solo';
 import { useWorkspace } from '../auth/session';
-import { addNote, createTask, deleteNote, listMembers, listNoteDates, listNotes, listProjectsFull, setProjectDone, todayISO, updateNote, useLoad } from '../lib/data';
+import { addNote, createTask, deleteNote, listMembers, listNoteDates, listNotes, listOpenTaskIds, listProjectsFull, setProjectDone, todayISO, updateNote, useLoad } from '../lib/data';
 import { canEdit, canManage, NOTE_KINDS, type Member, type Note, type NoteKind, type ProjectFull, type TaskFull } from '../lib/types';
 import { useLocalPref, useUI } from '../lib/ui';
 import { byDue, dueLabel, parseISO } from '../lib/format';
@@ -27,6 +27,7 @@ export function ProjectPage({ id }: { id: string }) {
   const [settings, setSettings] = useState(false);
   const [doneErr, setDoneErr] = useState<string | null>(null);
   const [doneBusy, setDoneBusy] = useState(false);
+  const [askTasks, setAskTasks] = useState<string[] | null>(null);
 
   if (error) return <div className="err">{error}</div>;
   if (!data) return <span className="muted">Loading…</span>;
@@ -40,9 +41,15 @@ export function ProjectPage({ id }: { id: string }) {
   const dates = p.kind === 'fixed'
     ? (p.start_date || p.end_date ? `${p.start_date ? fmtDate(p.start_date, long) : '?'} – ${p.end_date ? fmtDate(p.end_date, long) : '?'}` : 'No dates set')
     : (p.start_date ? `Running since ${fmtDate(p.start_date, { month: 'long', year: 'numeric' })}` : 'Ongoing');
-  async function markDone(done: boolean) {
+  /** Mark complete: asks first when tasks are still open. */
+  async function startComplete() {
+    setDoneErr(null);
+    try { const open = await listOpenTaskIds(p!.id); if (open.length) setAskTasks(open); else await markDone(true); }
+    catch (e) { setDoneErr(e instanceof Error ? e.message : String(e)); }
+  }
+  async function markDone(done: boolean, alsoTasks: string[] = []) {
     setDoneBusy(true); setDoneErr(null);
-    try { await setProjectDone(p!, done); ui.changed(); await reload(); }
+    try { await setProjectDone(p!, done, alsoTasks); setAskTasks(null); ui.changed(); await reload(); }
     catch (e) { setDoneErr(e instanceof Error ? e.message : String(e)); }
     finally { setDoneBusy(false); }
   }
@@ -60,11 +67,16 @@ export function ProjectPage({ id }: { id: string }) {
         {!solo && <div className="pagepeople"><span className="who">{owner && <Avatar m={owner} />}<span><b>{owner?.display_name ?? 'No owner'}</b><br /><span className="muted">Owner</span></span></span>
           <AvStack list={projectPeople(p, data.members)} max={7} /></div>}
         {canSettings && (p.status === 'closed'
-          ? <span className="donebadge"><Icon name="check" />Done{p.completed_at ? ` · ${fmtDate(p.completed_at, long)}` : ''}
+          ? <span className="donebadge"><Icon name="check" />Completed{p.completed_at ? ` · ${fmtDate(p.completed_at, long)}` : ''}
               <button className="btn sm ghost" disabled={doneBusy} onClick={() => void markDone(false)}>Reopen</button></span>
-          : <button className="btn sm" disabled={doneBusy} onClick={() => void markDone(true)}><Icon name="check" />Mark as done</button>)}
+          : <button className="btn sm" disabled={doneBusy} onClick={() => void startComplete()}><Icon name="check" />Mark complete</button>)}
         {canSettings && <button className="btn sm" onClick={() => setSettings(true)}><Icon name="gear" />Project settings</button>}
       </div>
+      {askTasks && p.status !== 'closed' && <div className="confirm askdone" role="alert">
+        <span>{askTasks.length === 1 ? 'One task' : `${askTasks.length} tasks`} in this project {askTasks.length === 1 ? 'is' : 'are'} still open.</span><span className="grow" />
+        <button className="btn sm primary" disabled={doneBusy} onClick={() => void markDone(true, askTasks)}><Icon name="check" />Complete the project and {askTasks.length === 1 ? 'that task' : `its ${askTasks.length} open tasks`}</button>
+        <button className="btn sm" disabled={doneBusy} onClick={() => void markDone(true)}>Complete the project only</button>
+        <button className="btn sm ghost" disabled={doneBusy} onClick={() => setAskTasks(null)}>Cancel</button></div>}
       {doneErr && <div className="err" style={{ marginBottom: 8 }}>{doneErr}</div>}
       <div className="tabs">{tabBtn('notebook', 'note', 'Notebook')}{tabBtn('list', 'list', 'List')}{tabBtn('board', 'board', 'Board')}{tabBtn('calendar', 'calendar', 'Calendar')}</div>
       {tab === 'notebook'

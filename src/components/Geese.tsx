@@ -140,20 +140,38 @@ export function Journey({ g, goals, tasks, projects, people, solo, onEdit }: {
     </article>);
 }
 
-/** One stop per quarter of the goal's life: what was finished in it. The latest six show; older ones fold away. */
+/**
+ * The flight log: one column per quarter of the goal's life, as tall as the tasks finished in it,
+ * with a small flag for every project completed. The current quarter has a dashed outline at
+ * last quarter's height: the pace to match. The latest eight quarters show.
+ */
 export function Stops({ stops, compact = false }: { stops: Stop[]; compact?: boolean }) {
   if (!stops.length) return null;
-  const shown = stops.slice(-6), older = stops.length - shown.length;
+  const shown = stops.slice(-8), older = stops.length - shown.length;
+  const cur = shown.find(s => s.current), prev = cur ? shown[shown.indexOf(cur) - 1] : undefined;
+  const max = Math.max(1, ...shown.map(s => s.tasks));
+  const H = compact ? 34 : 56;
+  const h = (n: number) => Math.round(n / max * H);
   const tip = (s: Stop) => `${s.leg.label}${s.current ? ' so far' : ''}: ${plural(s.tasks, 'task')} and ${plural(s.projects, 'project')} finished`;
   return (
-    <div className={`stops ${compact ? 'compact' : ''}`} aria-label="Finished per quarter">
-      <span className="stopslbl">{compact ? 'Per quarter' : 'Stops along the way'}</span>
-      {older > 0 && <span className="stop older" title={`${older} earlier quarter${older > 1 ? 's' : ''}`}>+{older} earlier</span>}
-      {shown.map(s => (
-        <span key={s.leg.key} className={`stop ${s.current ? 'now' : ''}`} title={tip(s)}>
-          <b>{s.leg.short}{s.current ? ' so far' : ` ’${s.leg.key.slice(2, 4)}`}</b>
-          <span>{plural(s.tasks, 'task')}</span>
-          {s.projects > 0 && <span className="sp">· {plural(s.projects, 'project')}</span>}
-        </span>))}
+    <div className={`flog ${compact ? 'compact' : ''}`} role="img" aria-label={`Finished per quarter: ${shown.map(tip).join('; ')}`}>
+      <div className="flogh"><span className="stopslbl">{compact ? 'Per quarter' : 'Flight log'}</span>
+        {older > 0 && <span className="muted">{older} earlier quarter{older > 1 ? 's' : ''} not shown</span>}
+        <span className="grow" /><span className="flogkey"><i className="kb" />tasks done<FlagMini />project completed</span></div>
+      <div className="flogcols" style={{ height: H + 34 }}>
+        {shown.map(s => (
+          <div key={s.leg.key} className={`fcol ${s.current ? 'now' : ''}`} title={tip(s)}>
+            <span className="fflags">{s.projects > 0 && <>{Array.from({ length: Math.min(3, s.projects) }, (_, i) => <FlagMini key={i} />)}{s.projects > 3 && <small>+{s.projects - 3}</small>}</>}</span>
+            <span className="fval">{s.tasks}</span>
+            <span className="fbarwrap" style={{ height: H }}>
+              {s.current && prev && prev.tasks > 0 && <span className="fghost" style={{ height: h(prev.tasks) }} />}
+              <span className="fcbar" style={{ height: Math.max(s.tasks ? 3 : 0, h(s.tasks)) }} /></span>
+            <span className="flbl">{s.leg.short}{s.current ? ' now' : ` ’${s.leg.key.slice(2, 4)}`}</span>
+          </div>))}
+      </div>
     </div>);
+}
+
+function FlagMini() {
+  return <svg className="fflag" viewBox="0 0 10 12" aria-hidden="true"><path d="M1.5 11.5V1" /><path d="M2 1.2c2-.8 3.5 1 6 .2v4.4c-2.5.8-4-1-6-.2Z" /></svg>;
 }

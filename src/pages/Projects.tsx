@@ -60,7 +60,7 @@ export function Projects() {
                 <li><span className="tonedot tone-good">Active</span><span>Something happened in the last 30 days (a task created or completed, or a notebook entry) and nothing is overdue.</span></li>
                 <li><span className="tonedot tone-warn">Overdue</span><span>At least one open task is past its due date.</span></li>
                 <li><span className="tonedot tone-quiet">Quiet</span><span>Nothing has happened for more than 30 days.</span></li></ul>
-                <h4 style={{ marginTop: 10 }}>Any project</h4><ul><li><span className="tonedot tone-idle">Paused, Done</span><span>Set by you: <b>Mark as done</b> on the project, or its settings.</span></li></ul></div>
+                <h4 style={{ marginTop: 10 }}>Any project</h4><ul><li><span className="tonedot tone-idle">Paused, Done</span><span>Set by you: <b>Mark complete</b> on the project, or its settings.</span></li></ul></div>
             </div>
           </details>
           {ps.length === 0 && !manager && <div className="empty">You are not part of any project yet.</div>}
