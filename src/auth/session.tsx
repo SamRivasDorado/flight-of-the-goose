@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import { db } from '../lib/supabase';
+import { db, landedOnRecovery } from '../lib/supabase';
 import type { Profile, WorkspaceRef } from '../lib/types';
 
 interface SessionState {
@@ -30,7 +30,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [workspaces, setWorkspaces] = useState<WorkspaceRef[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [recovering, setRecovering] = useState(false);
+  const [recovering, setRecovering] = useState(landedOnRecovery);
   const [currentId, setCurrentId] = useState<string | null>(() => {
     try { return localStorage.getItem(LAST_WS); } catch { return null; }
   });

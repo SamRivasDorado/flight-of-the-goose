@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { db } from '../lib/supabase';
+import { db, landingLinkError } from '../lib/supabase';
 import { APP_NAME } from '../config';
 import { Logo } from '../components/Logo';
 import { useSession } from './session';
@@ -28,16 +28,35 @@ function friendly(message: string): string {
   return message;
 }
 
+/** A password box with a Show / Hide button, so people can check what they typed. */
+function PasswordField({ id, label, value, onChange, autoComplete, hint }: {
+  id: string; label: string; value: string; onChange: (v: string) => void; autoComplete: string; hint?: string;
+}) {
+  const [show, setShow] = useState(false);
+  return (
+    <div>
+      <label className="lbl" htmlFor={id}>{label}</label>
+      <div className="pwrow">
+        <input id={id} className="field-in" type={show ? 'text' : 'password'} value={value} autoComplete={autoComplete}
+               autoCapitalize="none" spellCheck={false} onChange={e => onChange(e.target.value)} />
+        <button type="button" className="pwshow" onClick={() => setShow(v => !v)} aria-pressed={show}>{show ? 'Hide' : 'Show'}</button>
+      </div>
+      {hint && <div className="hint" style={{ marginTop: 4 }}>{hint}</div>}
+    </div>
+  );
+}
+
 /** Sign in with email and password, create an account, reset a password, or get a one-time email link. */
 export function Login() {
   const [mode, setMode] = useState<Mode>(joinParams ? 'signup' : 'signin');
   const [email, setEmail] = useState(joinParams?.email ?? '');
   const [password, setPassword] = useState('');
+  const [password2, setPassword2] = useState('');
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(landingLinkError);
   const [sent, setSent] = useState<null | 'link' | 'confirm' | 'reset'>(null);
 
-  function go(m: Mode) { setMode(m); setError(null); setSent(null); setPassword(''); }
+  function go(m: Mode) { setMode(m); setError(null); setSent(null); setPassword(''); setPassword2(''); }
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -47,6 +66,7 @@ export function Login() {
     if ((mode === 'signin' || mode === 'signup') && password.length < (mode === 'signup' ? MIN_PASSWORD : 1)) {
       setError(mode === 'signup' ? `Choose a password of at least ${MIN_PASSWORD} characters.` : 'Enter your password.'); return;
     }
+    if (mode === 'signup' && password !== password2) { setError('The two passwords are not the same.'); return; }
     setBusy(true); setError(null);
     let err: string | null = null;
     if (mode === 'signin') {
@@ -78,7 +98,7 @@ export function Login() {
             <p>
               {sent === 'confirm' && <>We sent a confirmation link to <b>{email.trim()}</b>. Open it to finish creating your account. If you already have an account with this address, sign in instead.</>}
               {sent === 'reset' && <>If an account exists for <b>{email.trim()}</b>, we sent a link to choose a new password. Open it on this device.</>}
-              {sent === 'link' && <>We sent a sign-in link to <b>{email.trim()}</b>. Open it on this device to continue.</>}
+              {sent === 'link' && <>We sent a sign-in link to <b>{email.trim()}</b>. Open it on this device to continue. If you have not confirmed your email address yet, the email will be the confirmation link instead; opening it signs you in just the same.</>}
             </p>
             <button type="button" className="btn ghost sm" onClick={() => go('signin')}>Back to sign in</button>
           </>
@@ -97,14 +117,11 @@ export function Login() {
                      onChange={e => setEmail(e.target.value)} placeholder="name@company.com" />
             </div>
             {(mode === 'signin' || mode === 'signup') && (
-              <div>
-                <label className="lbl" htmlFor="password">Password</label>
-                <input id="password" className="field-in" type="password" value={password}
-                       autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
-                       onChange={e => setPassword(e.target.value)} />
-                {mode === 'signup' && <div className="hint" style={{ marginTop: 4 }}>At least {MIN_PASSWORD} characters.</div>}
-              </div>
+              <PasswordField id="password" label="Password" value={password} onChange={setPassword}
+                autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+                hint={mode === 'signup' ? `At least ${MIN_PASSWORD} characters.` : undefined} />
             )}
+            {mode === 'signup' && <PasswordField id="password2" label="Repeat the password" value={password2} onChange={setPassword2} autoComplete="new-password" />}
             {error && <div className="err">{error}</div>}
             <button className="btn primary" disabled={busy}>{busy ? 'Please wait…' : action}</button>
             <div className="authlinks">
@@ -147,15 +164,8 @@ export function SetNewPassword() {
       <form className="authbox" onSubmit={submit}>
         <div className="row"><Logo variant="plain" size={52} /><h1>{APP_NAME}</h1></div>
         <p className="muted" style={{ margin: 0 }}><b style={{ color: 'var(--fg)' }}>Choose a new password.</b> You will stay signed in afterwards.</p>
-        <div>
-          <label className="lbl" htmlFor="pw">New password</label>
-          <input id="pw" className="field-in" type="password" autoComplete="new-password" value={pw} onChange={e => setPw(e.target.value)} />
-          <div className="hint" style={{ marginTop: 4 }}>At least {MIN_PASSWORD} characters.</div>
-        </div>
-        <div>
-          <label className="lbl" htmlFor="pw2">Repeat it</label>
-          <input id="pw2" className="field-in" type="password" autoComplete="new-password" value={pw2} onChange={e => setPw2(e.target.value)} />
-        </div>
+        <PasswordField id="pw" label="New password" value={pw} onChange={setPw} autoComplete="new-password" hint={`At least ${MIN_PASSWORD} characters.`} />
+        <PasswordField id="pw2" label="Repeat it" value={pw2} onChange={setPw2} autoComplete="new-password" />
         {error && <div className="err">{error}</div>}
         <button className="btn primary" disabled={busy}>{busy ? 'Saving…' : 'Save password'}</button>
         <div className="authlinks"><button type="button" className="btn ghost sm" onClick={() => void signOut()}>Cancel and sign out</button></div>

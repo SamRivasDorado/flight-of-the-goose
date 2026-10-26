@@ -594,3 +594,8 @@ button.brand:hover{background:var(--bar-hi)}
 .wscheck{width:16px;display:inline-grid;place-items:center;color:var(--accent)}
 .wssep{border-top:1px solid var(--raise-line);margin:4px 2px;padding:8px 6px 2px;font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
 .wssep:empty{padding:0}
+
+.pwrow{position:relative}
+.pwrow .field-in{padding-right:64px}
+.pwshow{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:0;background:none;color:var(--muted);font:inherit;font-size:13px;padding:6px 8px;border-radius:6px;cursor:pointer}
+.pwshow:hover{color:var(--fg);background:var(--hover, rgb(128 128 128 / .12))}
