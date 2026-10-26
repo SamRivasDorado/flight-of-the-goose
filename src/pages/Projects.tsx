@@ -108,12 +108,31 @@ export const projectPeople = (p: ProjectFull, members: Member[]) =>
 
 function ProjectCard({ p, h, tasks, members, noteDates }: { p: ProjectFull; h: Health; tasks: Task[]; members: Member[]; noteDates: { project_id: string; entry_date: string }[] }) {
   const { solo } = useSolo();
-  const ts = tasks.filter(t => t.project_id === p.id), open = ts.filter(t => t.status !== 'done');
-  const overdue = open.filter(t => t.due_date && diffDays(t.due_date) < 0).length;
-  const time = ts.reduce((s, t) => s + (Number(t.hours) || 0), 0);
+  const open = tasks.filter(t => t.project_id === p.id && t.status !== 'done');
   const next = open.filter(t => t.due_date).sort(byDue)[0];
   const last = lastActivity(p, tasks, noteDates);
   const owner = members.find(m => m.id === p.owner_member_id);
+  const nextDue = next ? dueLabel(next.due_date) : null;
+  return (
+    <a className={`pcard tone-${h.tone}`} style={{ ['--c' as string]: p.color, textDecoration: 'none', color: 'inherit' }} href={projectHref(p.id)}>
+      <div className="top"><ProjectIcon p={p} size="lg" /><b>{p.name}</b><KindBadge p={p} /></div>
+      {!solo && <div className="ppl-row"><span className="who">{owner && <Avatar m={owner} size="sm" />}<span>{owner ? firstName(owner.display_name) : 'No owner'}</span><span className="muted">owner</span></span>
+        <AvStack list={projectPeople(p, members)} /></div>}
+      <div className="body">
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}><span className="pill" style={{ ['--c' as string]: h.color }}>{h.label}</span><ProjectDims id={p.id} /></div>
+        <ProjectProgress p={p} tasks={tasks} />
+        <div className="next">{next ? <>Next: <b>{next.title || 'Untitled task'}</b> · <span className={nextDue!.cls}>{nextDue!.text}</span></> : 'No upcoming dated tasks'}</div>
+        <div className="next">{last ? `Last activity: ${dueLabel(last, true).text}` : 'No activity yet'}</div>
+      </div>
+    </a>);
+}
+
+/** A project's progress, as on its card: fixed term = tasks done against time elapsed; ongoing = finished per week.
+    Then open, overdue and hours logged. Used on the Projects wall and on the project's own page. */
+export function ProjectProgress({ p, tasks, wide = false }: { p: ProjectFull; tasks: Task[]; wide?: boolean }) {
+  const ts = tasks.filter(t => t.project_id === p.id), open = ts.filter(t => t.status !== 'done');
+  const overdue = open.filter(t => t.due_date && diffDays(t.due_date) < 0).length;
+  const time = ts.reduce((s, t) => s + (Number(t.hours) || 0), 0);
   let mid;
   if (p.kind === 'fixed') {
     const pct = ts.length ? Math.round(ts.filter(t => t.status === 'done').length / ts.length * 100) : 0, el = Math.round(elapsed(p) * 100);
@@ -127,21 +146,9 @@ function ProjectCard({ p, h, tasks, members, noteDates }: { p: ProjectFull; h: H
     mid = <><Sparkline vals={weeklyDone(ts)} color={p.color} />
       <div className="pmeta"><span>Completed per week, last 12 weeks</span><span>{p.start_date ? `since ${fmtDate(p.start_date, { month: 'short', year: 'numeric' })}` : ''}</span></div></>;
   }
-  const nextDue = next ? dueLabel(next.due_date) : null;
-  return (
-    <a className={`pcard tone-${h.tone}`} style={{ ['--c' as string]: p.color, textDecoration: 'none', color: 'inherit' }} href={projectHref(p.id)}>
-      <div className="top"><ProjectIcon p={p} size="lg" /><b>{p.name}</b><KindBadge p={p} /></div>
-      {!solo && <div className="ppl-row"><span className="who">{owner && <Avatar m={owner} size="sm" />}<span>{owner ? firstName(owner.display_name) : 'No owner'}</span><span className="muted">owner</span></span>
-        <AvStack list={projectPeople(p, members)} /></div>}
-      <div className="body">
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}><span className="pill" style={{ ['--c' as string]: h.color }}>{h.label}</span><ProjectDims id={p.id} /></div>
-        {mid}
-        <div className="stats"><div><b>{open.length}</b><span>open</span></div><div><b style={overdue ? { color: 'var(--danger)' } : undefined}>{overdue}</b><span>overdue</span></div>
-          <div><b>{hrs(time)}</b><span>hours logged</span></div></div>
-        <div className="next">{next ? <>Next: <b>{next.title || 'Untitled task'}</b> · <span className={nextDue!.cls}>{nextDue!.text}</span></> : 'No upcoming dated tasks'}</div>
-        <div className="next">{last ? `Last activity: ${dueLabel(last, true).text}` : 'No activity yet'}</div>
-      </div>
-    </a>);
+  const stats = <div className="stats"><div><b>{open.length}</b><span>open</span></div><div><b style={overdue ? { color: 'var(--danger)' } : undefined}>{overdue}</b><span>overdue</span></div>
+    <div><b>{hrs(time)}</b><span>hours logged</span></div></div>;
+  return wide ? <div className="pprog"><div className="pprogbar">{mid}</div>{stats}</div> : <>{mid}{stats}</>;
 }
 
 /** The project's default dimension values as pills (Priority, Region, …). */

@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSolo } from '../lib/solo';
 import { useWorkspace } from '../auth/session';
-import { addNote, createTask, deleteNote, listMembers, listNoteDates, listNotes, listOpenTaskIds, listProjectsFull, setProjectDone, todayISO, updateNote, useLoad } from '../lib/data';
+import { addNote, createTask, deleteNote, listMembers, listNoteDates, listNotes, listOpenTaskIds, listProjectsFull, listTasks, setProjectDone, todayISO, updateNote, useLoad } from '../lib/data';
 import { canEdit, canManage, NOTE_KINDS, type Member, type Note, type NoteKind, type ProjectFull, type TaskFull } from '../lib/types';
 import { useLocalPref, useUI } from '../lib/ui';
 import { byDue, dueLabel, parseISO } from '../lib/format';
@@ -10,7 +10,9 @@ import { Avatar, Icon, type IconName } from '../components/Logo';
 import { ProjectIcon } from '../components/ProjectChip';
 import { ProjectDialog } from '../components/ProjectDialog';
 import { TaskViews, useTaskViews } from './Tasks';
-import { AvStack, KindBadge, ProjectDims, projectPeople } from './Projects';
+import { CommentThread } from '../components/Comments';
+import { countNoteComments } from '../lib/data';
+import { AvStack, KindBadge, ProjectDims, ProjectProgress, projectPeople } from './Projects';
 
 type PTab = 'notebook' | 'list' | 'board' | 'calendar';
 
@@ -19,8 +21,8 @@ export function ProjectPage({ id }: { id: string }) {
   const ws = useWorkspace();
   const ui = useUI();
   const { data, error, reload } = useLoad(async () => {
-    const [projects, members, noteDates] = await Promise.all([listProjectsFull(ws.workspace_id), listMembers(ws.workspace_id), listNoteDates(ws.workspace_id)]);
-    return { project: projects.find(p => p.id === id) ?? null, count: projects.length, members, noteDates };
+    const [projects, members, noteDates, tasks] = await Promise.all([listProjectsFull(ws.workspace_id), listMembers(ws.workspace_id), listNoteDates(ws.workspace_id), listTasks(ws.workspace_id)]);
+    return { project: projects.find(p => p.id === id) ?? null, count: projects.length, members, noteDates, tasks };
   }, [ws.workspace_id, id, ui.version]);
   const v = useTaskViews(id);
   const [tab, setTab] = useLocalPref<PTab>('projectTab', 'notebook');
@@ -34,7 +36,7 @@ export function ProjectPage({ id }: { id: string }) {
   const p = data.project;
   if (!p) return <div className="empty">This project does not exist or is not visible to you. <a href="#/projects">Back to Projects</a></div>;
 
-  const h = health(p, v.c.tasks, data.noteDates);
+  const h = health(p, data.tasks, data.noteDates);
   const owner = data.members.find(m => m.id === p.owner_member_id);
   const canSettings = canManage(ws.access) || p.owner_member_id === ws.member_id;
   const long = { day: 'numeric', month: 'short', year: 'numeric' } as const;
@@ -78,6 +80,7 @@ export function ProjectPage({ id }: { id: string }) {
         <button className="btn sm" disabled={doneBusy} onClick={() => void markDone(true)}>Complete the project only</button>
         <button className="btn sm ghost" disabled={doneBusy} onClick={() => setAskTasks(null)}>Cancel</button></div>}
       {doneErr && <div className="err" style={{ marginBottom: 8 }}>{doneErr}</div>}
+      <ProjectProgress p={p} tasks={data.tasks} wide />
       <div className="tabs">{tabBtn('notebook', 'note', 'Notebook')}{tabBtn('list', 'list', 'List')}{tabBtn('board', 'board', 'Board')}{tabBtn('calendar', 'calendar', 'Calendar')}</div>
       {tab === 'notebook'
         ? <Notebook p={p} tasks={v.c.tasks} members={data.members} onTasks={() => setTab('list')} />
@@ -104,6 +107,27 @@ function Notebook({ p, tasks, members, onTasks }: { p: ProjectFull; tasks: TaskF
   const [delId, setDelId] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // comments under each entry: counts for all, the thread for the ones opened
+  const [counts, setCounts] = useState<Record<string, number>>({});
+  const [threads, setThreads] = useState<Set<string>>(new Set());
+  const noteKey = (notes ?? []).map(n => n.id).join(',');
+  useEffect(() => {
+    if (!notes?.length) return;
+    countNoteComments(notes.map(n => n.id)).then(setCounts).catch(() => setCounts({}));
+    // coming from the inbox: open that entry's comments and scroll to it
+    const w = window as unknown as { __gooseOpenNote?: string };
+    const openPending = () => {
+      const id = w.__gooseOpenNote;
+      if (!id || !notes.some(n => n.id === id)) return;
+      w.__gooseOpenNote = undefined;
+      setThreads(s => new Set(s).add(id));
+      setTimeout(() => document.getElementById(`entry-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+    };
+    openPending();
+    addEventListener('goose:open-note', openPending);
+    return () => removeEventListener('goose:open-note', openPending);
+  }, [noteKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const toggleThread = (id: string) => setThreads(s => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
   async function run(fn: () => Promise<unknown>) {
     try { setMsg(null); setBusy(true); await fn(); await reload(); ui.changed(); return true; }
@@ -177,6 +201,11 @@ function Notebook({ p, tasks, members, onTasks }: { p: ProjectFull; tasks: TaskF
                           : editable && <button className="mkt" onClick={() => void lineTask(n, i, line)}><Icon name="arrow" />Make task</button>}
                       </div>);
                   })}
+                  <div className="ecomm">
+                    <button className="linkbtn" aria-expanded={threads.has(n.id)} onClick={() => toggleThread(n.id)}><Icon name="chat" />
+                      {counts[n.id] ? `${counts[n.id]} comment${counts[n.id] > 1 ? 's' : ''}` : 'Comment'}{threads.has(n.id) ? ' · hide' : ''}</button>
+                    {threads.has(n.id) && <CommentThread target={{ note_id: n.id }} autoFocus={!counts[n.id]} onCount={c => setCounts(s => ({ ...s, [n.id]: c }))} />}
+                  </div>
                 </div>
               </div>);
           })}

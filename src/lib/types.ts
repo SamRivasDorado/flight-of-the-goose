@@ -186,3 +186,17 @@ export interface Profile {
   avatar_url: string | null;
   setup_done: boolean;
 }
+
+/** A comment on a task or on a notebook entry (migration 20261026200000_comments). */
+export interface Comment {
+  id: string;
+  workspace_id: string;
+  task_id: string | null;
+  note_id: string | null;
+  author_member_id: string | null;
+  body: string;
+  /** Members mentioned with @ */
+  mentions: string[];
+  created_at: string;
+  edited_at: string | null;
+}

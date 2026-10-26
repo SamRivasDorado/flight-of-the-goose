@@ -311,4 +311,30 @@ select pg_temp.check((select completed_at = date '2026-01-15' from projects wher
 update projects set status = 'active' where name = 'P3 client';
 select pg_temp.check((select completed_at is null from projects where name = 'P3 client'), 'reopening clears the day');
 
+-- ---------------------------------------------------------------------
+-- Comments: visible with the task, written by everyone but guests, edited only by their author
+set role authenticated;
+select pg_temp.login('00000000-0000-0000-0000-00000000000a');
+insert into comments (workspace_id, task_id, author_member_id, body, mentions)
+  select t.workspace_id, t.id, my_member_id(t.workspace_id), 'Sam on t1 @Omar', array[(select id from workspace_members where email = 'omar@example.com')] from tasks t where t.title = 't1 in P1';
+insert into comments (workspace_id, task_id, author_member_id, body)
+  select t.workspace_id, t.id, my_member_id(t.workspace_id), 'Sam on t2' from tasks t where t.title = 't2 in P2';
+select pg_temp.check((select count(*) from comments) = 2, 'the author sees his comments');
+select pg_temp.login('00000000-0000-0000-0000-00000000000b');
+select pg_temp.check((select string_agg(body, ',') from comments) = 'Sam on t1 @Omar', 'a member sees comments only on tasks he can see');
+insert into comments (workspace_id, task_id, author_member_id, body)
+  select t.workspace_id, t.id, my_member_id(t.workspace_id), 'Omar replies' from tasks t where t.title = 't1 in P1';
+select pg_temp.check((select count(*) from comments) = 2, 'a member can reply on a task he can see');
+update comments set body = 'changed by Omar' where body = 'Sam on t1 @Omar';
+select pg_temp.check(not exists (select 1 from comments where body = 'changed by Omar'), 'nobody edits someone else''s comment');
+do $$ begin
+  begin
+    insert into comments (workspace_id, task_id, author_member_id, body)
+      select workspace_id, id, (select id from workspace_members where email = 'omar@example.com'), 'sneaky' from tasks where false
+      union all select (select workspace_id from workspace_members limit 1), (select id from tasks where title = 't1 in P1'), (select id from workspace_members where email = 'sam@example.com'), 'as Sam';
+    raise exception 'FAILED: wrote a comment as someone else';
+  exception when insufficient_privilege then raise notice 'ok  nobody writes a comment in someone else''s name'; end;
+end $$;
+reset role;
+
 select 'ALL ACCESS TESTS PASSED' as result;

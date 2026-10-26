@@ -452,6 +452,9 @@ export async function buildBackup(ws: string, wsName: string): Promise<Backup> {
   const out: Backup = { kind: BACKUP_KIND, version: 1, exported_at: new Date().toISOString(), workspace: { name: wsName } };
   own_t.forEach((t, i) => { out[t] = check(res[i]) as Row[]; });
   links.forEach(([t, p], i) => { out[t] = strip(check(res[own_t.length + i]) as Row[], p); });
+  // comments (absent until their database update is run)
+  const cq = await own('comments');
+  out.comments = cq.error ? [] : cq.data as Row[];
   // people: keep who they were, not their sign-in links
   out.workspace_members = (out.workspace_members as Row[]).map(m => ({ id: m.id, email: m.email, display_name: m.display_name, title: m.title, access: m.access, color: m.color }));
   return out;
@@ -470,7 +473,7 @@ export function readBackup(text: string): { backup: Backup; summary: BackupSumma
   if (b.version !== 1) throw new Error('This backup comes from a newer version of Goose. Reload the page and try again.');
   const n = (t: string) => ((b[t] as Row[] | undefined) ?? []).length;
   return { backup: b, summary: { name: b.workspace?.name ?? 'Workspace', exported: b.exported_at,
-    counts: [[n('goals'), 'goal', 'goals'], [n('projects'), 'project', 'projects'], [n('tasks'), 'task', 'tasks'], [n('notes'), 'notebook entry', 'notebook entries'],
+    counts: [[n('goals'), 'goal', 'goals'], [n('projects'), 'project', 'projects'], [n('tasks'), 'task', 'tasks'], [n('notes'), 'notebook entry', 'notebook entries'], [n('comments'), 'comment', 'comments'],
       [((b.fields as Row[]) ?? []).filter(f => f.is_dimension).length, 'dimension', 'dimensions']].map(([k, one, many]) => [k === 1 ? one : many, k] as [string, number]),
     people: ((b.workspace_members as Row[]) ?? []).map(m => String(m.display_name)) } };
 }
@@ -550,6 +553,15 @@ export async function restoreBackup(b: Backup, name: string, me_: { uid: string;
     source_note_id: map(t.source_note_id), source_line: t.source_line ?? null, created_at: t.created_at })));
   await insert('subtasks', rows('subtasks').filter(s => map(s.task_id)).map(s => ({ task_id: map(s.task_id), title: s.title, done: s.done, position: s.position })));
   await insert('task_collaborators', rows('task_collaborators').filter(x => map(x.task_id) && person(x.member_id)).map(x => ({ task_id: map(x.task_id), member_id: person(x.member_id) })));
+  // comments: written in your name (the database only lets you add your own), with the original author named
+  const names = new Map(rows('workspace_members').map(m => [String(m.id), String(m.display_name)]));
+  if (rows('comments').length) {
+    const cs = rows('comments').filter(c => (c.task_id && map(c.task_id)) || (c.note_id && map(c.note_id))).map(c => ({
+      workspace_id: ws, task_id: map(c.task_id), note_id: map(c.note_id), author_member_id: me, created_at: c.created_at, edited_at: c.edited_at ?? null,
+      mentions: ((c.mentions as string[] | undefined) ?? []).map(person).filter(Boolean),
+      body: person(c.author_member_id) === me ? c.body : `${names.get(String(c.author_member_id)) ?? 'Someone'} wrote: ${c.body}` }));
+    try { await insert('comments', cs); } catch { /* comments need their database update; the rest is restored */ }
+  }
   await insert('task_values', rows('task_values').filter(x => map(x.task_id) && map(x.field_id) && (x.option_id == null || map(x.option_id)))
     .map(x => ({ task_id: map(x.task_id), field_id: map(x.field_id), option_id: map(x.option_id), value: x.value ?? null })));
   return { wsId: ws, notAdded };

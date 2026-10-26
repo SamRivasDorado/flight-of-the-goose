@@ -156,6 +156,20 @@ export function makeSeed(myUid: string, myEmail: string): Record<string, Row[]> 
   note(neag, -30, 'note', 'Core photos uploaded to the shared drive');
   note(enagas, -5, 'meeting', 'Day 2 went well; more exercises on well correlation next time');
   note(tnav, -14, 'decision', 'Publish workflow templates monthly');
+  // ---- comments, a few of them for Sam (mentions, and one on his own task)
+  t.comments = [];
+  const tid = (title: string) => String(t.tasks.find(x => x.title === title)!.id);
+  const nid = (start: string) => String(t.notes.find(x => String(x.body).startsWith(start))!.id);
+  const cm = (target: { task_id?: string; note_id?: string }, who: string, hoursAgo: number, body: string, mentions: string[] = []) =>
+    t.comments.push({ id: uid(), workspace_id: ws, task_id: target.task_id ?? null, note_id: target.note_id ?? null, author_member_id: who, body, mentions,
+      created_at: new Date(Date.now() - hoursAgo * 3600e3).toISOString(), edited_at: null });
+  cm({ task_id: tid('DFN model v1') }, omar, 30, 'Fracture sets are in. The intensity logs need the new formation tops first.');
+  cm({ task_id: tid('DFN model v1') }, elena, 5, '@Sam Rivas can we use the v2 parameters for the base case? See the decision in the notebook.', [sam]);
+  cm({ task_id: tid('Send fracture logs to Karim') }, karim, 20, 'Any news on these? The client asked again this morning.');
+  cm({ task_id: tid('Training day 3') }, lucia, 8, 'Room 2.14 is booked, projector included.');
+  cm({ note_id: nid('Call with Cairo') }, karim, 26, 'They also want a short summary in Arabic for their board. @Lucía Navarro can we budget it?', [lucia]);
+  cm({ note_id: nid('Call with Cairo') }, lucia, 3, 'Yes, I will add it to the offer. @Sam Rivas please confirm the date for the tops.', [sam]);
+  cm({ task_id: tid('Proposal for ONHYM') }, lucia, 50, 'Draft looks good; two remarks on pricing.');
   void tTrain; void julia;
   return t;
 }
