@@ -51,8 +51,8 @@ const ROUTE = 'M60 120 C 300 40, 700 40, 940 112';
  * flying as a V at the goal's progress. The dashed line is where the calendar says the flock
  * should be. Whoever finished the most this week leads; people with overdue tasks trail.
  */
-export function Journey({ g, goals, tasks, projects, people, solo, onEdit }: {
-  g: Goal; goals: Goal[]; tasks: Task[]; projects: Project[]; people: Member[]; solo: boolean; onEdit?: (g: Goal) => void;
+export function Journey({ g, goals, tasks, projects, people, solo, onEdit, showLog = true }: {
+  g: Goal; goals: Goal[]; tasks: Task[]; projects: Project[]; people: Member[]; solo: boolean; onEdit?: (g: Goal) => void; showLog?: boolean;
 }) {
   const today = todayISO();
   const weekAgo = todayISO(new Date(Date.now() - 7 * 864e5));
@@ -136,7 +136,7 @@ export function Journey({ g, goals, tasks, projects, people, solo, onEdit }: {
         {!solo && late.length > 0 && <span>Trailing: {late.map(r => `${firstName(r.x.display_name)} (${r.late} overdue)`).join(', ')}.</span>}
         {solo && late.length > 0 && <span>{late[0].late} overdue task{late[0].late > 1 ? 's' : ''} on this goal.</span>}
       </div>
-      <Stops stops={stopsOf(g, goals, tasks, projects, today)} />
+      {showLog && <Stops stops={stopsOf(g, goals, tasks, projects, today)} />}
     </article>);
 }
 

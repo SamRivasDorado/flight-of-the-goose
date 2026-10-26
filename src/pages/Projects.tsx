@@ -3,7 +3,7 @@ import { useSolo } from '../lib/solo';
 import { useWorkspace } from '../auth/session';
 import { listMembers, listNoteDates, listProjectsFull, listTasks, useLoad } from '../lib/data';
 import { canManage, type Member, type ProjectFull, type Task } from '../lib/types';
-import { useUI } from '../lib/ui';
+import { useLocalPref, useUI } from '../lib/ui';
 import { useLens } from '../lib/lens';
 import { OptPill } from '../components/Lens';
 import { byDue, diffDays, dueLabel, firstName, hrs } from '../lib/format';
@@ -26,6 +26,7 @@ export function Projects() {
   const [dialog, setDialog] = useState<null | { kind?: 'fixed' | 'ongoing' }>(null);
   const [critOpen, setCritOpen] = useState(false);
   const manager = canManage(ws.access);
+  const [showDone, setShowDone] = useLocalPref('showDoneProjects', false);
 
   const ps = (data?.projects ?? []).filter(p => lens.project(p, data!.tasks));
   const hp = (p: ProjectFull) => health(p, data!.tasks, data!.noteDates);
@@ -48,6 +49,7 @@ export function Projects() {
             <span className="tonedot tone-quiet"><b>{tally.quiet}</b> quiet</span>
             <span className="tonedot tone-bad"><b>{tally.bad}</b> off track</span>
             <span className="tonedot tone-idle"><b>{tally.idle}</b> paused or done</span>
+            <label className="chk" style={{ marginLeft: 'auto' }}><input type="checkbox" checked={showDone} onChange={e => setShowDone(e.target.checked)} />Show completed</label>
           </div>
           <details className="criteria" open={critOpen} onToggle={e => setCritOpen((e.target as HTMLDetailsElement).open)}>
             <summary>How project status is decided</summary>
@@ -70,7 +72,9 @@ export function Projects() {
           <div className="sech">Ongoing <span className="muted" style={{ fontSize: 13 }}>· support, internal work and anything without an end date</span></div>
           <div className="wall">{ongoing.map(card)}
             {manager && <button className="newcard" onClick={() => setDialog({ kind: 'ongoing' })}><Icon name="plus" />New ongoing project</button>}</div>
-          {closed.length > 0 && <><div className="sech">Done</div><div className="wall">{closed.map(card)}</div></>}
+          {closed.length > 0 && (showDone
+            ? <><div className="sech">Completed</div><div className="wall">{closed.map(card)}</div></>
+            : <p className="hint" style={{ marginTop: 18 }}>{closed.length === 1 ? '1 completed project is' : `${closed.length} completed projects are`} hidden. Tick “Show completed” to see {closed.length === 1 ? 'it' : 'them'}.</p>)}
         </>
       )}
       {dialog && <ProjectDialog project={null} kind={dialog.kind} count={ps.length} onClose={() => setDialog(null)}

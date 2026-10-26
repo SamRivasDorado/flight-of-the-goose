@@ -25,6 +25,7 @@ export function Strategy() {
   const [period, setPeriod] = useLocalPref<string>('goalPeriod', 'all');
   const [critOpen, setCritOpen] = useState(false);
   const [view, setView] = useLocalPref<'goals' | 'journey'>('strategyView', 'goals');
+  const [showLog, setShowLog] = useLocalPref('showFlightLog', true);
   const { solo } = useSolo();
   const [dialog, setDialog] = useState<null | { goal: Goal | null; parentId?: string | null }>(null);
 
@@ -66,13 +67,14 @@ export function Strategy() {
         {tops.length === 0 && <span>none yet</span>}
         {subs.length > 0 && <><span style={{ marginLeft: 10 }}><b>{subs.length}</b> sub-goal{subs.length === 1 ? '' : 's'}:</span>
           {tally(subs).map(({ st, n }) => <span key={st.id} className={`tonedot tone-${st.tone}`}><b>{n}</b> {st.label.toLowerCase()}</span>)}</>}
+        <label className="chk" style={{ marginLeft: 'auto' }}><input type="checkbox" checked={showLog} onChange={e => setShowLog(e.target.checked)} />Show flight log</label>
       </div>
       {tops.length && view === 'journey'
         ? <div className="journeys">{tops.map(g => <Journey key={g.id} g={g} goals={goals} tasks={tasks} projects={projects} solo={solo}
-            people={goalPeople(g, goals, projects, tasks, members, teams)} onEdit={manager ? goal => setDialog({ goal }) : undefined} />)}</div>
+            people={goalPeople(g, goals, projects, tasks, members, teams)} onEdit={manager ? goal => setDialog({ goal }) : undefined} showLog={showLog} />)}</div>
         : tops.length
         ? <div className="goals">{tops.map(g => <GoalCard key={g.id} g={g} goals={goals} projects={projects} tasks={tasks} members={members} teams={teams}
-            canEdit={manager} onEdit={goal => setDialog({ goal })} onAddSub={() => setDialog({ goal: null, parentId: g.id })} />)}</div>
+            canEdit={manager} onEdit={goal => setDialog({ goal })} onAddSub={() => setDialog({ goal: null, parentId: g.id })} showLog={showLog} />)}</div>
         : <div className="empty">{goals.length ? 'No goals in this year.' : manager ? <>No goals yet. Create one with <b>New goal</b>.</> : 'No goals you are involved in yet.'}</div>}
       {dialog && <GoalDialog goal={dialog.goal} parentId={dialog.parentId} goals={goals} members={members} projects={projects}
         onClose={() => setDialog(null)} onSaved={() => { setDialog(null); ui.changed(); void reload(); }} />}
@@ -94,9 +96,9 @@ function goalPeople(g: Goal, goals: Goal[], projects: ProjectFull[], tasks: Task
   return members.filter(m => ids.has(m.id));
 }
 
-function GoalCard({ g, goals, projects, tasks, members, teams, canEdit, onEdit, onAddSub }: {
+function GoalCard({ g, goals, projects, tasks, members, teams, canEdit, onEdit, onAddSub, showLog }: {
   g: Goal; goals: Goal[]; projects: ProjectFull[]; tasks: Task[]; members: Member[]; teams: Team[];
-  canEdit: boolean; onEdit: (g: Goal) => void; onAddSub: () => void;
+  canEdit: boolean; onEdit: (g: Goal) => void; onAddSub: () => void; showLog: boolean;
 }) {
   const ui = useUI();
   const ws = useWorkspace();
@@ -124,7 +126,7 @@ function GoalCard({ g, goals, projects, tasks, members, teams, canEdit, onEdit, 
           <div className="muted" style={{ fontSize: 12, marginTop: 3 }}>{lp
             ? (lp.target == null ? `${lp.leg.label}, first leg: ${plural(lp.done, 'task')} done, setting the pace` : `${lp.leg.label} leg: ${lp.done} of ${plural(lp.target, 'task')}, last quarter's pace`)
             : progressSource(g, goals, tasks)}</div>
-          <Stops stops={stopsOf(g, goals, tasks, projects)} compact /></div>
+          {showLog && <Stops stops={stopsOf(g, goals, tasks, projects)} compact />}</div>
         {!solo && <div><div className="h3 gsect">People involved</div><AvStack list={goalPeople(g, goals, projects, tasks, members, teams)} max={10} /></div>}
         <div><div className="h3 gsect">Projects</div>{g.project_ids.length ? <div className="links">{chips(g)}</div> : <span className="hint">No linked projects</span>}</div>
         <div><div className="h3 gsect">Tasks linked directly</div>
