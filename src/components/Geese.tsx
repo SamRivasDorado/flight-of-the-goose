@@ -6,84 +6,21 @@ import { firstName } from '../lib/format';
 import { legProgress, plural, stopsOf, type Stop } from '../lib/legs';
 import type { Goal, Member, Project, Task } from '../lib/types';
 import { Avatar } from './Logo';
-import { useVariant } from '../lib/variants';
 
 /** A goose in flight, drawn from the shared markup (static, no user content). */
 export function Goose({ delay = 0, still = false }: { delay?: number; still?: boolean }) {
   return <span className={`gwrap ${still ? 'still' : ''}`} dangerouslySetInnerHTML={{ __html: gooseMarkup(delay) }} />;
 }
 
-const MINI = 'M0 5.2 C2 3.6 6 3.4 9 3.8 C10.4 3.9 11.4 2.6 12.6 2.1 C14 1.6 15.1 2.4 14.8 3.4 C14.5 4.1 13.6 4.3 12.8 4.6 C12 5.4 11.6 6.4 10.4 7 C8 8.2 3.4 8 0 5.2 Z';
-const MINI_WING = 'M8.6 4.4 C8 2.4 6.4 0.6 3.6 -1.6 C4.6 0.8 5 2.8 5.4 4.6 Z';
-
-/**
- * Goal progress as a small V of seven geese, flying right. Each goose is a seventh of the goal;
- * they join from the back of the V and the leader joins last, at 100%.
- */
-export function VProg({ pg }: { pg: number }) {
-  const n = 7, W = 92, H = 34;
-  const on = pg >= 100 ? n : Math.floor(pg / 100 * n + 0.0001);
-  const pos = Array.from({ length: n }, (_, i) => {
-    const r = Math.ceil(i / 2), side = i === 0 ? 0 : (i % 2 ? -1 : 1);
-    return [W - 21 - r * 20, H / 2 - 5 + side * r * 5.4] as const;
-  });
+/** The flag at the end of a goal's progress bar; ticked when the goal is reached. */
+export function GoalFlag({ color, reached, small = false }: { color: string; reached: boolean; small?: boolean }) {
+  const h = small ? 13 : 17;
   return (
-    <span className="vprog" title={`${on} of ${n} geese flying: ${pg}%`}>
-      <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} aria-hidden="true">
-        {pos.map(([x, y], i) => (
-          <g key={i} className={`mg ${i >= n - on ? '' : 'off'}`} transform={`translate(${x.toFixed(1)} ${y.toFixed(1)}) scale(1.25)`}>
-            <path d={MINI} /><path d={MINI_WING} /><path className="bk" d="M14.8 3 L16.6 3.5 L14.7 4.1 Z" /></g>)).reverse()}
-      </svg>
-    </span>);
-}
-
-// ---------------------------------------------------------------- design options under test
-
-/** The small icon next to a goal's progress, in the design option chosen in the prototype. */
-export function GoalIcon({ pg, color, fliers }: { pg: number; color: string; fliers: Flier[] }) {
-  const v = useVariant('goalIcon');
-  if (v === 'route') return <MiniRoute pg={pg} color={color} />;
-  if (v === 'people') return <PeopleV people={fliers} />;
-  return <VProg pg={pg} />;
-}
-
-/** Option 1 for the small goal icon: a mini route, flown up to the progress, ending at a flag. No geese: a goose is a person. */
-export function MiniRoute({ pg, color, title }: { pg: number; color: string; title?: string }) {
-  const t = Math.max(0, Math.min(1, pg / 100));
-  const A = [5, 25], B = [44, 2], C = [80, 20];
-  const L = (p: number[], q: number[]) => [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t];
-  const d = L(A, B), e = L(B, C), f = L(d, e);
-  return (
-    <span className="vprog" title={title ?? `${pg}% of the way`}>
-      <svg width="92" height="34" viewBox="0 0 92 34" aria-hidden="true" className="miniroute">
-        <path d={`M${A} Q${B} ${C}`} className="mr-rest" />
-        {t > 0 && <path d={`M${A} Q${d} ${f}`} className="mr-flown" style={{ stroke: color }} />}
-        <circle cx={A[0]} cy={A[1]} r="2.6" className="mr-nest" />
-        <path d={`M${C[0]} ${C[1] + 9}V${C[1] - 9}`} className="mr-pole" />
-        <path d={`M${C[0] + .6} ${C[1] - 9}c2.5-1.2 4.5 1 7.5 0v6c-3 1-5-1.2-7.5 0Z`} style={{ fill: color }} className="mr-flag" />
-        {t > 0 && t < 1 && <circle cx={f[0]} cy={f[1]} r="2.4" style={{ fill: color }} />}
-      </svg>
-    </span>);
-}
-
-export interface Flier { m: Member; done: number }
-/** Option 2: a V of the goal's people (up to seven). A goose is lit when that person finished something on the goal this week; the busiest leads. */
-export function PeopleV({ people }: { people: Flier[] }) {
-  const n = Math.min(7, people.length), W = 92, H = 34;
-  const order = [...people].sort((a, b) => b.done - a.done || a.m.display_name.localeCompare(b.m.display_name)).slice(0, n);
-  const lit = order.filter(x => x.done > 0).length;
-  const pos = Array.from({ length: n }, (_, i) => { const r = Math.ceil(i / 2), side = i === 0 ? 0 : (i % 2 ? -1 : 1); return [W - 21 - r * 20, H / 2 - 5 + side * r * 5.4] as const; });
-  const tip = `${lit} of ${people.length} ${people.length === 1 ? 'person' : 'people'} finished something on this goal this week` +
-    (order.length ? `: ${order.map(x => `${x.m.display_name} ${x.done}`).join(', ')}` : '');
-  if (!n) return <span className="vprog muted" style={{ fontSize: 12 }} title="Nobody on this goal yet">no flock yet</span>;
-  return (
-    <span className="vprog" title={tip}>
-      <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} aria-hidden="true">
-        {pos.map(([x, y], i) => (
-          <g key={i} className={`mg ${order[i].done > 0 ? '' : 'off'}`} transform={`translate(${x.toFixed(1)} ${y.toFixed(1)}) scale(1.25)`}>
-            <path d={MINI} /><path d={MINI_WING} /><path className="bk" d="M14.8 3 L16.6 3.5 L14.7 4.1 Z" /></g>)).reverse()}
-      </svg>
-    </span>);
+    <svg className="goalflag" width={h * 0.75} height={h} viewBox="0 0 12 16" aria-hidden="true">
+      <path d="M2 15.2V1" className="gf-pole" />
+      <path d="M2.6 1.4c3-1.4 5 1.2 8.4 0v6.4c-3.4 1.2-5.4-1.4-8.4 0Z" style={{ fill: color }} className="gf-cloth" />
+      {reached && <path d="M4.6 4.7l1.5 1.5 2.8-3" className="gf-tick" />}
+    </svg>);
 }
 
 /** A project's progress as a route: the flown part is the share of tasks done, the dashed mark is where the calendar
@@ -103,16 +40,6 @@ export function ProjectRoute({ pct, elapsed, color, people, title }: { pct: numb
           return <span key={m.id} className="pr-goose" style={{ left: -(k * 24), top: side * k * 9 }}><Goose still /></span>; })}
         {more > 0 && <span className="pr-more">+{more}</span>}
       </span>
-    </div>);
-}
-
-/** Ongoing work as a weekly flight log: a column per week for the tasks finished, this week highlighted. */
-export function WeekLog({ vals, color }: { vals: number[]; color: string }) {
-  const max = Math.max(1, ...vals), H = 30;
-  return (
-    <div className="weeklog" style={{ ['--c' as string]: color }} role="img" aria-label={`Tasks finished per week, last ${vals.length} weeks: ${vals.join(', ')}`}>
-      {vals.map((v, i) => <span key={i} className={`wl ${i === vals.length - 1 ? 'now' : ''}`} title={`${i === vals.length - 1 ? 'This week' : `${vals.length - 1 - i} week${vals.length - 1 - i === 1 ? '' : 's'} ago`}: ${v} finished`}>
-        <i style={{ height: Math.max(v ? 3 : 1, Math.round(v / max * H)) }} /></span>)}
     </div>);
 }
 
@@ -177,7 +104,7 @@ export function Journey({ g, goals, tasks, projects, people, solo, onEdit, showL
       <div className="jhead">
         <h3>{onEdit ? <button onClick={() => onEdit(g)}>{g.title}</button> : g.title}</h3>
         <span className="pill" style={{ ['--c' as string]: st.color }}>{st.label}</span><span className="tag">{goalRange(g)}</span>
-        <span className="grow" />{lp && <span className="tag">{lp.leg.label} leg</span>}<GoalIcon pg={pg} color={st.color} fliers={rows.map(r => ({ m: r.x, done: r.done }))} /><span className="mono muted">{firstLeg ? '–' : `${pg}%`}</span></div>
+        <span className="grow" />{lp && <span className="tag">{lp.leg.label} leg</span>}<span className="mono muted">{firstLeg ? '–' : `${pg}%`}</span></div>
       <div className="jmap">
         <svg className="land" viewBox="0 0 1000 190" preserveAspectRatio="none" aria-hidden="true">
           <path className="h1" d="M0 150 C 120 112, 230 128, 330 140 C 450 154, 560 104, 690 118 C 800 130, 880 100, 1000 112 L1000 190 L0 190 Z" />
