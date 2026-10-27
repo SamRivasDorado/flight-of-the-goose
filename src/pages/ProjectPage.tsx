@@ -29,6 +29,7 @@ export function ProjectPage({ id }: { id: string }) {
   const v = useTaskViews(id);
   const [tab, setTab] = useLocalPref<PTab>('projectTab', 'notebook');
   const [settings, setSettings] = useState(false);
+  const [showLog, setShowLog] = useLocalPref('showProjectFlightLog', true);
   const [doneErr, setDoneErr] = useState<string | null>(null);
   const [doneBusy, setDoneBusy] = useState(false);
   const [askTasks, setAskTasks] = useState<string[] | null>(null);
@@ -39,6 +40,7 @@ export function ProjectPage({ id }: { id: string }) {
   if (!p) return <div className="empty">This project does not exist or is not visible to you. <a href="#/projects">Back to Projects</a></div>;
 
   const h = health(p, data.tasks, data.noteDates);
+  const stops = projectStops(p, data.tasks);
   const owner = data.members.find(m => m.id === p.owner_member_id);
   const canSettings = canManage(ws.access) || p.owner_member_id === ws.member_id;
   const long = { day: 'numeric', month: 'short', year: 'numeric' } as const;
@@ -83,8 +85,9 @@ export function ProjectPage({ id }: { id: string }) {
         <button className="btn sm ghost" disabled={doneBusy} onClick={() => setAskTasks(null)}>Cancel</button></div>}
       {doneErr && <div className="err" style={{ marginBottom: 8 }}>{doneErr}</div>}
       <ProjectProgress p={p} tasks={data.tasks} members={data.members} wide />
-      {(() => { const st = projectStops(p, data.tasks); return st.length >= 2 && <div className="pflog"><Stops stops={st} flags={false} /></div>; })()}
-      <div className="tabs">{tabBtn('notebook', 'note', 'Notebook')}{tabBtn('list', 'list', 'List')}{tabBtn('board', 'board', 'Board')}{tabBtn('calendar', 'calendar', 'Calendar')}</div>
+      {showLog && stops.length >= 2 && <div className="pflog"><Stops stops={stops} flags={false} /></div>}
+      <div className="tabs">{tabBtn('notebook', 'note', 'Notebook')}{tabBtn('list', 'list', 'List')}{tabBtn('board', 'board', 'Board')}{tabBtn('calendar', 'calendar', 'Calendar')}
+        {stops.length >= 2 && <label className="chk" style={{ marginLeft: 'auto', alignSelf: 'center' }}><input type="checkbox" checked={showLog} onChange={e => setShowLog(e.target.checked)} />Show flight log</label>}</div>
       {tab === 'notebook'
         ? <Notebook p={p} tasks={v.c.tasks} members={data.members} onTasks={() => setTab('list')} />
         : <TaskViews tab={tab} v={v} />}

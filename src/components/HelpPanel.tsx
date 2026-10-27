@@ -41,7 +41,7 @@ const TOPICS: Topic[] = [
     <ul>
       <li>Each project card shows its <b>route</b>: the solid part is the share of tasks done, the dashed mark is where the calendar says it should be, the flag is the end date, and the geese are the people on the project (a goose is always a person). <b>Ongoing</b> projects fly one leg per quarter: the flag is reaching last quarter's number of finished tasks; the first quarter sets the pace.</li>
       <li>Open a project for its <b>Notebook</b>: meeting notes, decisions and parameters with a date. Hover any line and click <b>Make task</b> to turn it into a task linked back to the note. Decisions collect on the right.</li>
-      <li>The project page also has a <b>flight log</b>: a column per quarter for the tasks finished, once the project has run for more than one quarter.</li>
+      <li>The project page also has a <b>flight log</b>: a column per quarter for the tasks finished, once the project has run for more than one quarter. Untick <b>Show flight log</b> (next to the tabs) to hide it.</li>
       <li><b>Mark complete</b> (on the project's page) finishes a project: it moves to Done, the geese fly, and the day is recorded for the flight log on Strategy. If tasks are still open, you choose whether to complete them too. <b>Reopen</b> undoes it.</li>
       <li><b>Project settings</b> holds the dates, status, colour, symbol or image, linked goals and default values (for example Priority) that its tasks inherit.</li>
     </ul></> },
