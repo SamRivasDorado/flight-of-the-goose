@@ -7,9 +7,11 @@ import { useLocalPref, useUI } from '../lib/ui';
 import { useLens } from '../lib/lens';
 import { OptPill } from '../components/Lens';
 import { byDue, diffDays, dueLabel, firstName, hrs } from '../lib/format';
-import { elapsed, fmtDate, health, lastActivity, weeklyDone, type Health } from '../lib/projects';
+import { elapsed, fmtDate, health, lastActivity, type Health } from '../lib/projects';
 import { Avatar, Icon } from '../components/Logo';
 import { ProjectIcon } from '../components/ProjectChip';
+import { ProjectRoute } from '../components/Geese';
+import { plural, projectLeg } from '../lib/legs';
 import { ProjectDialog } from '../components/ProjectDialog';
 
 export const projectHref = (id: string) => `#/project/${id}`;
@@ -83,17 +85,6 @@ export function Projects() {
   );
 }
 
-function Sparkline({ vals, color }: { vals: number[]; color: string }) {
-  const max = Math.max(1, ...vals), w = 120, h = 34, step = w / (vals.length - 1);
-  const pts = vals.map((v, i) => `${(i * step).toFixed(1)},${(h - 3 - (v / max) * (h - 8)).toFixed(1)}`);
-  return (
-    <svg className="spark" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" aria-hidden="true">
-      <polygon points={`0,${h} ${pts.join(' ')} ${w},${h}`} fill={color} fillOpacity=".18" />
-      <polyline points={pts.join(' ')} fill="none" stroke={color} strokeWidth="1.8" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
-      <circle cx={w} cy={pts[pts.length - 1].split(',')[1]} r="2.6" fill={color} />
-    </svg>);
-}
-
 export function KindBadge({ p }: { p: Pick<ProjectFull, 'status' | 'kind'> }) {
   return <span className="tag">{p.status === 'closed' ? 'Done' : p.status === 'paused' ? 'Paused' : p.kind === 'fixed' ? 'Fixed term' : 'Ongoing'}</span>;
 }
@@ -120,7 +111,7 @@ function ProjectCard({ p, h, tasks, members, noteDates }: { p: ProjectFull; h: H
         <AvStack list={projectPeople(p, members)} /></div>}
       <div className="body">
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}><span className="pill" style={{ ['--c' as string]: h.color }}>{h.label}</span><ProjectDims id={p.id} /></div>
-        <ProjectProgress p={p} tasks={tasks} />
+        <ProjectProgress p={p} tasks={tasks} members={members} />
         <div className="next">{next ? <>Next: <b>{next.title || 'Untitled task'}</b> · <span className={nextDue!.cls}>{nextDue!.text}</span></> : 'No upcoming dated tasks'}</div>
         <div className="next">{last ? `Last activity: ${dueLabel(last, true).text}` : 'No activity yet'}</div>
       </div>
@@ -129,22 +120,32 @@ function ProjectCard({ p, h, tasks, members, noteDates }: { p: ProjectFull; h: H
 
 /** A project's progress, as on its card: fixed term = tasks done against time elapsed; ongoing = finished per week.
     Then open, overdue and hours logged. Used on the Projects wall and on the project's own page. */
-export function ProjectProgress({ p, tasks, wide = false }: { p: ProjectFull; tasks: Task[]; wide?: boolean }) {
+export function ProjectProgress({ p, tasks, members = [], wide = false }: { p: ProjectFull; tasks: Task[]; members?: Member[]; wide?: boolean }) {
+  const { solo } = useSolo();
   const ts = tasks.filter(t => t.project_id === p.id), open = ts.filter(t => t.status !== 'done');
   const overdue = open.filter(t => t.due_date && diffDays(t.due_date) < 0).length;
   const time = ts.reduce((s, t) => s + (Number(t.hours) || 0), 0);
+  // the flock: the owner first, then the members (only you in solo mode)
+  const owner = members.filter(m => m.id === p.owner_member_id);
+  const people = solo ? owner : [...owner, ...projectPeople(p, members)];
   let mid;
   if (p.kind === 'fixed') {
     const pct = ts.length ? Math.round(ts.filter(t => t.status === 'done').length / ts.length * 100) : 0, el = Math.round(elapsed(p) * 100);
     const left = p.end_date ? diffDays(p.end_date) : null;
     mid = <>
-      <div className="pbar" style={{ ['--c' as string]: p.color }} title={`${pct}% of tasks done; ${el}% of the time has passed`}><i style={{ width: `${pct}%` }} />
-        {p.start_date && p.end_date && <u style={{ left: `${el}%` }} />}</div>
+      <ProjectRoute pct={pct} elapsed={p.start_date && p.end_date && p.status !== 'closed' ? el : null} color={p.color} people={people}
+        title={`${pct}% of tasks done; the dashed mark is where the calendar says it should be (${el}% of the time has passed)`} />
       <div className="pmeta"><span>{pct}% of tasks done</span>
         <span>{p.end_date ? (left! >= 0 ? `${left} days left · ends ${fmtDate(p.end_date)}` : `ended ${fmtDate(p.end_date, { day: 'numeric', month: 'short', year: 'numeric' })}`) : 'No end date set'}</span></div></>;
   } else {
-    mid = <><Sparkline vals={weeklyDone(ts)} color={p.color} />
-      <div className="pmeta"><span>Completed per week, last 12 weeks</span><span>{p.start_date ? `since ${fmtDate(p.start_date, { month: 'short', year: 'numeric' })}` : ''}</span></div></>;
+    // ongoing: one leg per quarter, against last quarter's pace (like goals with no end date)
+    const l = projectLeg(p, tasks), first = l.target == null;
+    mid = <>
+      <ProjectRoute pct={first ? Math.round(l.elapsed) : l.pg} elapsed={first || p.status !== 'active' ? null : Math.round(l.elapsed)} color={p.color} people={people}
+        title={first ? `${l.leg.label}: ${plural(l.done, 'task')} finished so far. This first leg sets the pace for the next quarter.`
+          : `${l.leg.label}: ${l.done} of ${plural(l.target!, 'task')} finished last quarter. The dashed mark is where last quarter's pace would be today.`} />
+      <div className="pmeta"><span>{first ? `${l.leg.short}: ${plural(l.done, 'task')} done, setting the pace` : `${l.leg.short}: ${l.done} of ${l.target} (last quarter's pace)`}</span>
+        <span>{p.start_date ? `since ${fmtDate(p.start_date, { month: 'short', year: 'numeric' })}` : ''}</span></div></>;
   }
   const stats = <div className="stats"><div><b>{open.length}</b><span>open</span></div><div><b style={overdue ? { color: 'var(--danger)' } : undefined}>{overdue}</b><span>overdue</span></div>
     <div><b>{hrs(time)}</b><span>hours logged</span></div></div>;

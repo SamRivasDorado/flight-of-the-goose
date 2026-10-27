@@ -3,7 +3,7 @@ import { useSolo } from '../lib/solo';
 import { useWorkspace } from '../auth/session';
 import {
   addSubtask, createTask, deleteSubtask, deleteTask, getTaskFull, listGoalRefs, listMembers, listProjects,
-  setCollaborator, setTaskValue, updateSubtask, updateTask, useLoad,
+  recordMentions, setCollaborator, setTaskValue, updateSubtask, updateTask, useLoad,
 } from '../lib/data';
 import { canEdit, STATUSES, type Subtask, type Task, type TaskFull } from '../lib/types';
 import { useUI } from '../lib/ui';
@@ -11,7 +11,7 @@ import { useLens } from '../lib/lens';
 import { dueLabel, firstName } from '../lib/format';
 import { Avatar, Icon } from './Logo';
 import { ProjectChip } from './ProjectChip';
-import { CommentThread } from './Comments';
+import { CommentThread, MentionArea, mentionedIds } from './Comments';
 
 /** The task details panel that slides up from the bottom (as in the prototype).
     A new task is a draft until Create task is pressed; an existing one saves as you edit. */
@@ -75,6 +75,13 @@ function Sheet({ id, defaults, close, changed }: SheetProps) {
   };
   const hoursValue = () => { const h = hours === '' ? null : Math.max(0, Number(hours)); return Number.isNaN(h) ? t?.hours ?? null : h; };
 
+  /** People newly @mentioned in the description get it in their bell. */
+  const notifyDesc = (taskId: string, before: string, after: string) => {
+    const was = new Set(mentionedIds(before, lists?.members ?? [], ws.member_id));
+    const now = (lists?.members ?? []).filter(m => mentionedIds(after, lists?.members ?? [], ws.member_id).includes(m.id) && !was.has(m.id));
+    void recordMentions(ws.workspace_id, ws.member_id, { task_id: taskId }, now, after).catch(() => undefined);
+  };
+
   /** New task: save everything in one go. */
   async function create() {
     if (!t) return;
@@ -89,6 +96,7 @@ function Sheet({ id, defaults, close, changed }: SheetProps) {
       for (const [i, s] of t.subtasks.entries()) { const x = await addSubtask(saved.id, s.title, i); if (s.done) await updateSubtask(x.id, { done: true }); }
       for (const m of t.collaborator_ids) await setCollaborator(saved.id, m, true);
       for (const [f, o] of Object.entries(dimOwn)) if (o) await setTaskValue(saved.id, f, o);
+      notifyDesc(saved.id, '', desc);
     });
     setBusy(false);
     if (ok) close();
@@ -102,6 +110,7 @@ function Sheet({ id, defaults, close, changed }: SheetProps) {
       if (desc !== t.description) p.description = desc;
       const h = hoursValue(); if (h !== t.hours) p.hours = h;
       if (Object.keys(p).length && !(await run(() => updateTask(t.id, p)))) return;
+      if (p.description != null) notifyDesc(t.id, t.description, desc);
     }
     close();
   }
@@ -169,8 +178,9 @@ function Sheet({ id, defaults, close, changed }: SheetProps) {
             onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); (e.target as HTMLTextAreaElement).blur(); } }} />
           <div>
             <div className="h3">Description</div>
-            <textarea className="notes" placeholder="Context, links, decisions" aria-label="Description" style={{ marginTop: 6 }} value={desc} readOnly={!editable}
-              onChange={e => setDesc(e.target.value)} onBlur={() => !isNew && desc !== t.description && patch({ description: desc })} />
+            <div style={{ marginTop: 6 }}><MentionArea className="notes" placeholder="Context, links, decisions. Type @ to mention someone." aria-label="Description" value={desc} readOnly={!editable}
+              members={lists.members} me={ws.member_id} solo={solo}
+              onChange={setDesc} onBlur={() => { if (!isNew && desc !== t.description) { notifyDesc(t.id, t.description, desc); patch({ description: desc }); } }} /></div>
           </div>
           <div>
             <div className="h3">Subtasks {t.subtasks.length > 0 && <span className="mono">{subDone}/{t.subtasks.length}</span>}</div>

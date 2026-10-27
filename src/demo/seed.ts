@@ -156,6 +156,8 @@ export function makeSeed(myUid: string, myEmail: string): Record<string, Row[]> 
   note(neag, -30, 'note', 'Core photos uploaded to the shared drive');
   note(enagas, -5, 'meeting', 'Day 2 went well; more exercises on well correlation next time');
   note(tnav, -14, 'decision', 'Publish workflow templates monthly');
+  t.notes.push({ id: uid(), workspace_id: ws, project_id: nafbd.id, entry_date: day(-1), kind: 'meeting', created_by_member: karim, created_at: stamp(-1),
+    body: 'Call with ONHYM\nThey want a pilot study on one field first\n@Sam Rivas can you size the effort for the pilot?' });
   // ---- comments, a few of them for Sam (mentions, and one on his own task)
   t.comments = [];
   const tid = (title: string) => String(t.tasks.find(x => x.title === title)!.id);
@@ -170,6 +172,8 @@ export function makeSeed(myUid: string, myEmail: string): Record<string, Row[]> 
   cm({ note_id: nid('Call with Cairo') }, karim, 26, 'They also want a short summary in Arabic for their board. @Lucía Navarro can we budget it?', [lucia]);
   cm({ note_id: nid('Call with Cairo') }, lucia, 3, 'Yes, I will add it to the offer. @Sam Rivas please confirm the date for the tops.', [sam]);
   cm({ task_id: tid('Proposal for ONHYM') }, lucia, 50, 'Draft looks good; two remarks on pricing.');
+  t.mention_events = [{ id: uid(), workspace_id: ws, member_id: sam, author_member_id: karim, task_id: null, note_id: nid('Call with ONHYM'),
+    excerpt: '@Sam Rivas can you size the effort for the pilot?', created_at: new Date(Date.now() - 20 * 3600e3).toISOString() }];
   void tTrain; void julia;
   return t;
 }

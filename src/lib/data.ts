@@ -403,6 +403,25 @@ export async function updateComment(id: string, body: string, mentions: string[]
 }
 export async function deleteComment(id: string) { check(await db().from('comments').delete().eq('id', id)); }
 
+/** The lines of a text that mention someone, shortened, for the bell. */
+export function mentionExcerpt(text: string, name: string) {
+  const lines = text.split('\n').filter(l => l.includes(`@${name}`));
+  const t = (lines.length ? lines : [text]).join(' · ').trim();
+  return t.length > 200 ? `${t.slice(0, 197)}…` : t;
+}
+
+/**
+ * Records @mentions written in a task description or notebook entry, one row per person, so they
+ * reach that person's bell. Only people newly mentioned are passed in. Quietly does nothing until
+ * the database update for mentions has been run.
+ */
+export async function recordMentions(ws: string, me: string, target: { task_id?: string; note_id?: string }, people: { id: string; display_name: string }[], text: string) {
+  if (!people.length) return;
+  const { error } = await db().from('mention_events').insert(people.map(m => ({ workspace_id: ws, member_id: m.id, author_member_id: me,
+    task_id: target.task_id ?? null, note_id: target.note_id ?? null, excerpt: mentionExcerpt(text, m.display_name) })));
+  if (error && !/mention_events/.test(error.message)) throw new Error(error.message);
+}
+
 export interface InboxItem { c: Comment; why: 'mention' | 'yours' | 'thread'; title: string; projectId: string | null }
 
 /**
@@ -414,6 +433,13 @@ export async function listInbox(ws: string, me: string): Promise<InboxItem[]> {
   const r = await db().from('comments').select('*').eq('workspace_id', ws).gte('created_at', since).order('created_at', { ascending: false }).limit(300);
   if (r.error) { if (noCommentsTable(r.error.message)) return []; throw new Error(r.error.message); }
   const all = r.data as Comment[];
+  // mentions in descriptions and notebook entries (their own table; absent before its update)
+  const mq = await db().from('mention_events').select('*').eq('workspace_id', ws).eq('member_id', me).gte('created_at', since).order('created_at', { ascending: false }).limit(100);
+  const mentions = mq.error ? [] : (mq.data as { id: string; task_id: string | null; note_id: string | null; author_member_id: string | null; excerpt: string; created_at: string }[])
+    .filter(x => x.author_member_id !== me)
+    .map(x => ({ id: `m-${x.id}`, workspace_id: ws, task_id: x.task_id, note_id: x.note_id, author_member_id: x.author_member_id, body: x.excerpt, mentions: [me], created_at: x.created_at, edited_at: null }) as Comment);
+  all.push(...mentions);
+  all.sort((a, b) => b.created_at.localeCompare(a.created_at));
   const taskIds = [...new Set(all.map(c => c.task_id).filter((x): x is string => !!x))];
   const noteIds = [...new Set(all.map(c => c.note_id).filter((x): x is string => !!x))];
   const [tq, nq] = await Promise.all([

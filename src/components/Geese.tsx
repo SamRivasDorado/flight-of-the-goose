@@ -8,32 +8,39 @@ import type { Goal, Member, Project, Task } from '../lib/types';
 import { Avatar } from './Logo';
 
 /** A goose in flight, drawn from the shared markup (static, no user content). */
-function Goose({ delay = 0 }: { delay?: number }) {
-  return <span className="gwrap" dangerouslySetInnerHTML={{ __html: gooseMarkup(delay) }} />;
+export function Goose({ delay = 0, still = false }: { delay?: number; still?: boolean }) {
+  return <span className={`gwrap ${still ? 'still' : ''}`} dangerouslySetInnerHTML={{ __html: gooseMarkup(delay) }} />;
 }
 
-const MINI = 'M0 5.2 C2 3.6 6 3.4 9 3.8 C10.4 3.9 11.4 2.6 12.6 2.1 C14 1.6 15.1 2.4 14.8 3.4 C14.5 4.1 13.6 4.3 12.8 4.6 C12 5.4 11.6 6.4 10.4 7 C8 8.2 3.4 8 0 5.2 Z';
-const MINI_WING = 'M8.6 4.4 C8 2.4 6.4 0.6 3.6 -1.6 C4.6 0.8 5 2.8 5.4 4.6 Z';
-
-/**
- * Goal progress as a small V of seven geese, flying right. Each goose is a seventh of the goal;
- * they join from the back of the V and the leader joins last, at 100%.
- */
-export function VProg({ pg }: { pg: number }) {
-  const n = 7, W = 92, H = 34;
-  const on = pg >= 100 ? n : Math.floor(pg / 100 * n + 0.0001);
-  const pos = Array.from({ length: n }, (_, i) => {
-    const r = Math.ceil(i / 2), side = i === 0 ? 0 : (i % 2 ? -1 : 1);
-    return [W - 21 - r * 20, H / 2 - 5 + side * r * 5.4] as const;
-  });
+/** The flag at the end of a goal's progress bar; ticked when the goal is reached. */
+export function GoalFlag({ color, reached, small = false }: { color: string; reached: boolean; small?: boolean }) {
+  const h = small ? 13 : 17;
   return (
-    <span className="vprog" title={`${on} of ${n} geese flying: ${pg}%`}>
-      <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} aria-hidden="true">
-        {pos.map(([x, y], i) => (
-          <g key={i} className={`mg ${i >= n - on ? '' : 'off'}`} transform={`translate(${x.toFixed(1)} ${y.toFixed(1)}) scale(1.25)`}>
-            <path d={MINI} /><path d={MINI_WING} /><path className="bk" d="M14.8 3 L16.6 3.5 L14.7 4.1 Z" /></g>)).reverse()}
-      </svg>
-    </span>);
+    <svg className="goalflag" width={h * 0.75} height={h} viewBox="0 0 12 16" aria-hidden="true">
+      <path d="M2 15.2V1" className="gf-pole" />
+      <path d="M2.6 1.4c3-1.4 5 1.2 8.4 0v6.4c-3.4 1.2-5.4-1.4-8.4 0Z" style={{ fill: color }} className="gf-cloth" />
+      {reached && <path d="M4.6 4.7l1.5 1.5 2.8-3" className="gf-tick" />}
+    </svg>);
+}
+
+/** A project's progress as a route: the flown part is the share of tasks done, the dashed mark is where the calendar
+    says it should be, the flag is the end date, and the project's people fly at the tip of the flown part. */
+export function ProjectRoute({ pct, elapsed, color, people, title }: { pct: number; elapsed: number | null; color: string; people: Member[]; title: string }) {
+  const shown = people.slice(0, 3), more = people.length - shown.length;
+  const tip = people.length ? `${people.map(m => m.display_name).join(', ')}: ${title}` : title;
+  return (
+    <div className="proute" title={tip} style={{ ['--c' as string]: color }}>
+      <span className="pr-line" />
+      <span className="pr-flown" style={{ width: `${pct}%` }} />
+      {elapsed != null && <span className="pr-today" style={{ left: `${elapsed}%` }} />}
+      <span className="pr-nest" />
+      <svg className="pr-flag" viewBox="0 0 12 16" aria-hidden="true"><path d="M2 15V1" /><path d="M2.6 1.4c3-1.4 5 1.2 8.4 0v6.4c-3.4 1.2-5.4-1.4-8.4 0Z" /></svg>
+      <span className="pr-flock" style={{ left: `clamp(16px, ${pct}%, calc(100% - 22px))` }}>
+        {shown.map((m, i) => { const k = Math.ceil(i / 2), side = i === 0 ? 0 : (i % 2 ? -1 : 1);
+          return <span key={m.id} className="pr-goose" style={{ left: -(k * 24), top: side * k * 9 }}><Goose still /></span>; })}
+        {more > 0 && <span className="pr-more">+{more}</span>}
+      </span>
+    </div>);
 }
 
 // The route is a curve from the nest (60,120) to the flag (940,112) on a 1000 × 190 map.
@@ -97,7 +104,7 @@ export function Journey({ g, goals, tasks, projects, people, solo, onEdit, showL
       <div className="jhead">
         <h3>{onEdit ? <button onClick={() => onEdit(g)}>{g.title}</button> : g.title}</h3>
         <span className="pill" style={{ ['--c' as string]: st.color }}>{st.label}</span><span className="tag">{goalRange(g)}</span>
-        <span className="grow" />{lp && <span className="tag">{lp.leg.label} leg</span>}<VProg pg={pg} /><span className="mono muted">{firstLeg ? '–' : `${pg}%`}</span></div>
+        <span className="grow" />{lp && <span className="tag">{lp.leg.label} leg</span>}<span className="mono muted">{firstLeg ? '–' : `${pg}%`}</span></div>
       <div className="jmap">
         <svg className="land" viewBox="0 0 1000 190" preserveAspectRatio="none" aria-hidden="true">
           <path className="h1" d="M0 150 C 120 112, 230 128, 330 140 C 450 154, 560 104, 690 118 C 800 130, 880 100, 1000 112 L1000 190 L0 190 Z" />
@@ -145,7 +152,7 @@ export function Journey({ g, goals, tasks, projects, people, solo, onEdit, showL
  * with a small flag for every project completed. The current quarter has a dashed outline at
  * last quarter's height: the pace to match. The latest eight quarters show.
  */
-export function Stops({ stops, compact = false }: { stops: Stop[]; compact?: boolean }) {
+export function Stops({ stops, compact = false, flags = true }: { stops: Stop[]; compact?: boolean; flags?: boolean }) {
   if (!stops.length) return null;
   const shown = stops.slice(-8), older = stops.length - shown.length;
   const cur = shown.find(s => s.current), prev = cur ? shown[shown.indexOf(cur) - 1] : undefined;
@@ -157,7 +164,7 @@ export function Stops({ stops, compact = false }: { stops: Stop[]; compact?: boo
     <div className={`flog ${compact ? 'compact' : ''}`} role="img" aria-label={`Finished per quarter: ${shown.map(tip).join('; ')}`}>
       <div className="flogh"><span className="stopslbl">{compact ? 'Per quarter' : 'Flight log'}</span>
         {older > 0 && <span className="muted">{older} earlier quarter{older > 1 ? 's' : ''} not shown</span>}
-        <span className="grow" /><span className="flogkey"><i className="kb" />tasks done<FlagMini />project completed</span></div>
+        <span className="grow" /><span className="flogkey"><i className="kb" />tasks done{flags && <><FlagMini />project completed</>}</span></div>
       <div className="flogcols" style={{ height: H + 34 }}>
         {shown.map(s => (
           <div key={s.leg.key} className={`fcol ${s.current ? 'now' : ''}`} title={tip(s)}>
