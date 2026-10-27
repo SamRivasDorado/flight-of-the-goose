@@ -743,3 +743,5 @@ button.brand:hover{background:var(--bar-hi)}
 .goalflag .gf-pole{stroke:var(--fg);stroke-width:1.4;stroke-linecap:round;fill:none}
 .goalflag .gf-cloth{stroke:var(--fg);stroke-width:.8;stroke-linejoin:round}
 .goalflag .gf-tick{fill:none;stroke:#fff;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.marea{display:flex;flex-direction:column;gap:6px;min-width:0}
+.pflog{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:2px 16px 12px;margin:-6px 0 14px}

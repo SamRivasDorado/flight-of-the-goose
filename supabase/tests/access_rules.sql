@@ -337,4 +337,26 @@ do $$ begin
 end $$;
 reset role;
 
+-- ---------------------------------------------------------------------
+-- Mentions in descriptions and notebooks: only the person mentioned (and the author) read them
+set role authenticated;
+select pg_temp.login('00000000-0000-0000-0000-00000000000a');
+insert into mention_events (workspace_id, member_id, author_member_id, task_id, excerpt)
+  select t.workspace_id, (select id from workspace_members where email = 'omar@example.com'), my_member_id(t.workspace_id), t.id, '@Omar see the description'
+  from tasks t where t.title = 't1 in P1';
+insert into mention_events (workspace_id, member_id, author_member_id, task_id, excerpt)
+  select t.workspace_id, (select id from workspace_members where email = 'karim@example.com'), my_member_id(t.workspace_id), t.id, '@Karim private'
+  from tasks t where t.title = 't1 in P1';
+select pg_temp.login('00000000-0000-0000-0000-00000000000b');
+select pg_temp.check((select string_agg(excerpt, ',') from mention_events) = '@Omar see the description', 'a person sees only the mentions of himself');
+do $$ begin
+  begin
+    insert into mention_events (workspace_id, member_id, author_member_id, task_id, excerpt)
+      select t.workspace_id, (select id from workspace_members where email = 'sam@example.com'), (select id from workspace_members where email = 'sam@example.com'), t.id, 'fake'
+      from tasks t where t.title = 't1 in P1';
+    raise exception 'FAILED: wrote a mention in someone else''s name';
+  exception when insufficient_privilege then raise notice 'ok  nobody writes a mention in someone else''s name'; end;
+end $$;
+reset role;
+
 select 'ALL ACCESS TESTS PASSED' as result;

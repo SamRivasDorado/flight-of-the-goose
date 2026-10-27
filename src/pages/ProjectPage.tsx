@@ -10,8 +10,10 @@ import { Avatar, Icon, type IconName } from '../components/Logo';
 import { ProjectIcon } from '../components/ProjectChip';
 import { ProjectDialog } from '../components/ProjectDialog';
 import { TaskViews, useTaskViews } from './Tasks';
-import { CommentThread } from '../components/Comments';
-import { countNoteComments } from '../lib/data';
+import { Stops } from '../components/Geese';
+import { projectStops } from '../lib/legs';
+import { CommentThread, MentionArea, MentionText, mentionedIds } from '../components/Comments';
+import { countNoteComments, recordMentions } from '../lib/data';
 import { AvStack, KindBadge, ProjectDims, ProjectProgress, projectPeople } from './Projects';
 
 type PTab = 'notebook' | 'list' | 'board' | 'calendar';
@@ -81,6 +83,7 @@ export function ProjectPage({ id }: { id: string }) {
         <button className="btn sm ghost" disabled={doneBusy} onClick={() => setAskTasks(null)}>Cancel</button></div>}
       {doneErr && <div className="err" style={{ marginBottom: 8 }}>{doneErr}</div>}
       <ProjectProgress p={p} tasks={data.tasks} members={data.members} wide />
+      {(() => { const st = projectStops(p, data.tasks); return st.length >= 2 && <div className="pflog"><Stops stops={st} flags={false} /></div>; })()}
       <div className="tabs">{tabBtn('notebook', 'note', 'Notebook')}{tabBtn('list', 'list', 'List')}{tabBtn('board', 'board', 'Board')}{tabBtn('calendar', 'calendar', 'Calendar')}</div>
       {tab === 'notebook'
         ? <Notebook p={p} tasks={v.c.tasks} members={data.members} onTasks={() => setTab('list')} />
@@ -134,9 +137,17 @@ function Notebook({ p, tasks, members, onTasks }: { p: ProjectFull; tasks: TaskF
     catch (e) { setMsg(e instanceof Error ? e.message : String(e)); return false; }
     finally { setBusy(false); }
   }
+  /** People newly @mentioned in an entry get it in their bell. */
+  const notify = (noteId: string, before: string, after: string) => {
+    const was = new Set(mentionedIds(before, members, ws.member_id));
+    const now = members.filter(m => mentionedIds(after, members, ws.member_id).includes(m.id) && !was.has(m.id));
+    void recordMentions(ws.workspace_id, ws.member_id, { note_id: noteId }, now, after).catch(() => undefined);
+  };
   async function add() {
     if (!text.trim()) { setMsg('Write something first.'); return; }
-    if (await run(() => addNote(ws.workspace_id, ws.member_id, { project_id: p.id, entry_date: date || todayISO(), kind, body: text.trim() }))) { setText(''); setKind('note'); setDate(todayISO()); }
+    const body = text.trim();
+    if (await run(async () => { const n = await addNote(ws.workspace_id, ws.member_id, { project_id: p.id, entry_date: date || todayISO(), kind, body }); notify(n.id, '', body); })) {
+      setText(''); setKind('note'); setDate(todayISO()); }
   }
   const lineTask = (n: Note, i: number, line: string) =>
     run(() => createTask(ws.workspace_id, ws.member_id, { title: line.trim().replace(/^[-*•]\s*/, ''), project_id: p.id, source_note_id: n.id, source_line: i }));
@@ -151,8 +162,8 @@ function Notebook({ p, tasks, members, onTasks }: { p: ProjectFull; tasks: TaskF
       <div>
         {editable && (
           <div className="composer">
-            <textarea value={text} onChange={e => setText(e.target.value)} aria-label="New notebook entry"
-              placeholder="What happened? Meeting notes, decisions, parameters, links. Each line can become a task later."
+            <MentionArea value={text} onChange={setText} aria-label="New notebook entry" members={members} me={ws.member_id} solo={solo}
+              placeholder="What happened? Meeting notes, decisions, parameters, links. Each line can become a task later. Type @ to mention someone."
               onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) void add(); }} />
             <div className="row">
               <input type="date" className="field-in" value={date} onChange={e => setDate(e.target.value)} aria-label="Entry date" />
@@ -168,14 +179,15 @@ function Notebook({ p, tasks, members, onTasks }: { p: ProjectFull; tasks: TaskF
             if (editing?.id === n.id) return (
               <div className="entry" key={n.id}>
                 <div className="when"><input type="date" className="field-in" style={{ width: '100%' }} value={editing.entry_date} onChange={e => setEditing({ ...editing, entry_date: e.target.value })} /></div>
-                <div><textarea className="notes" style={{ minHeight: 120 }} value={editing.body} onChange={e => setEditing({ ...editing, body: e.target.value })} aria-label="Entry text" />
+                <div><MentionArea className="notes" style={{ minHeight: 120 }} value={editing.body} onChange={v => setEditing({ ...editing, body: v })} aria-label="Entry text"
+                  members={members} me={ws.member_id} solo={solo} />
                   <div style={{ display: 'flex', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
                     <select className="field-in" value={editing.kind} onChange={e => setEditing({ ...editing, kind: e.target.value as NoteKind })}>
                       {NOTE_KINDS.map(k => <option key={k.id} value={k.id}>{k.label}</option>)}</select>
                     <span style={{ flex: 1 }} />
                     <button className="btn sm" onClick={() => setEditing(null)}>Cancel</button>
                     <button className="btn sm primary" disabled={busy || !editing.body.trim()}
-                      onClick={async () => { if (await run(() => updateNote(n.id, { entry_date: editing.entry_date, kind: editing.kind, body: editing.body.trim() }))) setEditing(null); }}>Save entry</button>
+                      onClick={async () => { const body = editing.body.trim(); if (await run(() => updateNote(n.id, { entry_date: editing.entry_date, kind: editing.kind, body }))) { notify(n.id, n.body, body); setEditing(null); } }}>Save entry</button>
                   </div></div>
               </div>);
             const k = NOTE_KINDS.find(x => x.id === n.kind)!;
@@ -196,7 +208,7 @@ function Notebook({ p, tasks, members, onTasks }: { p: ProjectFull; tasks: TaskF
                     if (!line.trim()) return <div key={i} style={{ height: '.6em' }} />;
                     const t = tasks.find(x => x.source_note_id === n.id && x.source_line === i);
                     return (
-                      <div className="nline" key={i}><span className="tx">{line}</span>
+                      <div className="nline" key={i}><span className="tx"><MentionText text={line} members={members} /></span>
                         {t ? <button className={`linked ${t.status === 'done' ? 'done' : ''}`} onClick={() => ui.openTask(t.id)}><Icon name="check" />{t.status === 'done' ? 'Task done' : 'Task'}</button>
                           : editable && <button className="mkt" onClick={() => void lineTask(n, i, line)}><Icon name="arrow" />Make task</button>}
                       </div>);

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react';
 import { useWorkspace } from '../auth/session';
 import { addComment, deleteComment, listComments, listMembers, noCommentsTable, updateComment } from '../lib/data';
 import { useSolo } from '../lib/solo';
@@ -26,61 +26,88 @@ export function CommentBody({ c, members }: { c: Pick<Comment, 'body' | 'mention
   return <>{parts.map((p, i) => p.startsWith('@') && names.includes(p.slice(1)) ? <span key={i} className="mention">{p}</span> : p)}</>;
 }
 
-/** A box to write a comment, with an @ picker for people in the workspace. */
-function Composer({ members, me, initial = '', solo, busy, submitLabel, onSubmit, onCancel, autoFocus }: {
-  members: Member[]; me: string; initial?: string; solo: boolean; busy: boolean; submitLabel: string;
-  onSubmit: (body: string, mentions: string[]) => Promise<boolean>; onCancel?: () => void; autoFocus?: boolean;
+/** People named with @Name in a text (whole display names), except yourself. */
+export const mentionedIds = (text: string, members: Member[], me: string) =>
+  members.filter(m => m.id !== me && text.includes(`@${m.display_name}`)).map(m => m.id);
+
+/** Any text with @Name highlighted for the people of the workspace (descriptions, notebook lines). */
+export function MentionText({ text, members }: { text: string; members: Member[] }) {
+  const names = members.map(m => m.display_name).filter(n => text.includes(`@${n}`)).sort((a, b) => b.length - a.length);
+  if (!names.length) return <>{text}</>;
+  const parts = text.split(new RegExp(`(@(?:${names.map(esc).join('|')}))`, 'g'));
+  return <>{parts.map((p, i) => p.startsWith('@') && names.includes(p.slice(1)) ? <span key={i} className="mention">{p}</span> : p)}</>;
+}
+
+/**
+ * A text box with the @ picker: typing @ lists the people of the workspace (or says why nobody
+ * can be mentioned). Used for comments, task descriptions and notebook entries.
+ */
+export function MentionArea({ value, onChange, members, me, solo, onKeyDown, onBlur, ...rest }: {
+  value: string; onChange: (v: string) => void; members: Member[]; me: string; solo: boolean;
+  onKeyDown?: (e: KeyboardEvent<HTMLTextAreaElement>) => void; onBlur?: () => void;
+  className?: string; placeholder?: string; rows?: number; autoFocus?: boolean; readOnly?: boolean; style?: CSSProperties; 'aria-label'?: string;
 }) {
-  const [text, setText] = useState(initial);
   const [pick, setPick] = useState<{ q: string; at: number; i: number } | null>(null);
   const ta = useRef<HTMLTextAreaElement>(null);
   const people = members.filter(m => m.id !== me);
   const matches = pick ? people.filter(m => m.display_name.toLowerCase().includes(pick.q.toLowerCase())).slice(0, 6) : [];
-
-  function onChange(v: string, caret: number) {
-    setText(v);
+  function change(v: string, caret: number) {
+    onChange(v);
     const m = /(^|\s)@([\p{L}\p{M}'’.-]*)$/u.exec(v.slice(0, caret));
     setPick(m ? { q: m[2], at: caret - m[2].length - 1, i: 0 } : null);
   }
   function choose(m: Member) {
     if (!pick) return;
     const end = pick.at + 1 + pick.q.length;
-    const v = `${text.slice(0, pick.at)}@${m.display_name} ${text.slice(end)}`;
-    setText(v); setPick(null);
+    onChange(`${value.slice(0, pick.at)}@${m.display_name} ${value.slice(end)}`); setPick(null);
     const pos = pick.at + m.display_name.length + 2;
     requestAnimationFrame(() => { ta.current?.focus(); ta.current?.setSelectionRange(pos, pos); });
   }
-  async function submit() {
-    const body = text.trim(); if (!body || busy) return;
-    const mentions = people.filter(m => body.includes(`@${m.display_name}`)).map(m => m.id);
-    if (await onSubmit(body, mentions)) { setText(''); setPick(null); }
-  }
-  function onKey(e: KeyboardEvent<HTMLTextAreaElement>) {
+  function key(e: KeyboardEvent<HTMLTextAreaElement>) {
     if (pick && matches.length) {
       if (e.key === 'ArrowDown') { e.preventDefault(); setPick({ ...pick, i: (pick.i + 1) % matches.length }); return; }
       if (e.key === 'ArrowUp') { e.preventDefault(); setPick({ ...pick, i: (pick.i - 1 + matches.length) % matches.length }); return; }
       if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); choose(matches[pick.i]); return; }
-      if (e.key === 'Escape') { e.stopPropagation(); setPick(null); return; }
     }
-    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); void submit(); }
-    if (e.key === 'Escape' && onCancel) { e.stopPropagation(); onCancel(); }
+    if (pick && e.key === 'Escape') { e.stopPropagation(); setPick(null); return; }
+    onKeyDown?.(e);
   }
   return (
-    <div className="ccompose">
-      <textarea ref={ta} className="notes" rows={2} value={text} autoFocus={autoFocus} aria-label="Write a comment"
-        placeholder="Write a comment. Type @ to mention someone." 
-        onChange={e => onChange(e.target.value, e.target.selectionStart)} onKeyDown={onKey} onBlur={() => setTimeout(() => setPick(null), 150)} />
-      {pick && matches.length === 0 && (
+    <div className="marea">
+      <textarea ref={ta} {...rest} value={value} onChange={e => change(e.target.value, e.target.selectionStart)} onKeyDown={key}
+        onBlur={() => { setTimeout(() => setPick(null), 150); onBlur?.(); }} />
+      {pick && !rest.readOnly && matches.length === 0 && (
         <div className="mpick none" role="status">{solo
           ? 'Solo mode is on, so there is nobody else to mention. Switch it off in Your profile to work with others.'
           : people.length === 0 ? 'Nobody else is in this workspace yet. Invite people from the Team page to mention them.'
           : `Nobody here is called “${pick.q}”.`}</div>)}
-      {pick && matches.length > 0 && (
+      {pick && !rest.readOnly && matches.length > 0 && (
         <div className="mpick" role="listbox" aria-label="Mention someone">
           {matches.map((m, i) => (
             <button key={m.id} role="option" aria-selected={i === pick.i} className={i === pick.i ? 'on' : ''}
               onMouseDown={e => { e.preventDefault(); choose(m); }}><Avatar m={m} size="sm" />{m.display_name}{m.title && <span className="muted">{m.title}</span>}</button>))}
         </div>)}
+    </div>);
+}
+
+/** A box to write a comment, with an @ picker for people in the workspace. */
+function Composer({ members, me, initial = '', solo, busy, submitLabel, onSubmit, onCancel, autoFocus }: {
+  members: Member[]; me: string; initial?: string; solo: boolean; busy: boolean; submitLabel: string;
+  onSubmit: (body: string, mentions: string[]) => Promise<boolean>; onCancel?: () => void; autoFocus?: boolean;
+}) {
+  const [text, setText] = useState(initial);
+  async function submit() {
+    const body = text.trim(); if (!body || busy) return;
+    if (await onSubmit(body, mentionedIds(body, members, me))) setText('');
+  }
+  return (
+    <div className="ccompose">
+      <MentionArea className="notes" rows={2} value={text} onChange={setText} members={members} me={me} solo={solo} autoFocus={autoFocus}
+        aria-label="Write a comment" placeholder="Write a comment. Type @ to mention someone."
+        onKeyDown={e => {
+          if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); void submit(); }
+          if (e.key === 'Escape' && onCancel) { e.stopPropagation(); onCancel(); }
+        }} />
       <div className="cfoot"><span className="hint">Ctrl or ⌘ + Enter to send</span><span className="grow" />
         {onCancel && <button className="btn sm ghost" onClick={onCancel}>Cancel</button>}
         <button className="btn sm primary" disabled={busy || !text.trim()} onClick={() => void submit()}>{submitLabel}</button></div>

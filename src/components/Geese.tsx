@@ -152,7 +152,7 @@ export function Journey({ g, goals, tasks, projects, people, solo, onEdit, showL
  * with a small flag for every project completed. The current quarter has a dashed outline at
  * last quarter's height: the pace to match. The latest eight quarters show.
  */
-export function Stops({ stops, compact = false }: { stops: Stop[]; compact?: boolean }) {
+export function Stops({ stops, compact = false, flags = true }: { stops: Stop[]; compact?: boolean; flags?: boolean }) {
   if (!stops.length) return null;
   const shown = stops.slice(-8), older = stops.length - shown.length;
   const cur = shown.find(s => s.current), prev = cur ? shown[shown.indexOf(cur) - 1] : undefined;
@@ -164,7 +164,7 @@ export function Stops({ stops, compact = false }: { stops: Stop[]; compact?: boo
     <div className={`flog ${compact ? 'compact' : ''}`} role="img" aria-label={`Finished per quarter: ${shown.map(tip).join('; ')}`}>
       <div className="flogh"><span className="stopslbl">{compact ? 'Per quarter' : 'Flight log'}</span>
         {older > 0 && <span className="muted">{older} earlier quarter{older > 1 ? 's' : ''} not shown</span>}
-        <span className="grow" /><span className="flogkey"><i className="kb" />tasks done<FlagMini />project completed</span></div>
+        <span className="grow" /><span className="flogkey"><i className="kb" />tasks done{flags && <><FlagMini />project completed</>}</span></div>
       <div className="flogcols" style={{ height: H + 34 }}>
         {shown.map(s => (
           <div key={s.leg.key} className={`fcol ${s.current ? 'now' : ''}`} title={tip(s)}>

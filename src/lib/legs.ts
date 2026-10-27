@@ -102,3 +102,15 @@ export function projectLeg(p: Project, tasks: Task[], today = iso(new Date())): 
   const elapsed = Math.max(0, Math.min(100, (parse(today).getTime() - parse(leg.start).getTime()) / span * 100));
   return { pg: target ? Math.min(100, Math.round(done / target * 100)) : 0, leg, done, target, elapsed };
 }
+
+/** A project's flight log: the tasks finished in each quarter from its start (or first task) until today. */
+export function projectStops(p: Project, tasks: Task[], today = iso(new Date())): Stop[] {
+  const ts = tasks.filter(t => t.project_id === p.id);
+  const fin = ts.filter(t => t.status === 'done' && t.completed_at);
+  const first = [p.start_date, ...ts.map(t => t.created_at.slice(0, 10))].filter((x): x is string => !!x).sort()[0] ?? today;
+  const last = p.status === 'closed' && p.completed_at && p.completed_at < today ? p.completed_at : today;
+  const cur = legOf(today).key, out: Stop[] = [];
+  for (let l = legOf(first < today ? first : today); l.start <= last && out.length < 40; l = legOf(new Date(parse(l.end).getTime() + 864e5)))
+    out.push({ leg: l, current: l.key === cur, projects: 0, tasks: fin.filter(t => t.completed_at! >= l.start && t.completed_at! <= l.end).length });
+  return out;
+}

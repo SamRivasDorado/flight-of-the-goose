@@ -41,6 +41,7 @@ const TOPICS: Topic[] = [
     <ul>
       <li>Each project card shows its <b>route</b>: the solid part is the share of tasks done, the dashed mark is where the calendar says it should be, the flag is the end date, and the geese are the people on the project (a goose is always a person). <b>Ongoing</b> projects fly one leg per quarter: the flag is reaching last quarter's number of finished tasks; the first quarter sets the pace.</li>
       <li>Open a project for its <b>Notebook</b>: meeting notes, decisions and parameters with a date. Hover any line and click <b>Make task</b> to turn it into a task linked back to the note. Decisions collect on the right.</li>
+      <li>The project page also has a <b>flight log</b>: a column per quarter for the tasks finished, once the project has run for more than one quarter.</li>
       <li><b>Mark complete</b> (on the project's page) finishes a project: it moves to Done, the geese fly, and the day is recorded for the flight log on Strategy. If tasks are still open, you choose whether to complete them too. <b>Reopen</b> undoes it.</li>
       <li><b>Project settings</b> holds the dates, status, colour, symbol or image, linked goals and default values (for example Priority) that its tasks inherit.</li>
     </ul></> },
@@ -51,7 +52,7 @@ const TOPICS: Topic[] = [
       <li>In the calendar, drag a task to another day and choose <b>Move here</b> or <b>Copy here</b> (hold Alt while dropping to copy at once). Untick “Ask to move or copy” to always move.</li>
       <li><b>New task</b> (top bar) opens a draft that is only saved when you press <b>Create task</b>. Existing tasks save as you edit.</li>
       <li>Log <b>Time spent</b> on each task: Review and Insights use it to show where your time went.</li>
-      <li><b>Comments</b> sit at the bottom of the task panel, and under each notebook entry. Type <b>@</b> to mention someone. The <b>bell</b> in the top bar collects comments for you: mentions, comments on your tasks, and replies where you commented. Everyone who can see the task reads its comments; guests read but do not write.</li>
+      <li><b>Comments</b> sit at the bottom of the task panel, and under each notebook entry. Type <b>@</b> to mention someone, there and also in task descriptions and notebook entries. The <b>bell</b> in the top bar collects what is for you: mentions, comments on your tasks, and replies where you commented. Everyone who can see the task reads its comments; guests read but do not write.</li>
       <li>Finishing a task sends a goose across the screen; finishing a project or reaching a goal sends a whole V. Switch them off in Your profile (your picture, top right).</li>
       <li>Coloured labels such as <b>Priority</b> are dimensions. A dashed label comes from the project’s default; a filled one is set on the task itself.</li>
     </ul></> },
