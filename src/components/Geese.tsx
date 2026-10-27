@@ -144,6 +144,7 @@ export function Journey({ g, goals, tasks, projects, people, solo, onEdit, showL
             const bird = <>
               <div className="bob" style={{ animationDelay: `-${(i * 0.37 % 1.6).toFixed(2)}s` }}><Goose delay={-(i * 0.13 % 0.6)} /></div>
               {r && !solo && <Avatar m={r.x} />}
+              {r && r.late > 0 && !solo && <span className={`latemark ${helped ? 'helped' : ''}`} aria-hidden="true">{helped ? '♥' : '!'}</span>}
               {/* two companions drop back to fly with a goose that is behind */}
               {r && !solo && r.helpers.slice(0, 2).map((h, j) => (
                 <span key={j} className={`companion ${h.accepted ? '' : 'pending'}`} style={{ left: -14, top: j ? 20 : -20 }}>
