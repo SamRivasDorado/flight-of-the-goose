@@ -11,7 +11,7 @@ import { ProjectIcon } from '../components/ProjectChip';
 import { ProjectDialog } from '../components/ProjectDialog';
 import { TaskViews, useTaskViews } from './Tasks';
 import { Stops } from '../components/Geese';
-import { projectStops } from '../lib/legs';
+import { legOf, projectStops } from '../lib/legs';
 import { CommentThread, MentionArea, MentionText, mentionedIds } from '../components/Comments';
 import { countNoteComments, recordMentions } from '../lib/data';
 import { AvStack, KindBadge, ProjectDims, ProjectProgress, projectPeople } from './Projects';
@@ -84,10 +84,15 @@ export function ProjectPage({ id }: { id: string }) {
         <button className="btn sm" disabled={doneBusy} onClick={() => void markDone(true)}>Complete the project only</button>
         <button className="btn sm ghost" disabled={doneBusy} onClick={() => setAskTasks(null)}>Cancel</button></div>}
       {doneErr && <div className="err" style={{ marginBottom: 8 }}>{doneErr}</div>}
+      {/* same place as on Strategy: a status line with the switch on the right */}
+      <div className="statusbar" style={{ marginBottom: 8 }}>
+        <label className="chk" style={{ marginLeft: 'auto' }}><input type="checkbox" checked={showLog} onChange={e => setShowLog(e.target.checked)} />Show flight log</label></div>
       <ProjectProgress p={p} tasks={data.tasks} members={data.members} wide />
-      {showLog && stops.length >= 2 && <div className="pflog"><Stops stops={stops} flags={false} /></div>}
+      {showLog && (stops.length >= 2
+        ? <div className="pflog"><Stops stops={stops} flags={false} /></div>
+        : <p className="hint pflog-wait">The flight log starts when the project reaches its second quarter ({fmtDate(legOf(new Date()).end, { day: 'numeric', month: 'short' })} is the end of this one).</p>)}
       <div className="tabs">{tabBtn('notebook', 'note', 'Notebook')}{tabBtn('list', 'list', 'List')}{tabBtn('board', 'board', 'Board')}{tabBtn('calendar', 'calendar', 'Calendar')}
-        {stops.length >= 2 && <label className="chk" style={{ marginLeft: 'auto', alignSelf: 'center' }}><input type="checkbox" checked={showLog} onChange={e => setShowLog(e.target.checked)} />Show flight log</label>}</div>
+</div>
       {tab === 'notebook'
         ? <Notebook p={p} tasks={v.c.tasks} members={data.members} onTasks={() => setTab('list')} />
         : <TaskViews tab={tab} v={v} />}
