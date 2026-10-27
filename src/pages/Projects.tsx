@@ -10,6 +10,8 @@ import { byDue, diffDays, dueLabel, firstName, hrs } from '../lib/format';
 import { elapsed, fmtDate, health, lastActivity, weeklyDone, type Health } from '../lib/projects';
 import { Avatar, Icon } from '../components/Logo';
 import { ProjectIcon } from '../components/ProjectChip';
+import { ProjectRoute, WeekLog } from '../components/Geese';
+import { useVariant } from '../lib/variants';
 import { ProjectDialog } from '../components/ProjectDialog';
 
 export const projectHref = (id: string) => `#/project/${id}`;
@@ -120,7 +122,7 @@ function ProjectCard({ p, h, tasks, members, noteDates }: { p: ProjectFull; h: H
         <AvStack list={projectPeople(p, members)} /></div>}
       <div className="body">
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}><span className="pill" style={{ ['--c' as string]: h.color }}>{h.label}</span><ProjectDims id={p.id} /></div>
-        <ProjectProgress p={p} tasks={tasks} />
+        <ProjectProgress p={p} tasks={tasks} members={members} />
         <div className="next">{next ? <>Next: <b>{next.title || 'Untitled task'}</b> · <span className={nextDue!.cls}>{nextDue!.text}</span></> : 'No upcoming dated tasks'}</div>
         <div className="next">{last ? `Last activity: ${dueLabel(last, true).text}` : 'No activity yet'}</div>
       </div>
@@ -129,7 +131,9 @@ function ProjectCard({ p, h, tasks, members, noteDates }: { p: ProjectFull; h: H
 
 /** A project's progress, as on its card: fixed term = tasks done against time elapsed; ongoing = finished per week.
     Then open, overdue and hours logged. Used on the Projects wall and on the project's own page. */
-export function ProjectProgress({ p, tasks, wide = false }: { p: ProjectFull; tasks: Task[]; wide?: boolean }) {
+export function ProjectProgress({ p, tasks, members = [], wide = false }: { p: ProjectFull; tasks: Task[]; members?: Member[]; wide?: boolean }) {
+  const style = useVariant('projectStyle');
+  const { solo } = useSolo();
   const ts = tasks.filter(t => t.project_id === p.id), open = ts.filter(t => t.status !== 'done');
   const overdue = open.filter(t => t.due_date && diffDays(t.due_date) < 0).length;
   const time = ts.reduce((s, t) => s + (Number(t.hours) || 0), 0);
@@ -138,12 +142,15 @@ export function ProjectProgress({ p, tasks, wide = false }: { p: ProjectFull; ta
     const pct = ts.length ? Math.round(ts.filter(t => t.status === 'done').length / ts.length * 100) : 0, el = Math.round(elapsed(p) * 100);
     const left = p.end_date ? diffDays(p.end_date) : null;
     mid = <>
-      <div className="pbar" style={{ ['--c' as string]: p.color }} title={`${pct}% of tasks done; ${el}% of the time has passed`}><i style={{ width: `${pct}%` }} />
-        {p.start_date && p.end_date && <u style={{ left: `${el}%` }} />}</div>
+      {style === 'route'
+        ? <ProjectRoute pct={pct} elapsed={p.start_date && p.end_date ? el : null} color={p.color} people={solo ? members.filter(m => m.id === p.owner_member_id) : [...members.filter(m => m.id === p.owner_member_id), ...projectPeople(p, members)]}
+            title={`${pct}% of tasks done; the dashed mark is where the calendar says it should be (${el}% of the time has passed)`} />
+        : <div className="pbar" style={{ ['--c' as string]: p.color }} title={`${pct}% of tasks done; ${el}% of the time has passed`}><i style={{ width: `${pct}%` }} />
+          {p.start_date && p.end_date && <u style={{ left: `${el}%` }} />}</div>}
       <div className="pmeta"><span>{pct}% of tasks done</span>
         <span>{p.end_date ? (left! >= 0 ? `${left} days left · ends ${fmtDate(p.end_date)}` : `ended ${fmtDate(p.end_date, { day: 'numeric', month: 'short', year: 'numeric' })}`) : 'No end date set'}</span></div></>;
   } else {
-    mid = <><Sparkline vals={weeklyDone(ts)} color={p.color} />
+    mid = <>{style === 'route' ? <WeekLog vals={weeklyDone(ts)} color={p.color} /> : <Sparkline vals={weeklyDone(ts)} color={p.color} />}
       <div className="pmeta"><span>Completed per week, last 12 weeks</span><span>{p.start_date ? `since ${fmtDate(p.start_date, { month: 'short', year: 'numeric' })}` : ''}</span></div></>;
   }
   const stats = <div className="stats"><div><b>{open.length}</b><span>open</span></div><div><b style={overdue ? { color: 'var(--danger)' } : undefined}>{overdue}</b><span>overdue</span></div>

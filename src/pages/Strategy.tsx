@@ -10,7 +10,9 @@ import { Avatar, Icon } from '../components/Logo';
 import { ProjectChip } from '../components/ProjectChip';
 import { GoalDialog } from '../components/GoalDialog';
 import { AvStack, projectHref } from './Projects';
-import { Journey, Stops, VProg } from '../components/Geese';
+import { GoalIcon, Journey, Stops } from '../components/Geese';
+import { todayISO } from '../lib/data';
+import { goalTasks } from '../lib/goals';
 import { legProgress, plural, shownProgress, stopsOf } from '../lib/legs';
 
 export function Strategy() {
@@ -105,6 +107,10 @@ function GoalCard({ g, goals, projects, tasks, members, teams, canEdit, onEdit, 
   const editor = canEditWs(ws.access);
   const { solo } = useSolo();
   const st = goalStatus(g.status);
+  // the goal's people, and how much each finished on it this week (for the people V)
+  const weekAgo = todayISO(new Date(Date.now() - 7 * 864e5));
+  const fliers = (x: Goal) => { const ts = [x, ...goals.filter(k => k.parent_id === x.id)].flatMap(y => goalTasks(y, tasks));
+    return goalPeople(x, goals, projects, tasks, members, teams).map(m => ({ m, done: ts.filter(t => t.assignee_member_id === m.id && t.status === 'done' && (t.completed_at ?? '') >= weekAgo).length })); };
   // open-ended goals are measured per quarter: this quarter's tasks against last quarter's pace
   const lp = !g.end_date && g.status !== 'achieved' ? legProgress(g, goals, tasks, projects) : null;
   const pg = lp ? lp.pg : goalProgress(g, goals, tasks);
@@ -122,7 +128,7 @@ function GoalCard({ g, goals, projects, tasks, members, teams, canEdit, onEdit, 
           <span style={{ flex: 1 }} />{owner && !solo && <span className="who"><Avatar m={owner} size="sm" />{firstName(owner.display_name)}<span className="muted">owner</span></span>}</div>
         <h3>{title(g)}</h3>
         {g.notes && <div className="hint">{g.notes}</div>}
-        <div><div className="prog"><VProg pg={pg} /><div className="bar2" style={{ ['--c' as string]: st.color }}><i style={{ width: `${pg}%` }} /></div><span className="mono muted">{lp && lp.target == null ? '–' : `${pg}%`}</span></div>
+        <div><div className="prog"><GoalIcon pg={pg} color={st.color} fliers={fliers(g)} /><div className="bar2" style={{ ['--c' as string]: st.color }}><i style={{ width: `${pg}%` }} /></div><span className="mono muted">{lp && lp.target == null ? '–' : `${pg}%`}</span></div>
           <div className="muted" style={{ fontSize: 12, marginTop: 3 }}>{lp
             ? (lp.target == null ? `${lp.leg.label}, first leg: ${plural(lp.done, 'task')} done, setting the pace` : `${lp.leg.label} leg: ${lp.done} of ${plural(lp.target, 'task')}, last quarter's pace`)
             : progressSource(g, goals, tasks)}</div>
@@ -141,7 +147,7 @@ function GoalCard({ g, goals, projects, tasks, members, teams, canEdit, onEdit, 
         <div className="h3 gsect">Sub-goals</div>
         {kids.map(k => { const ks = goalStatus(k.status), kp = shownProgress(k, goals, tasks, projects), kd = tasks.filter(t => t.goal_id === k.id).length; return (
           <div key={k.id} className={`child tone-${ks.tone}`}>
-            <div className="ct"><i className="dot" style={{ ['--c' as string]: ks.color }} title={ks.label} />{title(k)}<VProg pg={kp} /><span className="mono muted" style={{ fontSize: 12 }}>{kp}%</span></div>
+            <div className="ct"><i className="dot" style={{ ['--c' as string]: ks.color }} title={ks.label} />{title(k)}<GoalIcon pg={kp} color={ks.color} fliers={fliers(k)} /><span className="mono muted" style={{ fontSize: 12 }}>{kp}%</span></div>
             <div className="bar2" style={{ ['--c' as string]: ks.color, height: 5 }}><i style={{ width: `${kp}%` }} /></div>
             <div className="cmeta"><span className="tag">{goalRange(k)}</span>{chips(k)}
               {kd > 0 && <span className="muted" style={{ fontSize: 12 }}>{kd} direct task{kd > 1 ? 's' : ''}</span>}

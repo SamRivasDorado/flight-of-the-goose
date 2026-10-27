@@ -80,7 +80,7 @@ export function ProjectPage({ id }: { id: string }) {
         <button className="btn sm" disabled={doneBusy} onClick={() => void markDone(true)}>Complete the project only</button>
         <button className="btn sm ghost" disabled={doneBusy} onClick={() => setAskTasks(null)}>Cancel</button></div>}
       {doneErr && <div className="err" style={{ marginBottom: 8 }}>{doneErr}</div>}
-      <ProjectProgress p={p} tasks={data.tasks} wide />
+      <ProjectProgress p={p} tasks={data.tasks} members={data.members} wide />
       <div className="tabs">{tabBtn('notebook', 'note', 'Notebook')}{tabBtn('list', 'list', 'List')}{tabBtn('board', 'board', 'Board')}{tabBtn('calendar', 'calendar', 'Calendar')}</div>
       {tab === 'notebook'
         ? <Notebook p={p} tasks={v.c.tasks} members={data.members} onTasks={() => setTab('list')} />
