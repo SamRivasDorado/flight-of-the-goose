@@ -32,6 +32,7 @@ const TOPICS: Topic[] = [
       <li><b>Progress</b> is calculated: the share of done tasks in the linked projects and the tasks linked directly to the goal. Without tasks it is the average of the sub-goals; otherwise the value you set by hand.</li>
       <li>Link projects to a goal in the goal itself or in Project settings. <b>Add task to this goal</b> creates a task linked straight to it.</li>
       <li><b>Journey</b> (top right) shows each goal as a route from a nest to a flag, with the people on it flying as a flock at the goal's progress. The dashed line is where the flock should be by now, going by the goal's dates. Whoever finished most this week leads; people with overdue tasks trail at the back. Hover a goose to see why.</li>
+      <li><b>No goose flies alone.</b> Click a goose that trails behind (someone with overdue tasks) to see those tasks and <b>Offer help</b>. The offer reaches them in the bell; when they accept, you become a collaborator on the task and fly beside them as a companion goose. A faint companion is an offer not yet answered.</li>
       <li><b>Goals with no end date fly in quarterly legs.</b> The route is the current quarter and the flag is last quarter's pace: finishing as many of the goal's tasks as last quarter. Ahead of the dashed line means faster than last quarter. The first quarter sets the pace.</li>
       <li>The <b>flight log</b> under each goal has a column per quarter: its height is the tasks finished, and a small flag marks each project completed. The current quarter shows a dashed outline at last quarter's height, the pace to match.</li>
       <li>The year tabs show the goals running in each year.</li>
@@ -52,6 +53,7 @@ const TOPICS: Topic[] = [
       <li>In the calendar, drag a task to another day and choose <b>Move here</b> or <b>Copy here</b> (hold Alt while dropping to copy at once). Untick “Ask to move or copy” to always move.</li>
       <li><b>New task</b> (top bar) opens a draft that is only saved when you press <b>Create task</b>. Existing tasks save as you edit.</li>
       <li>Log <b>Time spent</b> on each task: Review and Insights use it to show where your time went.</li>
+      <li>An overdue task assigned to someone else shows <b>Offer help</b> at the top of its panel. The person helped accepts or says no thanks; you can withdraw or stop helping at any time.</li>
       <li><b>Comments</b> sit at the bottom of the task panel, and under each notebook entry. Type <b>@</b> to mention someone, there and also in task descriptions and notebook entries. The <b>bell</b> in the top bar collects what is for you: mentions, comments on your tasks, and replies where you commented. Everyone who can see the task reads its comments; guests read but do not write.</li>
       <li>Finishing a task sends a goose across the screen; finishing a project or reaching a goal sends a whole V. Switch them off in Your profile (your picture, top right).</li>
       <li>Coloured labels such as <b>Priority</b> are dimensions. A dashed label comes from the project’s default; a filled one is set on the task itself.</li>

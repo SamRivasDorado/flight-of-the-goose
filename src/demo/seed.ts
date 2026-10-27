@@ -118,6 +118,7 @@ export function makeSeed(myUid: string, myEmail: string): Record<string, Row[]> 
   task(tnav, 'Workflow for DFN upscaling', { due: 14, who: sam, prio: 'Medium' });
   task(tnav, 'Tutorial: page layout', { due: 30, who: elena });
   task(tnav, 'Benchmark new release', { due: -2, who: omar });
+  task(tnav, 'Review training videos', { due: -4, who: sam });
   history(enagas, ['Training session', 'Exercise data set', 'Course notes', 'Feedback survey'], -38, -1, 7);
   task(enagas, 'Training day 3', { due: 4, who: sam });
   task(enagas, 'Translate course notes', { due: 9, who: lucia, subs: [['Chapter 1', true], ['Chapter 2', true], ['Chapter 3', false]] });
@@ -174,6 +175,14 @@ export function makeSeed(myUid: string, myEmail: string): Record<string, Row[]> 
   cm({ task_id: tid('Proposal for ONHYM') }, lucia, 50, 'Draft looks good; two remarks on pricing.');
   t.mention_events = [{ id: uid(), workspace_id: ws, member_id: sam, author_member_id: karim, task_id: null, note_id: nid('Call with ONHYM'),
     excerpt: '@Sam Rivas can you size the effort for the pilot?', created_at: new Date(Date.now() - 20 * 3600e3).toISOString() }];
+  // no goose flies alone: Elena is helping Omar, and offered to help Sam
+  const ho = (task: string, helper: string, helped: string, status: string, hoursAgo: number, message = '') => t.help_offers.push({ id: uid(), workspace_id: ws, task_id: tid(task),
+    helper_member_id: helper, helped_member_id: helped, status, message, created_at: new Date(Date.now() - hoursAgo * 3600e3).toISOString(),
+    answered_at: status === 'offered' ? null : new Date(Date.now() - (hoursAgo - 2) * 3600e3).toISOString() });
+  t.help_offers = [];
+  ho('Send fracture logs to Karim', elena, omar, 'accepted', 26, 'I have the logs open anyway');
+  t.task_collaborators.push({ task_id: tid('Send fracture logs to Karim'), member_id: elena });
+  ho('Review training videos', elena, sam, 'offered', 4, 'I can take the last two videos');
   void tTrain; void julia;
   return t;
 }

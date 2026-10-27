@@ -422,7 +422,7 @@ export async function recordMentions(ws: string, me: string, target: { task_id?:
   if (error && !/mention_events/.test(error.message)) throw new Error(error.message);
 }
 
-export interface InboxItem { c: Comment; why: 'mention' | 'yours' | 'thread'; title: string; projectId: string | null }
+export interface InboxItem { c: Comment; why: 'mention' | 'yours' | 'thread' | 'help' | 'answer'; title: string; projectId: string | null; offer?: HelpOffer }
 
 /**
  * Your inbox: comments from others in the last 30 days that mention you, are on tasks assigned
@@ -431,14 +431,28 @@ export interface InboxItem { c: Comment; why: 'mention' | 'yours' | 'thread'; ti
 export async function listInbox(ws: string, me: string): Promise<InboxItem[]> {
   const since = new Date(Date.now() - 30 * 864e5).toISOString();
   const r = await db().from('comments').select('*').eq('workspace_id', ws).gte('created_at', since).order('created_at', { ascending: false }).limit(300);
-  if (r.error) { if (noCommentsTable(r.error.message)) return []; throw new Error(r.error.message); }
-  const all = r.data as Comment[];
+  if (r.error && !noCommentsTable(r.error.message)) throw new Error(r.error.message);
+  const all = r.error ? [] : r.data as Comment[];
   // mentions in descriptions and notebook entries (their own table; absent before its update)
   const mq = await db().from('mention_events').select('*').eq('workspace_id', ws).eq('member_id', me).gte('created_at', since).order('created_at', { ascending: false }).limit(100);
   const mentions = mq.error ? [] : (mq.data as { id: string; task_id: string | null; note_id: string | null; author_member_id: string | null; excerpt: string; created_at: string }[])
     .filter(x => x.author_member_id !== me)
     .map(x => ({ id: `m-${x.id}`, workspace_id: ws, task_id: x.task_id, note_id: x.note_id, author_member_id: x.author_member_id, body: x.excerpt, mentions: [me], created_at: x.created_at, edited_at: null }) as Comment);
   all.push(...mentions);
+  // offers of help: to you and still open, and answers to your own offers (their own table)
+  const [oq1, oq2] = await Promise.all([
+    db().from('help_offers').select('*').eq('workspace_id', ws).eq('helped_member_id', me).eq('status', 'offered'),
+    db().from('help_offers').select('*').eq('workspace_id', ws).eq('helper_member_id', me).gte('answered_at', since),
+  ]);
+  const offers = new Map<string, HelpOffer>();
+  for (const o of (oq1.error ? [] : oq1.data as HelpOffer[])) {
+    offers.set(`h-${o.id}`, o);
+    all.push({ id: `h-${o.id}`, workspace_id: ws, task_id: o.task_id, note_id: null, author_member_id: o.helper_member_id, body: o.message, mentions: [], created_at: o.created_at, edited_at: null });
+  }
+  for (const o of (oq2.error ? [] : oq2.data as HelpOffer[]).filter(o => o.status === 'accepted' || o.status === 'declined')) {
+    offers.set(`a-${o.id}`, o);
+    all.push({ id: `a-${o.id}`, workspace_id: ws, task_id: o.task_id, note_id: null, author_member_id: o.helped_member_id, body: '', mentions: [], created_at: o.answered_at!, edited_at: null });
+  }
   all.sort((a, b) => b.created_at.localeCompare(a.created_at));
   const taskIds = [...new Set(all.map(c => c.task_id).filter((x): x is string => !!x))];
   const noteIds = [...new Set(all.map(c => c.note_id).filter((x): x is string => !!x))];
@@ -454,9 +468,10 @@ export async function listInbox(ws: string, me: string): Promise<InboxItem[]> {
   for (const c of all) {
     if (c.author_member_id === me) continue;
     const t = c.task_id ? tasks.find(x => x.id === c.task_id) : null, n = c.note_id ? notes.find(x => x.id === c.note_id) : null;
-    const why = c.mentions?.includes(me) ? 'mention' : t?.assignee_member_id === me ? 'yours' : mine.has(key(c)) ? 'thread' : null;
+    const offer = offers.get(c.id);
+    const why = offer ? (c.id.startsWith('h-') ? 'help' : 'answer') : c.mentions?.includes(me) ? 'mention' : t?.assignee_member_id === me ? 'yours' : mine.has(key(c)) ? 'thread' : null;
     if (!why) continue;
-    out.push({ c, why, title: t ? (t.title || 'Untitled task') : n ? (n.body.split('\n').find(l => l.trim()) ?? 'Notebook entry') : 'A comment',
+    out.push({ c, why, offer, title: t ? (t.title || 'Untitled task') : n ? (n.body.split('\n').find(l => l.trim()) ?? 'Notebook entry') : 'A comment',
       projectId: t?.project_id ?? n?.project_id ?? null });
   }
   return out;

@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useWorkspace } from '../auth/session';
-import { getMySettings, listInbox, listMembers, saveMySettings, type InboxItem } from '../lib/data';
+import { answerHelp, getMySettings, listInbox, listMembers, saveMySettings, type InboxItem } from '../lib/data';
 import { useUI } from '../lib/ui';
 import type { Member } from '../lib/types';
 import { Avatar, Icon } from './Logo';
 import { CommentBody } from './Comments';
 
-const WHY: Record<InboxItem['why'], string> = { mention: 'mentioned you', yours: 'commented on your task', thread: 'replied' };
+const WHY: Record<InboxItem['why'], string> = { mention: 'mentioned you', yours: 'commented on your task', thread: 'replied', help: 'offered to help with', answer: 'answered your offer of help with' };
 
 /** Opens a notebook entry's comments after going to its project (read by the Notebook). */
 export function openNoteComments(projectId: string, noteId: string) {
@@ -62,6 +62,11 @@ export function Inbox() {
     return () => { removeEventListener('mousedown', click); removeEventListener('keydown', key); };
   }); // eslint-disable-line react-hooks/exhaustive-deps
 
+  /** Accept or decline an offer of help straight from the bell. */
+  async function answer(i: InboxItem, yes: boolean) {
+    if (!i.offer) return;
+    try { await answerHelp(i.offer, yes); ui.changed(); await load(); } catch { /* the list stays as it was */ }
+  }
   function go(i: InboxItem) {
     close();
     if (i.c.task_id) ui.openTask(i.c.task_id);
@@ -70,26 +75,33 @@ export function Inbox() {
 
   return (
     <>
-      <button ref={btn} className="iconbtn bellbtn" aria-label={unread ? `Comments for you: ${unread} new` : 'Comments for you'} title="Comments for you"
+      <button ref={btn} className="iconbtn bellbtn" aria-label={unread ? `For you: ${unread} new` : 'For you'} title="For you: comments, mentions and offers of help"
         aria-expanded={open} onClick={() => (open ? close() : setOpen(true))}>
         <Icon name="bell" />{unread > 0 && <span className="bellcount">{unread > 9 ? '9+' : unread}</span>}</button>
       {open && createPortal(
-        <div ref={pop} className="inbox" role="dialog" aria-label="Comments for you" style={pos ?? { visibility: 'hidden', left: 0, top: 0 }}>
-          <div className="inboxh"><b>Comments for you</b><span className="muted">last 30 days</span></div>
-          {items.length === 0 && <div className="hint" style={{ padding: '10px 14px' }}>Nothing yet. When someone mentions you with @, comments on your tasks, or replies to you, it shows here.</div>}
+        <div ref={pop} className="inbox" role="dialog" aria-label="For you" style={pos ?? { visibility: 'hidden', left: 0, top: 0 }}>
+          <div className="inboxh"><b>For you</b><span className="muted">last 30 days</span></div>
+          {items.length === 0 && <div className="hint" style={{ padding: '10px 14px' }}>Nothing yet. When someone mentions you with @, comments on your tasks, replies to you, or offers to help, it shows here.</div>}
           <div className="inboxlist">
             {items.slice(0, 40).map(i => {
               const a = members.find(m => m.id === i.c.author_member_id);
               const isNew = seen != null && i.c.created_at > seen;
               return (
-                <button key={i.c.id} className={`inboxitem ${isNew ? 'new' : ''}`} onClick={() => go(i)}>
+                <div key={i.c.id} role="button" tabIndex={0} className={`inboxitem ${isNew ? 'new' : ''} ${i.offer ? 'helpitem' : ''}`} onClick={() => go(i)}
+                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(i); } }}>
                   <Avatar m={a} size="sm" />
                   <span className="ii">
-                    <span className="iw"><b>{a?.display_name ?? 'Someone'}</b> {WHY[i.why]}{i.c.task_id ? (i.why === 'yours' ? ' ' : ' on ') : ' in the notebook: '}<b>{i.title}</b></span>
-                    <span className="ib"><CommentBody c={i.c} members={members} /></span>
+                    {i.why === 'answer' && i.offer
+                      ? <span className="iw"><b>{a?.display_name ?? 'Someone'}</b> {i.offer.status === 'accepted' ? 'accepted your offer to help with' : 'said no thanks to your offer to help with'} <b>{i.title}</b></span>
+                      : <span className="iw"><b>{a?.display_name ?? 'Someone'}</b> {WHY[i.why]}{i.c.task_id ? (i.why === 'yours' || i.why === 'help' ? ' ' : ' on ') : ' in the notebook: '}<b>{i.title}</b></span>}
+                    {i.c.body && <span className="ib"><CommentBody c={i.c} members={members} /></span>}
+                    {i.why === 'help' && i.offer && (
+                      <span className="iact" onClick={e => e.stopPropagation()}>
+                        <button className="btn sm primary" onClick={() => void answer(i, true)}><Icon name="check" />Accept</button>
+                        <button className="btn sm ghost" onClick={() => void answer(i, false)}>No thanks</button></span>)}
                     <span className="it">{new Date(i.c.created_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
                   </span>
-                </button>);
+                </div>);
             })}
           </div>
         </div>, document.body)}
