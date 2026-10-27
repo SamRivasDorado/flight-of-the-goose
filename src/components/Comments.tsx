@@ -39,7 +39,6 @@ function Composer({ members, me, initial = '', solo, busy, submitLabel, onSubmit
 
   function onChange(v: string, caret: number) {
     setText(v);
-    if (solo) return;
     const m = /(^|\s)@([\p{L}\p{M}'’.-]*)$/u.exec(v.slice(0, caret));
     setPick(m ? { q: m[2], at: caret - m[2].length - 1, i: 0 } : null);
   }
@@ -69,8 +68,13 @@ function Composer({ members, me, initial = '', solo, busy, submitLabel, onSubmit
   return (
     <div className="ccompose">
       <textarea ref={ta} className="notes" rows={2} value={text} autoFocus={autoFocus} aria-label="Write a comment"
-        placeholder={solo ? 'Write a comment' : 'Write a comment. Type @ to mention someone.'}
+        placeholder="Write a comment. Type @ to mention someone." 
         onChange={e => onChange(e.target.value, e.target.selectionStart)} onKeyDown={onKey} onBlur={() => setTimeout(() => setPick(null), 150)} />
+      {pick && matches.length === 0 && (
+        <div className="mpick none" role="status">{solo
+          ? 'Solo mode is on, so there is nobody else to mention. Switch it off in Your profile to work with others.'
+          : people.length === 0 ? 'Nobody else is in this workspace yet. Invite people from the Team page to mention them.'
+          : `Nobody here is called “${pick.q}”.`}</div>)}
       {pick && matches.length > 0 && (
         <div className="mpick" role="listbox" aria-label="Mention someone">
           {matches.map((m, i) => (
