@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useSolo } from '../lib/solo';
 import { useWorkspace } from '../auth/session';
-import { listGoals, listMembers, listProjectsFull, listTasks, listTeams, useLoad } from '../lib/data';
+import { listGoals, listHelpOffers, listMembers, listProjectsFull, listTasks, listTeams, useLoad } from '../lib/data';
 import { canEdit as canEditWs, canManage, GOAL_STATUSES, type Goal, type Member, type ProjectFull, type Task, type Team } from '../lib/types';
 import { useLocalPref, useUI } from '../lib/ui';
 import { byDue, dueLabel, firstName } from '../lib/format';
@@ -18,9 +18,9 @@ export function Strategy() {
   const ui = useUI();
   const manager = canManage(ws.access);
   const { data, error, reload } = useLoad(async () => {
-    const [goals, projects, tasks, members, teams] = await Promise.all([
-      listGoals(ws.workspace_id), listProjectsFull(ws.workspace_id), listTasks(ws.workspace_id), listMembers(ws.workspace_id), listTeams(ws.workspace_id)]);
-    return { goals, projects, tasks, members, teams };
+    const [goals, projects, tasks, members, teams, offers] = await Promise.all([
+      listGoals(ws.workspace_id), listProjectsFull(ws.workspace_id), listTasks(ws.workspace_id), listMembers(ws.workspace_id), listTeams(ws.workspace_id), listHelpOffers(ws.workspace_id)]);
+    return { goals, projects, tasks, members, teams, offers };
   }, [ws.workspace_id, ui.version]);
   const [period, setPeriod] = useLocalPref<string>('goalPeriod', 'all');
   const [critOpen, setCritOpen] = useState(false);
@@ -31,7 +31,7 @@ export function Strategy() {
 
   if (error) return <div className="err">{error}</div>;
   if (!data) return <span className="muted">Loading…</span>;
-  const { goals, projects, tasks, members, teams } = data;
+  const { goals, projects, tasks, members, teams, offers } = data;
   const periods = [...new Set(goals.flatMap(goalYears))].sort();
   const per = period !== 'all' && !periods.includes(period) ? 'all' : period;
   const tops = goals.filter(g => !g.parent_id && (per === 'all' || goalYears(g).includes(per)));
@@ -71,7 +71,8 @@ export function Strategy() {
       </div>
       {tops.length && view === 'journey'
         ? <div className="journeys">{tops.map(g => <Journey key={g.id} g={g} goals={goals} tasks={tasks} projects={projects} solo={solo}
-            people={goalPeople(g, goals, projects, tasks, members, teams)} onEdit={manager ? goal => setDialog({ goal }) : undefined} showLog={showLog} />)}</div>
+            people={goalPeople(g, goals, projects, tasks, members, teams)} onEdit={manager ? goal => setDialog({ goal }) : undefined} showLog={showLog}
+            offers={offers} members={members} onHelp={() => { ui.changed(); void reload(); }} />)}</div>
         : tops.length
         ? <div className="goals">{tops.map(g => <GoalCard key={g.id} g={g} goals={goals} projects={projects} tasks={tasks} members={members} teams={teams}
             canEdit={manager} onEdit={goal => setDialog({ goal })} onAddSub={() => setDialog({ goal: null, parentId: g.id })} showLog={showLog} />)}</div>

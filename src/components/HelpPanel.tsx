@@ -32,6 +32,7 @@ const TOPICS: Topic[] = [
       <li><b>Progress</b> is calculated: the share of done tasks in the linked projects and the tasks linked directly to the goal. Without tasks it is the average of the sub-goals; otherwise the value you set by hand.</li>
       <li>Link projects to a goal in the goal itself or in Project settings. <b>Add task to this goal</b> creates a task linked straight to it.</li>
       <li><b>Journey</b> (top right) shows each goal as a route from a nest to a flag, with the people on it flying as a flock at the goal's progress. The dashed line is where the flock should be by now, going by the goal's dates. Whoever finished most this week leads; people with overdue tasks trail at the back. Hover a goose to see why.</li>
+      <li>A goose that trails behind has overdue tasks; click it to <b>offer help</b> (see <i>No goose flies alone</i>).</li>
       <li><b>Goals with no end date fly in quarterly legs.</b> The route is the current quarter and the flag is last quarter's pace: finishing as many of the goal's tasks as last quarter. Ahead of the dashed line means faster than last quarter. The first quarter sets the pace.</li>
       <li>The <b>flight log</b> under each goal has a column per quarter: its height is the tasks finished, and a small flag marks each project completed. The current quarter shows a dashed outline at last quarter's height, the pace to match.</li>
       <li>The year tabs show the goals running in each year.</li>
@@ -52,6 +53,7 @@ const TOPICS: Topic[] = [
       <li>In the calendar, drag a task to another day and choose <b>Move here</b> or <b>Copy here</b> (hold Alt while dropping to copy at once). Untick “Ask to move or copy” to always move.</li>
       <li><b>New task</b> (top bar) opens a draft that is only saved when you press <b>Create task</b>. Existing tasks save as you edit.</li>
       <li>Log <b>Time spent</b> on each task: Review and Insights use it to show where your time went.</li>
+      <li>An overdue task assigned to someone else shows <b>Offer help</b> at the top of its panel (see <i>No goose flies alone</i>).</li>
       <li><b>Comments</b> sit at the bottom of the task panel, and under each notebook entry. Type <b>@</b> to mention someone, there and also in task descriptions and notebook entries. The <b>bell</b> in the top bar collects what is for you: mentions, comments on your tasks, and replies where you commented. Everyone who can see the task reads its comments; guests read but do not write.</li>
       <li>Finishing a task sends a goose across the screen; finishing a project or reaching a goal sends a whole V. Switch them off in Your profile (your picture, top right).</li>
       <li>Coloured labels such as <b>Priority</b> are dimensions. A dashed label comes from the project’s default; a filled one is set on the task itself.</li>
@@ -81,6 +83,34 @@ const TOPICS: Topic[] = [
       <li><b>Who works on what</b> shows people against projects, with their open tasks.</li>
       <li>Working alone? Switch on <b>solo mode</b> in Your profile (your picture, top right) to hide everything about people and teams.</li>
     </ul></> },
+  { id: 'help', title: 'No goose flies alone', icon: 'lifebuoy', team: true, body: <>
+    <p className="lead">When a goose is hurt or tired, two others drop out of the formation and stay with it until it can fly again. Goose does the same for people who fall behind.</p>
+    <h3 className="hh">Who is behind</h3>
+    <ul>
+      <li>Someone is <b>behind</b> when they have overdue tasks: past their due date and not done.</li>
+      <li>On Strategy, in the <b>Journey</b> view, their goose trails at the back of the flock with a red <b>!</b>, and the line under the map says “Trailing: …”.</li>
+      <li>This is not a ranking. It shows where a hand would help.</li>
+    </ul>
+    <h3 className="hh">Offering help</h3>
+    <ul>
+      <li><b>From the Journey:</b> click a trailing goose (or <b>Offer help</b> in the line under the map). A panel lists that person's overdue tasks on the goal, how late each one is and who is already helping. Press <b>Offer help</b> on a task.</li>
+      <li><b>From a task:</b> open an overdue task assigned to someone else. A strip at the top says it is overdue, with <b>Offer help</b>.</li>
+      <li>Help goes to the person the task is assigned to. Anyone who can see the task can offer, except guests.</li>
+    </ul>
+    <h3 className="hh">Answering an offer</h3>
+    <ul>
+      <li>The offer arrives in the <b>bell</b> (top bar), with <b>Accept</b> and <b>No thanks</b> right there. It also shows at the top of the task.</li>
+      <li><b>Accept</b> makes the helper a collaborator on the task, so they can work on it with you. <b>No thanks</b> simply closes the offer; nobody is told off.</li>
+      <li>The helper hears the answer in their bell.</li>
+      <li>The helper can <b>Withdraw</b> an offer, or <b>Stop helping</b> later, from the task or the panel.</li>
+    </ul>
+    <h3 className="hh">What you see</h3>
+    <ul>
+      <li>Helpers fly beside the trailing goose as <b>companion geese</b>, with their picture. A faint companion is an offer not answered yet.</li>
+      <li>Once someone is helping, the red <b>!</b> becomes a green <b>♥</b>, and the line under the map says who is helping.</li>
+      <li>When the overdue tasks are done, the goose catches up with the flock and the companions return to their places.</li>
+    </ul>
+    <p className="hint">Not shown in solo mode, where there is nobody else to help.</p></> },
   { id: 'lens', title: 'The Lens and dimensions', icon: 'filter', body: <>
     <p className="lead">The Lens is the filter bar under the top bar. Whatever you pick there filters every screen at once.</p>
     <ul>

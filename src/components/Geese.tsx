@@ -4,7 +4,9 @@ import { fmtDate } from '../lib/projects';
 import { todayISO } from '../lib/data';
 import { firstName } from '../lib/format';
 import { legProgress, plural, stopsOf, type Stop } from '../lib/legs';
-import type { Goal, Member, Project, Task } from '../lib/types';
+import type { Goal, HelpOffer, Member, Project, Task } from '../lib/types';
+import { HelpPanel as OfferPanel } from './OfferHelp';
+import { useState } from 'react';
 import { Avatar } from './Logo';
 
 /** A goose in flight, drawn from the shared markup (static, no user content). */
@@ -58,9 +60,12 @@ const ROUTE = 'M60 120 C 300 40, 700 40, 940 112';
  * flying as a V at the goal's progress. The dashed line is where the calendar says the flock
  * should be. Whoever finished the most this week leads; people with overdue tasks trail.
  */
-export function Journey({ g, goals, tasks, projects, people, solo, onEdit, showLog = true }: {
+export function Journey({ g, goals, tasks, projects, people, solo, onEdit, showLog = true, offers = [], members = people, onHelp }: {
   g: Goal; goals: Goal[]; tasks: Task[]; projects: Project[]; people: Member[]; solo: boolean; onEdit?: (g: Goal) => void; showLog?: boolean;
+  /** offers of help in the workspace, all people (helpers may be outside the goal), and a reload after a change */
+  offers?: HelpOffer[]; members?: Member[]; onHelp?: () => void;
 }) {
+  const [helpFor, setHelpFor] = useState<string | null>(null);
   const today = todayISO();
   const weekAgo = todayISO(new Date(Date.now() - 7 * 864e5));
   // An open-ended goal flies one leg per quarter; its flag is reaching last quarter's pace.
@@ -73,6 +78,11 @@ export function Journey({ g, goals, tasks, projects, people, solo, onEdit, showL
     x,
     done: ts.filter(t => t.assignee_member_id === x.id && t.status === 'done' && t.completed_at && t.completed_at >= weekAgo).length,
     late: ts.filter(t => t.assignee_member_id === x.id && t.status !== 'done' && t.due_date && t.due_date < today).length,
+    // no goose flies alone: who offered to help (or is helping) with this person's overdue tasks here
+    helpers: [...new Map(offers.filter(o => (o.status === 'offered' || o.status === 'accepted') && o.helped_member_id === x.id
+      && ts.some(t => t.id === o.task_id && t.status !== 'done' && t.due_date && t.due_date < today))
+      .sort((a, b) => (a.status === 'accepted' ? 0 : 1) - (b.status === 'accepted' ? 0 : 1))
+      .map(o => [o.helper_member_id, { m: members.find(m => m.id === o.helper_member_id), accepted: o.status === 'accepted' }] as const)).values()],
   }));
   const order = [...rows.filter(r => !r.late).sort((a, b) => b.done - a.done || a.x.display_name.localeCompare(b.x.display_name)),
     ...rows.filter(r => r.late).sort((a, b) => a.late - b.late)];
@@ -128,11 +138,23 @@ export function Journey({ g, goals, tasks, projects, people, solo, onEdit, showL
           {(shown.length ? shown : [null]).map((r, i) => {
             const k = Math.ceil(i / 2), side = i === 0 ? 0 : (i % 2 ? -1 : 1), lag = r?.late ? 16 : 0;
             const tip = !r ? g.title : solo ? `${r.done ? `${r.done} task${r.done > 1 ? 's' : ''} done this week` : 'Nothing finished this week'}${r.late ? `, ${r.late} overdue` : ''}`
-              : `${r.x.display_name}: ${r.done ? `${r.done} task${r.done > 1 ? 's' : ''} done this week` : 'nothing finished this week'}${r.late ? `, ${r.late} overdue` : ''}${r === lead ? ' · leading the flock' : ''}`;
-            return (
-              <div key={r?.x.id ?? 'g'} className={`bird ${r && r === lead && !solo ? 'lead' : ''} ${r?.late && !solo ? 'late' : ''}`} style={{ left: -(k * 34 + lag), top: side * k * 15 }} title={tip}>
-                <div className="bob" style={{ animationDelay: `-${(i * 0.37 % 1.6).toFixed(2)}s` }}><Goose delay={-(i * 0.13 % 0.6)} /></div>
-                {r && !solo && <Avatar m={r.x} />}</div>);
+              : `${r.x.display_name}: ${r.done ? `${r.done} task${r.done > 1 ? 's' : ''} done this week` : 'nothing finished this week'}${r.late ? `, ${r.late} overdue` : ''}${r === lead ? ' · leading the flock' : ''}`
+                + (r.helpers.length ? ` · ${r.helpers.map(h => `${h.m?.display_name ?? 'someone'} ${h.accepted ? 'helping' : 'offered help'}`).join(', ')}` : r.late ? ' · click to offer help' : '');
+            const helped = !!r && r.helpers.some(h => h.accepted);
+            const bird = <>
+              <div className="bob" style={{ animationDelay: `-${(i * 0.37 % 1.6).toFixed(2)}s` }}><Goose delay={-(i * 0.13 % 0.6)} /></div>
+              {r && !solo && <Avatar m={r.x} />}
+              {r && r.late > 0 && !solo && <span className={`latemark ${helped ? 'helped' : ''}`} aria-hidden="true">{helped ? '♥' : '!'}</span>}
+              {/* two companions drop back to fly with a goose that is behind */}
+              {r && !solo && r.helpers.slice(0, 2).map((h, j) => (
+                <span key={j} className={`companion ${h.accepted ? '' : 'pending'}`} style={{ left: -14, top: j ? 20 : -20 }}>
+                  <span className="bob" style={{ animationDelay: `-${(j * 0.5 + i * 0.2).toFixed(2)}s` }}><Goose delay={-(j * 0.2)} /></span>{h.m && <Avatar m={h.m} />}</span>))}
+            </>;
+            const cls = `bird ${r && r === lead && !solo ? 'lead' : ''} ${r?.late && !solo ? (helped ? 'late helped' : 'late') : ''}`;
+            const pos = { left: -(k * 34 + lag), top: side * k * 15 };
+            return r && r.late && !solo
+              ? <button key={r.x.id} className={`${cls} birdbtn`} style={pos} title={tip} aria-label={tip} onClick={() => setHelpFor(helpFor === r.x.id ? null : r.x.id)}>{bird}</button>
+              : <div key={r?.x.id ?? 'g'} className={cls} style={pos} title={tip}>{bird}</div>;
           })}
           {!solo && order.length > 9 && <span className="more" style={{ left: -(5 * 34 + 30), top: 0 }}>+{order.length - 9}</span>}
         </div>
@@ -140,9 +162,12 @@ export function Journey({ g, goals, tasks, projects, people, solo, onEdit, showL
       <div className="jsay">
         <span>{verdict}</span>
         {!solo && (lead ? <span>{firstName(lead.x.display_name)} leads this week ({lead.done} done).</span> : order.length ? <span>No tasks finished this week yet.</span> : null)}
-        {!solo && late.length > 0 && <span>Trailing: {late.map(r => `${firstName(r.x.display_name)} (${r.late} overdue)`).join(', ')}.</span>}
+        {!solo && late.length > 0 && <span>Trailing: {late.map(r => `${firstName(r.x.display_name)} (${r.late} overdue${r.helpers.length ? `, ${r.helpers.map(h => `${firstName(h.m?.display_name ?? 'someone')} ${h.accepted ? 'helping' : 'offered help'}`).join(', ')}` : ''})`).join(', ')}. <button className="linkbtn inline" onClick={() => setHelpFor(late[0].x.id)}>Offer help</button></span>}
         {solo && late.length > 0 && <span>{late[0].late} overdue task{late[0].late > 1 ? 's' : ''} on this goal.</span>}
       </div>
+      {helpFor && !solo && (() => { const r = rows.find(x => x.x.id === helpFor); return r && (
+        <OfferPanel person={r.x} tasks={ts.filter(t => t.assignee_member_id === r.x.id && t.status !== 'done' && !!t.due_date && t.due_date < today)}
+          offers={offers} members={members} onClose={() => setHelpFor(null)} onChange={() => onHelp?.()} others={late.filter(x => x.x.id !== r.x.id).map(x => x.x)} onSwitch={setHelpFor} />); })()}
       {showLog && <Stops stops={stopsOf(g, goals, tasks, projects, today)} />}
     </article>);
 }

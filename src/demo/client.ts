@@ -14,7 +14,7 @@ type Store = { tables: Record<string, Row[]>; files: Record<string, string> };
 
 export const DEMO_UID = '00000000-0000-4000-8000-000000000001';
 export const DEMO_EMAIL = 'sam@example.com';
-const KEY = 'goose.demo.v3';
+const KEY = 'goose.demo.v4';
 
 const PK: Record<string, string[]> = {
   team_members: ['team_id', 'member_id'], project_members: ['project_id', 'member_id'], project_teams: ['project_id', 'team_id'],
@@ -41,6 +41,7 @@ const DEFAULTS: Record<string, () => Row> = {
   subtasks: () => ({ done: false, position: 0 }),
   task_values: () => ({ option_id: null, value: null }),
   member_settings: () => ({ settings: {} }),
+  help_offers: () => ({ status: 'offered', message: '', created_at: now(), answered_at: null }),
   mention_events: () => ({ author_member_id: null, task_id: null, note_id: null, excerpt: '', created_at: now() }),
   comments: () => ({ task_id: null, note_id: null, author_member_id: null, mentions: [], created_at: now(), edited_at: null }),
   profiles: () => ({ full_name: '', title: '', color: null, avatar_url: null, setup_done: false, created_at: now() }),
@@ -49,10 +50,10 @@ const DEFAULTS: Record<string, () => Row> = {
 /** What happens to other rows when a row is deleted (foreign keys). */
 const ON_DELETE: Record<string, [string, string, 'cascade' | 'null'][]> = {
   workspaces: [['workspace_members', 'workspace_id', 'cascade'], ['teams', 'workspace_id', 'cascade'], ['fields', 'workspace_id', 'cascade'], ['goals', 'workspace_id', 'cascade'],
-    ['projects', 'workspace_id', 'cascade'], ['notes', 'workspace_id', 'cascade'], ['tasks', 'workspace_id', 'cascade'], ['comments', 'workspace_id', 'cascade'], ['mention_events', 'workspace_id', 'cascade']],
+    ['projects', 'workspace_id', 'cascade'], ['notes', 'workspace_id', 'cascade'], ['tasks', 'workspace_id', 'cascade'], ['comments', 'workspace_id', 'cascade'], ['mention_events', 'workspace_id', 'cascade'], ['help_offers', 'workspace_id', 'cascade']],
   workspace_members: [['team_members', 'member_id', 'cascade'], ['project_members', 'member_id', 'cascade'], ['task_collaborators', 'member_id', 'cascade'],
     ['member_settings', 'member_id', 'cascade'], ['teams', 'lead_member_id', 'null'], ['goals', 'owner_member_id', 'null'], ['projects', 'owner_member_id', 'null'],
-    ['notes', 'created_by_member', 'null'], ['comments', 'author_member_id', 'null'], ['mention_events', 'member_id', 'cascade'], ['mention_events', 'author_member_id', 'null'], ['tasks', 'assignee_member_id', 'null'], ['tasks', 'created_by_member', 'null'], ['workspace_members', 'invited_by', 'null']],
+    ['notes', 'created_by_member', 'null'], ['comments', 'author_member_id', 'null'], ['mention_events', 'member_id', 'cascade'], ['mention_events', 'author_member_id', 'null'], ['help_offers', 'helper_member_id', 'cascade'], ['help_offers', 'helped_member_id', 'cascade'], ['tasks', 'assignee_member_id', 'null'], ['tasks', 'created_by_member', 'null'], ['workspace_members', 'invited_by', 'null']],
   teams: [['team_members', 'team_id', 'cascade'], ['project_teams', 'team_id', 'cascade']],
   fields: [['field_options', 'field_id', 'cascade'], ['project_defaults', 'field_id', 'cascade'], ['project_fields', 'field_id', 'cascade'], ['task_values', 'field_id', 'cascade']],
   field_options: [['project_defaults', 'option_id', 'cascade'], ['task_values', 'option_id', 'cascade']],
@@ -60,7 +61,7 @@ const ON_DELETE: Record<string, [string, string, 'cascade' | 'null'][]> = {
   projects: [['project_members', 'project_id', 'cascade'], ['project_teams', 'project_id', 'cascade'], ['goal_projects', 'project_id', 'cascade'],
     ['project_defaults', 'project_id', 'cascade'], ['project_fields', 'project_id', 'cascade'], ['notes', 'project_id', 'cascade'], ['tasks', 'project_id', 'null']],
   notes: [['tasks', 'source_note_id', 'null'], ['comments', 'note_id', 'cascade'], ['mention_events', 'note_id', 'cascade']],
-  tasks: [['subtasks', 'task_id', 'cascade'], ['task_collaborators', 'task_id', 'cascade'], ['task_values', 'task_id', 'cascade'], ['comments', 'task_id', 'cascade'], ['mention_events', 'task_id', 'cascade']],
+  tasks: [['subtasks', 'task_id', 'cascade'], ['task_collaborators', 'task_id', 'cascade'], ['task_values', 'task_id', 'cascade'], ['comments', 'task_id', 'cascade'], ['mention_events', 'task_id', 'cascade'], ['help_offers', 'task_id', 'cascade']],
 };
 
 // ---------------------------------------------------------------- the stored data
@@ -203,7 +204,8 @@ class Query implements PromiseLike<Res> {
     }
     if (this.op === 'update') {
       const hit = rows.filter(r => this.match(r));
-      for (const r of hit) { const old = { ...r }; Object.assign(r, this.payload); if (this.table === 'projects') projectTrigger(r, old); }
+      for (const r of hit) { const old = { ...r }; Object.assign(r, this.payload); if (this.table === 'projects') projectTrigger(r, old);
+        if (this.table === 'help_offers' && r.status !== old.status) r.answered_at = now(); }
       persist();
       return this.returning ? this.shape(hit) : { data: null, error: null };
     }

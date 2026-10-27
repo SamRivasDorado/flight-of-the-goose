@@ -639,7 +639,6 @@ button.brand:hover{background:var(--bar-hi)}
 .jflock .bird .bob{animation:bob 1.6s ease-in-out infinite alternate}
 .jflock .bird .av{position:absolute;left:-6px;bottom:-8px;width:20px;height:20px;font-size:9px;box-shadow:0 0 0 2px var(--surface)}
 .jflock .bird.lead .av{box-shadow:0 0 0 2px var(--primary)}
-.jflock .bird.late .av::after{content:'!';position:absolute;right:-7px;top:-7px;width:12px;height:12px;border-radius:50%;background:var(--danger);color:#fff;font-size:9px;line-height:12px;text-align:center;font-weight:700}
 .jflock .more{position:absolute;transform:translate(-50%,-50%);font-size:12px;color:var(--muted)}
 .jsay{font-size:13px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 14px}
 .jsay b{color:var(--fg)}
@@ -746,3 +745,25 @@ button.brand:hover{background:var(--bar-hi)}
 .marea{display:flex;flex-direction:column;gap:6px;min-width:0}
 .pflog{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:2px 16px 12px;margin:-6px 0 14px}
 .pflog-wait{margin:-6px 0 14px}
+/* no goose flies alone (OfferHelp.tsx, Journey companions) */
+.taskhelp{display:flex;flex-direction:column;gap:6px;padding:10px 12px;border:1px solid color-mix(in srgb,var(--accent) 30%,var(--line));border-radius:10px;background:color-mix(in srgb,var(--accent-soft) 45%,transparent)}
+.throw{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13.5px}.throw .grow{flex:1}
+.throw.pending{opacity:.85}
+.linkbtn.inline{display:inline;padding:0 2px;font-size:inherit;color:var(--accent);text-decoration:underline}
+.jflock .birdbtn{border:0;background:none;padding:0;cursor:pointer;font:inherit;color:inherit}
+.jflock .birdbtn:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:8px}
+.jflock .companion{position:absolute;width:30px;pointer-events:none}
+.jflock .companion .av{width:15px;height:15px;font-size:7px;left:-6px;bottom:-6px}
+.jflock .companion.pending{opacity:.45}
+.helppanel{margin-top:10px;display:flex;flex-direction:column;gap:8px;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2)}
+.hph{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.hph .grow{flex:1}.hph .muted{font-size:12.5px}
+.hptask{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:6px 0;border-top:1px solid var(--line)}.hptask .grow{flex:1}
+.hptask .hpt{font-size:14px;color:var(--fg);font-weight:600;padding:0}
+.hphelpers{display:inline-flex;gap:6px;flex-wrap:wrap}
+.hpchip{display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:2px 8px 2px 3px;border-radius:999px;background:var(--surface);border:1px solid var(--line)}
+.hpchip.pending{border-style:dashed}
+.iact{display:flex;gap:6px;margin:2px 0}
+.inboxitem.helpitem{background:color-mix(in srgb,var(--accent-soft) 55%,transparent)}
+.jflock .latemark{position:absolute;left:10px;bottom:-12px;width:15px;height:15px;border-radius:50%;background:var(--danger);color:#fff;font-size:10px;font-weight:700;line-height:15px;text-align:center;box-shadow:0 0 0 2px var(--surface)}
+.jflock .latemark.helped{background:var(--ok);font-size:9px}
+.helptext h3.hh{font-size:14px;margin:14px 0 4px;color:var(--fg)}
