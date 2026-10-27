@@ -14,7 +14,7 @@ type Store = { tables: Record<string, Row[]>; files: Record<string, string> };
 
 export const DEMO_UID = '00000000-0000-4000-8000-000000000001';
 export const DEMO_EMAIL = 'sam@example.com';
-const KEY = 'goose.demo.v1';
+const KEY = 'goose.demo.v2';
 
 const PK: Record<string, string[]> = {
   team_members: ['team_id', 'member_id'], project_members: ['project_id', 'member_id'], project_teams: ['project_id', 'team_id'],
@@ -41,24 +41,25 @@ const DEFAULTS: Record<string, () => Row> = {
   subtasks: () => ({ done: false, position: 0 }),
   task_values: () => ({ option_id: null, value: null }),
   member_settings: () => ({ settings: {} }),
+  comments: () => ({ task_id: null, note_id: null, author_member_id: null, mentions: [], created_at: now(), edited_at: null }),
   profiles: () => ({ full_name: '', title: '', color: null, avatar_url: null, setup_done: false, created_at: now() }),
 };
 
 /** What happens to other rows when a row is deleted (foreign keys). */
 const ON_DELETE: Record<string, [string, string, 'cascade' | 'null'][]> = {
   workspaces: [['workspace_members', 'workspace_id', 'cascade'], ['teams', 'workspace_id', 'cascade'], ['fields', 'workspace_id', 'cascade'], ['goals', 'workspace_id', 'cascade'],
-    ['projects', 'workspace_id', 'cascade'], ['notes', 'workspace_id', 'cascade'], ['tasks', 'workspace_id', 'cascade']],
+    ['projects', 'workspace_id', 'cascade'], ['notes', 'workspace_id', 'cascade'], ['tasks', 'workspace_id', 'cascade'], ['comments', 'workspace_id', 'cascade']],
   workspace_members: [['team_members', 'member_id', 'cascade'], ['project_members', 'member_id', 'cascade'], ['task_collaborators', 'member_id', 'cascade'],
     ['member_settings', 'member_id', 'cascade'], ['teams', 'lead_member_id', 'null'], ['goals', 'owner_member_id', 'null'], ['projects', 'owner_member_id', 'null'],
-    ['notes', 'created_by_member', 'null'], ['tasks', 'assignee_member_id', 'null'], ['tasks', 'created_by_member', 'null'], ['workspace_members', 'invited_by', 'null']],
+    ['notes', 'created_by_member', 'null'], ['comments', 'author_member_id', 'null'], ['tasks', 'assignee_member_id', 'null'], ['tasks', 'created_by_member', 'null'], ['workspace_members', 'invited_by', 'null']],
   teams: [['team_members', 'team_id', 'cascade'], ['project_teams', 'team_id', 'cascade']],
   fields: [['field_options', 'field_id', 'cascade'], ['project_defaults', 'field_id', 'cascade'], ['project_fields', 'field_id', 'cascade'], ['task_values', 'field_id', 'cascade']],
   field_options: [['project_defaults', 'option_id', 'cascade'], ['task_values', 'option_id', 'cascade']],
   goals: [['goals', 'parent_id', 'cascade'], ['goal_projects', 'goal_id', 'cascade'], ['tasks', 'goal_id', 'null']],
   projects: [['project_members', 'project_id', 'cascade'], ['project_teams', 'project_id', 'cascade'], ['goal_projects', 'project_id', 'cascade'],
     ['project_defaults', 'project_id', 'cascade'], ['project_fields', 'project_id', 'cascade'], ['notes', 'project_id', 'cascade'], ['tasks', 'project_id', 'null']],
-  notes: [['tasks', 'source_note_id', 'null']],
-  tasks: [['subtasks', 'task_id', 'cascade'], ['task_collaborators', 'task_id', 'cascade'], ['task_values', 'task_id', 'cascade']],
+  notes: [['tasks', 'source_note_id', 'null'], ['comments', 'note_id', 'cascade']],
+  tasks: [['subtasks', 'task_id', 'cascade'], ['task_collaborators', 'task_id', 'cascade'], ['task_values', 'task_id', 'cascade'], ['comments', 'task_id', 'cascade']],
 };
 
 // ---------------------------------------------------------------- the stored data
@@ -118,6 +119,8 @@ class Query implements PromiseLike<Res> {
   eq(col: string, v: unknown) { this.filters.push(r => this.val(r, col) === v); return this; }
   neq(col: string, v: unknown) { this.filters.push(r => this.val(r, col) !== v); return this; }
   in(col: string, vs: unknown[]) { const set = new Set(vs); this.filters.push(r => set.has(this.val(r, col))); return this; }
+  gte(col: string, v: string) { this.filters.push(r => String(this.val(r, col) ?? '') >= v); return this; }
+  lte(col: string, v: string) { this.filters.push(r => String(this.val(r, col) ?? '') <= v); return this; }
   is(col: string, v: null) { this.filters.push(r => this.val(r, col) == v); return this; }
   not(col: string, op: string, v: unknown) { if (op === 'is' && v === null) this.filters.push(r => this.val(r, col) != null); else this.filters.push(r => this.val(r, col) !== v); return this; }
   order(col: string, o: { ascending?: boolean; nullsFirst?: boolean } = {}) { const asc = o.ascending !== false; this.orders.push({ col, asc, nullsFirst: o.nullsFirst ?? !asc }); return this; }

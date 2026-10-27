@@ -11,6 +11,7 @@ import { useLens } from '../lib/lens';
 import { dueLabel, firstName } from '../lib/format';
 import { Avatar, Icon } from './Logo';
 import { ProjectChip } from './ProjectChip';
+import { CommentThread } from './Comments';
 
 /** The task details panel that slides up from the bottom (as in the prototype).
     A new task is a draft until Create task is pressed; an existing one saves as you edit. */
@@ -184,6 +185,7 @@ function Sheet({ id, defaults, close, changed }: SheetProps) {
                 <input placeholder="Add a subtask and press Enter" aria-label="Add subtask" value={subDraft} onChange={e => setSubDraft(e.target.value)} onKeyDown={addSub} /></div>}
             </div>
           </div>
+          {!isNew && <div><div className="h3">Comments</div><div style={{ marginTop: 6 }}><CommentThread target={{ task_id: t.id }} /></div></div>}
         </div>
         <div className="right">
           <dl className="props">

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { db } from './supabase';
 import { celebrateGoal, celebrateProject, celebrateTask } from './geese';
-import type { Dim, FieldOption, Goal, GoalRef, Member, Note, NoteKind, Project, ProjectFull, Subtask, Task, Team, TaskFull, TeamRef } from './types';
+import type { Comment, Dim, FieldOption, Goal, GoalRef, Member, Note, NoteKind, Project, ProjectFull, Subtask, Task, Team, TaskFull, TeamRef } from './types';
 
 /** Loads data for the current screen and reloads after a change. */
 export function useLoad<T>(load: () => Promise<T>, deps: unknown[]) {
@@ -372,4 +372,66 @@ export async function copyTask(ws: string, me: string, t: TaskFull, dueDate: str
   const vals = check(await db().from('task_values').select('field_id, option_id').eq('task_id', t.id)) as { field_id: string; option_id: string | null }[];
   for (const v of vals) if (v.option_id) await setTaskValue(c.id, v.field_id, v.option_id);
   return c;
+}
+
+// ---------- comments (tasks and notebook entries) ----------
+
+/** True when the error means the comments table is not there yet (database update not run). */
+export const noCommentsTable = (msg: string) => /comments/.test(msg) && /(does not exist|schema cache|not find)/i.test(msg);
+
+export async function listComments(target: { task_id?: string; note_id?: string }): Promise<Comment[]> {
+  const q = db().from('comments').select('*');
+  const r = await (target.task_id ? q.eq('task_id', target.task_id) : q.eq('note_id', target.note_id!)).order('created_at');
+  return check(r) as Comment[];
+}
+
+/** How many comments each notebook entry has. */
+export async function countNoteComments(noteIds: string[]): Promise<Record<string, number>> {
+  if (!noteIds.length) return {};
+  const rows = check(await db().from('comments').select('note_id').in('note_id', noteIds)) as { note_id: string }[];
+  const out: Record<string, number> = {};
+  rows.forEach(r => { out[r.note_id] = (out[r.note_id] ?? 0) + 1; });
+  return out;
+}
+
+export async function addComment(ws: string, me: string, target: { task_id?: string; note_id?: string }, body: string, mentions: string[]): Promise<Comment> {
+  return check(await db().from('comments').insert({ workspace_id: ws, author_member_id: me, task_id: target.task_id ?? null, note_id: target.note_id ?? null,
+    body, mentions }).select().single()) as Comment;
+}
+export async function updateComment(id: string, body: string, mentions: string[]) {
+  check(await db().from('comments').update({ body, mentions, edited_at: new Date().toISOString() }).eq('id', id).select('id').single());
+}
+export async function deleteComment(id: string) { check(await db().from('comments').delete().eq('id', id)); }
+
+export interface InboxItem { c: Comment; why: 'mention' | 'yours' | 'thread'; title: string; projectId: string | null }
+
+/**
+ * Your inbox: comments from others in the last 30 days that mention you, are on tasks assigned
+ * to you, or reply in a thread you commented in. Empty when the comments table is missing.
+ */
+export async function listInbox(ws: string, me: string): Promise<InboxItem[]> {
+  const since = new Date(Date.now() - 30 * 864e5).toISOString();
+  const r = await db().from('comments').select('*').eq('workspace_id', ws).gte('created_at', since).order('created_at', { ascending: false }).limit(300);
+  if (r.error) { if (noCommentsTable(r.error.message)) return []; throw new Error(r.error.message); }
+  const all = r.data as Comment[];
+  const taskIds = [...new Set(all.map(c => c.task_id).filter((x): x is string => !!x))];
+  const noteIds = [...new Set(all.map(c => c.note_id).filter((x): x is string => !!x))];
+  const [tq, nq] = await Promise.all([
+    taskIds.length ? db().from('tasks').select('id, title, assignee_member_id, project_id').in('id', taskIds) : Promise.resolve({ data: [], error: null }),
+    noteIds.length ? db().from('notes').select('id, project_id, body, entry_date').in('id', noteIds) : Promise.resolve({ data: [], error: null }),
+  ]);
+  const tasks = (tq.data ?? []) as { id: string; title: string; assignee_member_id: string | null; project_id: string | null }[];
+  const notes = (nq.data ?? []) as { id: string; project_id: string; body: string; entry_date: string }[];
+  const key = (c: Comment) => c.task_id ?? c.note_id!;
+  const mine = new Set(all.filter(c => c.author_member_id === me).map(key));
+  const out: InboxItem[] = [];
+  for (const c of all) {
+    if (c.author_member_id === me) continue;
+    const t = c.task_id ? tasks.find(x => x.id === c.task_id) : null, n = c.note_id ? notes.find(x => x.id === c.note_id) : null;
+    const why = c.mentions?.includes(me) ? 'mention' : t?.assignee_member_id === me ? 'yours' : mine.has(key(c)) ? 'thread' : null;
+    if (!why) continue;
+    out.push({ c, why, title: t ? (t.title || 'Untitled task') : n ? (n.body.split('\n').find(l => l.trim()) ?? 'Notebook entry') : 'A comment',
+      projectId: t?.project_id ?? n?.project_id ?? null });
+  }
+  return out;
 }
