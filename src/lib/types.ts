@@ -200,3 +200,16 @@ export interface Comment {
   created_at: string;
   edited_at: string | null;
 }
+
+/** An offer of help on someone's overdue task (migration 20261027200000_help_offers). */
+export interface HelpOffer {
+  id: string;
+  workspace_id: string;
+  task_id: string;
+  helper_member_id: string;
+  helped_member_id: string;
+  status: 'offered' | 'accepted' | 'declined' | 'withdrawn';
+  message: string;
+  created_at: string;
+  answered_at: string | null;
+}

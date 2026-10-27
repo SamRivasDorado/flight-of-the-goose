@@ -359,4 +359,30 @@ do $$ begin
 end $$;
 reset role;
 
+-- ---------------------------------------------------------------------
+-- Offers of help: to the assignee, in your own name; only the person helped accepts
+set role authenticated;
+select pg_temp.login('00000000-0000-0000-0000-00000000000a');
+insert into help_offers (workspace_id, task_id, helper_member_id, helped_member_id)
+  select t.workspace_id, t.id, my_member_id(t.workspace_id), t.assignee_member_id from tasks t where t.title = 't3 no project, for Omar';
+select pg_temp.check((select count(*) from help_offers) = 1, 'someone offers help to the assignee');
+do $$ begin
+  begin
+    update help_offers set status = 'accepted';
+    raise exception 'FAILED: the helper accepted his own offer';
+  exception when raise_exception then if sqlerrm like 'FAILED%' then raise; end if; raise notice 'ok  only the person helped accepts';
+  end;
+end $$;
+select pg_temp.login('00000000-0000-0000-0000-00000000000b');
+update help_offers set status = 'accepted';
+select pg_temp.check((select status = 'accepted' and answered_at is not null from help_offers), 'the person helped accepts the offer');
+do $$ begin
+  begin
+    insert into help_offers (workspace_id, task_id, helper_member_id, helped_member_id)
+      select t.workspace_id, t.id, my_member_id(t.workspace_id), (select id from workspace_members where email = 'karim@example.com') from tasks t where t.title = 't1 in P1';
+    raise exception 'FAILED: offered help to someone who is not the task''s assignee';
+  exception when insufficient_privilege or check_violation then raise notice 'ok  help can only be offered to the task''s assignee'; end;
+end $$;
+reset role;
+
 select 'ALL ACCESS TESTS PASSED' as result;

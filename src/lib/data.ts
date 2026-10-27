@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { db } from './supabase';
 import { celebrateGoal, celebrateProject, celebrateTask } from './geese';
-import type { Comment, Dim, FieldOption, Goal, GoalRef, Member, Note, NoteKind, Project, ProjectFull, Subtask, Task, Team, TaskFull, TeamRef } from './types';
+import type { Comment, Dim, FieldOption, HelpOffer, Goal, GoalRef, Member, Note, NoteKind, Project, ProjectFull, Subtask, Task, Team, TaskFull, TeamRef } from './types';
 
 /** Loads data for the current screen and reloads after a change. */
 export function useLoad<T>(load: () => Promise<T>, deps: unknown[]) {
@@ -460,4 +460,34 @@ export async function listInbox(ws: string, me: string): Promise<InboxItem[]> {
       projectId: t?.project_id ?? n?.project_id ?? null });
   }
   return out;
+}
+
+// ---------- offers of help ("no goose flies alone") ----------
+
+/** Offers of help in the workspace that this person may see. Empty until the database update is run. */
+export async function listHelpOffers(ws: string): Promise<HelpOffer[]> {
+  const { data, error } = await db().from('help_offers').select('*').eq('workspace_id', ws).order('created_at');
+  if (error) return [];
+  return data as HelpOffer[];
+}
+export async function offerHelp(ws: string, me: string, task: Pick<Task, 'id' | 'assignee_member_id'>, message = '') {
+  const { error } = await db().from('help_offers').insert({ workspace_id: ws, task_id: task.id, helper_member_id: me, helped_member_id: task.assignee_member_id, message });
+  if (error) throw new Error(/help_offers/.test(error.message) && /(does not exist|schema cache|not find)/i.test(error.message)
+    ? 'Offering help needs a one-time database update first.' : /duplicate|unique/i.test(error.message) ? 'You already offered to help with this task.' : error.message);
+}
+/** The person helped answers. Accepting also makes the helper a collaborator on the task. */
+export async function answerHelp(o: HelpOffer, accept: boolean) {
+  check(await db().from('help_offers').update({ status: accept ? 'accepted' : 'declined' }).eq('id', o.id).select('id').single());
+  if (accept) {
+    const { error } = await db().from('task_collaborators').insert({ task_id: o.task_id, member_id: o.helper_member_id });
+    if (error && !/duplicate|unique/i.test(error.message)) throw new Error(error.message);
+  }
+}
+export async function withdrawHelp(o: HelpOffer) {
+  check(await db().from('help_offers').update({ status: 'withdrawn' }).eq('id', o.id).select('id').single());
+}
+export async function listTaskHelp(taskId: string): Promise<HelpOffer[]> {
+  const { data, error } = await db().from('help_offers').select('*').eq('task_id', taskId).order('created_at');
+  if (error) return [];
+  return data as HelpOffer[];
 }

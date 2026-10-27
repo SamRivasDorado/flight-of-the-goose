@@ -12,6 +12,7 @@ import { dueLabel, firstName } from '../lib/format';
 import { Avatar, Icon } from './Logo';
 import { ProjectChip } from './ProjectChip';
 import { CommentThread, MentionArea, mentionedIds } from './Comments';
+import { TaskHelp } from './OfferHelp';
 
 /** The task details panel that slides up from the bottom (as in the prototype).
     A new task is a draft until Create task is pressed; an existing one saves as you edit. */
@@ -176,6 +177,7 @@ function Sheet({ id, defaults, close, changed }: SheetProps) {
           <textarea className="d-title" rows={1} placeholder="Task name" aria-label="Task name" value={title} readOnly={!editable}
             autoFocus={!title} onChange={e => setTitle(e.target.value)} onBlur={() => !isNew && title !== t.title && patch({ title })}
             onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); (e.target as HTMLTextAreaElement).blur(); } }} />
+          {!isNew && <TaskHelp key={t.id} task={t} members={lists.members} />}
           <div>
             <div className="h3">Description</div>
             <div style={{ marginTop: 6 }}><MentionArea className="notes" placeholder="Context, links, decisions. Type @ to mention someone." aria-label="Description" value={desc} readOnly={!editable}
