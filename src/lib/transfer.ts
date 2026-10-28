@@ -553,7 +553,9 @@ export async function restoreBackup(b: Backup, name: string, me_: { uid: string;
   progress?.('Tasks');
   await insert('tasks', rows('tasks').map(t => ({ id: fresh(t.id), workspace_id: ws, project_id: map(t.project_id), goal_id: map(t.goal_id), title: t.title, description: t.description ?? '',
     due_date: t.due_date, status: t.status, completed_at: t.completed_at, hours: t.hours, assignee_member_id: person(t.assignee_member_id), created_by_member: me,
-    source_note_id: map(t.source_note_id), source_line: t.source_line ?? null, created_at: t.created_at })));
+    source_note_id: map(t.source_note_id), source_line: t.source_line ?? null, created_at: t.created_at,
+    // open repeating tasks keep repeating; finished ones are history
+    ...(t.status !== 'done' && t.repeat ? { repeat: t.repeat } : {}) })));
   await insert('subtasks', rows('subtasks').filter(s => map(s.task_id)).map(s => ({ task_id: map(s.task_id), title: s.title, done: s.done, position: s.position })));
   await insert('task_collaborators', rows('task_collaborators').filter(x => map(x.task_id) && person(x.member_id)).map(x => ({ task_id: map(x.task_id), member_id: person(x.member_id) })));
   // comments: written in your name (the database only lets you add your own), with the original author named

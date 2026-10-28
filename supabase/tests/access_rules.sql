@@ -395,4 +395,33 @@ do $$ begin
   exception when check_violation then raise notice 'ok  goal colours are #RRGGBB'; end;
 end $$;
 
+-- recurring tasks: the dates, and the next task created when a repeating one is completed
+select pg_temp.check(repeat_next_due('{"unit":"day","every":1,"from":"due"}', '2026-10-20', '2026-10-28') = '2026-10-29', 'late daily task: next one is tomorrow');
+select pg_temp.check(repeat_next_due('{"unit":"weekday","every":1,"from":"due"}', '2026-10-30', '2026-10-30') = '2026-11-02', 'weekday task done on Friday: next is Monday');
+select pg_temp.check(repeat_next_due('{"unit":"week","every":1,"days":[1,4],"from":"due"}', '2026-10-26', '2026-10-26') = '2026-10-29', 'Mon/Thu: Monday then Thursday');
+select pg_temp.check(repeat_next_due('{"unit":"week","every":1,"days":[1,4],"from":"due"}', '2026-10-29', '2026-10-29') = '2026-11-02', 'Mon/Thu: Thursday then next Monday');
+select pg_temp.check(repeat_next_due('{"unit":"week","every":2,"days":[3],"from":"due"}', '2026-10-28', '2026-10-28') = '2026-11-11', 'every 2 weeks on Wednesday');
+select pg_temp.check(repeat_next_due('{"unit":"month","every":1,"dom":31,"from":"due"}', '2027-01-31', '2027-01-31') = '2027-02-28', 'the 31st becomes the last day of February');
+select pg_temp.check(repeat_next_due('{"unit":"month","every":1,"dom":31,"from":"due"}', '2027-02-28', '2027-02-28') = '2027-03-31', 'and back to the 31st in March');
+select pg_temp.check(repeat_next_due('{"unit":"year","every":1,"from":"due"}', '2028-02-29', '2028-02-29') = '2029-02-28', 'yearly on 29 Feb');
+select pg_temp.check(repeat_next_due('{"unit":"week","every":2,"from":"done"}', '2026-10-01', '2026-10-28') = '2026-11-11', 'counted from completion');
+select pg_temp.check(repeat_next_due('{"unit":"day","every":1,"from":"due","until":"2026-10-28"}', '2026-10-28', '2026-10-28') is null, 'stops after its end date');
+select pg_temp.check(repeat_next_due('{"unit":"day","every":1,"from":"due","left":1}', '2026-10-28', '2026-10-28') is null, 'stops after its last time');
+select pg_temp.check(repeat_next_due('{"unit":"month","every":3,"dom":15,"from":"due"}', null, '2026-10-28') = '2027-01-15', 'no due date: counted from completion');
+
+set role authenticated;
+select pg_temp.login('00000000-0000-0000-0000-00000000000b');
+insert into tasks (workspace_id, title, due_date, created_by_member, assignee_member_id, repeat)
+  select w.id, 'Weekly report', current_date, my_member_id(w.id), my_member_id(w.id), '{"unit":"week","every":1,"from":"due","left":3}'
+  from workspaces w where my_member_id(w.id) is not null limit 1;
+insert into subtasks (task_id, title, done) select id, 'Collect numbers', true from tasks where title = 'Weekly report';
+update tasks set status = 'done', completed_at = current_date where title = 'Weekly report' and status = 'todo';
+select pg_temp.check((select count(*) from tasks where title = 'Weekly report') = 2, 'completing a repeating task creates the next one');
+select pg_temp.check((select due_date = current_date + 7 and status = 'todo' and (repeat->>'left')::int = 2 from tasks where title = 'Weekly report' and status = 'todo'), 'the next one is due a week later, with one time fewer to go');
+select pg_temp.check((select bool_and(not done) from subtasks s join tasks t on t.id = s.task_id where t.status = 'todo' and t.title = 'Weekly report'), 'its subtasks start unticked');
+update tasks set status = 'todo', completed_at = null where title = 'Weekly report' and next_task_id is not null;
+update tasks set status = 'done', completed_at = current_date where title = 'Weekly report' and next_task_id is not null;
+select pg_temp.check((select count(*) from tasks where title = 'Weekly report') = 2, 'reopening and completing again does not create a second copy');
+reset role;
+
 select 'ALL ACCESS TESTS PASSED' as result;

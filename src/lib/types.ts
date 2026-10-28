@@ -1,3 +1,4 @@
+import type { Repeat } from './repeat';
 // Row shapes as stored in the database (supabase/migrations).
 
 export type Access = 'admin' | 'manager' | 'member' | 'guest';
@@ -56,6 +57,10 @@ export interface Task {
   created_at: string;
   /** Set when the task was made from a notebook line. */
   source_note_id?: string | null;
+  /** Repeat rule: when the task is completed, the next one is created (see lib/repeat.ts). */
+  repeat?: Repeat | null;
+  /** The task created from this one when it was completed (repeating tasks). */
+  next_task_id?: string | null;
   source_line?: number | null;
 }
 

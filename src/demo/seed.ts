@@ -3,6 +3,8 @@
  * so every screen (and the quarterly legs on Strategy) has something real to show.
  * Dates are relative to today; the pseudo-random choices are fixed, so every reset looks the same.
  */
+import type { Repeat } from '../lib/repeat';
+
 type Row = Record<string, unknown>;
 
 let seedN = 7;
@@ -85,12 +87,12 @@ export function makeSeed(myUid: string, myEmail: string): Record<string, Row[]> 
   const nafbd = proj('North Africa business development', { color: '#F28C28', icon: 'briefcase', kind: 'ongoing', start: -200, owner: karim, teams: [tNaf], region: 'North Africa' });
 
   // ---- tasks: finished ones spread over the project's past, open ones ahead (a few overdue)
-  const task = (p: Proj | null, title: string, o: { done?: number; due?: number | null; who?: string; status?: string; hours?: number | null; goal?: string; prio?: string; subs?: [string, boolean][]; desc?: string } = {}) => {
+  const task = (p: Proj | null, title: string, o: { done?: number; due?: number | null; who?: string; status?: string; hours?: number | null; goal?: string; prio?: string; subs?: [string, boolean][]; desc?: string; repeat?: Repeat } = {}) => {
     const id = uid();
     const doneDay = o.done != null ? day(o.done) : null;
     t.tasks.push({ id, workspace_id: ws, project_id: p?.id ?? null, goal_id: o.goal ?? null, title, description: o.desc ?? '', due_date: o.due === undefined ? (o.done != null ? day(o.done + Math.round(rnd() * 4)) : null) : o.due === null ? null : day(o.due),
       status: o.done != null ? 'done' : o.status ?? 'todo', completed_at: doneDay, hours: o.hours ?? (o.done != null ? pick([0.5, 1, 1.5, 2, 3, 4, 6]) : null),
-      assignee_member_id: o.who ?? (p ? pick(p.people) : sam), created_by_member: sam, source_note_id: null, source_line: null, created_at: stamp((o.done ?? o.due ?? 0) - 20) });
+      assignee_member_id: o.who ?? (p ? pick(p.people) : sam), created_by_member: sam, source_note_id: null, source_line: null, created_at: stamp((o.done ?? o.due ?? 0) - 20), repeat: o.repeat ?? null, next_task_id: null });
     if (o.prio) t.task_values.push({ task_id: id, field_id: prio.id, option_id: prio.o[o.prio], value: null });
     (o.subs ?? []).forEach(([s, d], i) => t.subtasks.push({ id: uid(), task_id: id, title: s, done: d, position: i }));
     return id;
@@ -112,7 +114,12 @@ export function makeSeed(myUid: string, myEmail: string): Record<string, Row[]> 
   history(igme, ['Basin model', 'Burial history', 'Source rock maps', 'Final presentation'], -385, -176, 10);
   history(support, ['Answer tNavigator ticket', 'Licence question', 'Remote session', 'Monthly call', 'Bug report to developers'], -395, -1, 34);
   task(support, 'Answer tNavigator ticket from Repsol', { due: 1, who: omar });
-  task(support, 'Monthly call', { due: 11, who: lucia });
+  {
+    // a monthly call that repeats, on the day of the month it falls on
+    const d = new Date(); d.setDate(d.getDate() + 11);
+    task(support, 'Monthly call', { due: 11, who: lucia, repeat: { unit: 'month', every: 1, dom: d.getDate(), from: 'due' } });
+  }
+  task(null, 'Weekly planning', { due: (8 - new Date().getDay()) % 7 || 7, who: sam, repeat: { unit: 'week', every: 1, days: [1], from: 'due' }, subs: [['Check overdue tasks', false], ['Plan the week', false]] });
   task(support, 'Update FAQ page', { due: -6, who: elena });
   history(tnav, ['Python script for well tops', 'Workflow template', 'Training video', 'Macro clean-up', 'Documentation page'], -295, -2, 24);
   task(tnav, 'Workflow for DFN upscaling', { due: 14, who: sam, prio: 'Medium' });
