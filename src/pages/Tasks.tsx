@@ -10,6 +10,8 @@ import { OptPill } from '../components/Lens';
 import { byDue, diffDays, dueLabel, firstName, hrs, parseISO } from '../lib/format';
 import { Avatar, Icon, type IconName } from '../components/Logo';
 import { NO_PROJECT_COLOR, ProjectChip } from '../components/ProjectChip';
+import { GoalTag } from '../components/GoalTag';
+import { goalOption, goalTree, tagOf, taskGoals } from '../lib/goaltag';
 
 type Tab = 'list' | 'board' | 'calendar';
 type Group = string; // 'due' | 'project' | a dimension id
@@ -115,6 +117,11 @@ function ListView({ c, tools }: { c: Ctx; tools: React.ReactNode }) {
     const val = (t: Task) => c.lens.eff(t, groupDim.id).option;
     groups = [...groupDim.options.map(o => ({ k: o.id, label: `${o.label}${groupDim.builtin ? ' priority' : ''}`, items: openT.filter(t => val(t) === o.id) })),
       { k: 'nodim', label: `No ${groupDim.name.toLowerCase()}`, items: openT.filter(t => !val(t)) }];
+  } else if (group === 'goal' && c.lens.goals.length) {
+    // each task sits under its own goal, or else the first goal of its project
+    const first = (t: Task) => taskGoals(t, c.lens.goals)[0]?.goal.id ?? null;
+    groups = [...goalTree(c.lens.goals).map(g => ({ k: g.id, label: `${tagOf(g)} · ${g.title}`, items: openT.filter(t => first(t) === g.id) })),
+      { k: 'nogoal', label: 'No goal', items: openT.filter(t => !first(t)) }];
   } else if (group === 'project' && !c.projectId) {
     groups = [...c.projects.map(p => ({ k: p.id, label: p.name, items: openT.filter(t => t.project_id === p.id) })),
       { k: 'none', label: 'No project', items: openT.filter(t => !c.projects.some(p => p.id === t.project_id)) }];
@@ -123,7 +130,8 @@ function ListView({ c, tools }: { c: Ctx; tools: React.ReactNode }) {
     groups = [['overdue', 'Overdue'], ['today', 'Today'], ['week', 'Next 7 days'], ['later', 'Later'], ['nodate', 'No due date']]
       .map(([k, label]) => ({ k, label, items: openT.filter(t => b(t) === k) }));
   }
-  const cols = (c.projectId ? 4 : 5) - (c.solo ? 1 : 0) + c.lens.dims.length;
+  const showGoal = c.lens.goals.length > 0;
+  const cols = (c.projectId ? 4 : 5) - (c.solo ? 1 : 0) + (showGoal ? 1 : 0) + c.lens.dims.length;
   groups = groups.filter(g => g.items.length);
   if (c.showDone) groups.push({ k: 'done', label: 'Completed', items: shown.filter(t => t.status === 'done') });
 
@@ -137,14 +145,14 @@ function ListView({ c, tools }: { c: Ctx; tools: React.ReactNode }) {
     <>
       <div className="tools"><span className="grow" />
         <label className="chk">Group by <select className="field-in" value={group} onChange={e => setGroup(e.target.value as Group)}>
-          <option value="due">Due date</option>{!c.projectId && <option value="project">Project</option>}
+          <option value="due">Due date</option>{showGoal && <option value="goal">Goal</option>}{!c.projectId && <option value="project">Project</option>}
           {c.lens.dims.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</select></label>{tools}</div>
       {c.lens.dims.length > 0 && <div className="legend" style={{ marginBottom: 8 }}>
         <span><span className="pill" style={{ ['--c' as string]: 'var(--accent)' }}>Filled</span> value set on the task itself</span>
         <span><span className="pill inh" style={{ ['--c' as string]: 'var(--accent)' }}>Dashed</span> inherited from the project’s default; set a value on the task to override it</span></div>}
       <div className="tbl-wrap">
         <table className="tl2">
-          <thead><tr><th>Name</th><th>Due date</th>{!c.solo && <th>Assignee</th>}{!c.projectId && <th>Project</th>}<th>Time</th>{c.lens.dims.map(d => <th key={d.id}>{d.name}</th>)}</tr></thead>
+          <thead><tr><th>Name</th><th>Due date</th>{!c.solo && <th>Assignee</th>}{showGoal && <th>Goal</th>}{!c.projectId && <th>Project</th>}<th>Time</th>{c.lens.dims.map(d => <th key={d.id}>{d.name}</th>)}</tr></thead>
           <tbody>
             {groups.map(g => {
               const isClosed = !!closed[g.k];
@@ -176,11 +184,17 @@ function Row({ t, c }: { t: TaskFull; c: Ctx }) {
           onClick={e => { e.stopPropagation(); void c.save(t.id, { status: done ? 'todo' : 'done' }); }}><Icon name="check" /></button>
         <span className="ttl">{t.title || <span className="muted">Untitled task</span>}</span>
         {t.subtasks.length > 0 && <span className="subn mono">{subDone}/{t.subtasks.length}<Icon name="sub" /></span>}
-        {t.goal_id && <span className="subn" title="Linked to a goal"><Icon name="target" /></span>}
       </div></td>
       <td className="mono"><span className={due.cls}>{due.text}</span></td>
       {!c.solo && <td>{who ? <span className="who"><Avatar m={who} size="sm" />{firstName(who.display_name)}
         {t.collaborator_ids.length > 0 && <span className="muted"> +{t.collaborator_ids.length}</span>}</span> : <span className="muted">—</span>}</td>}
+      {c.lens.goals.length > 0 && (() => {
+        const gs = taskGoals(t, c.lens.goals), fromProject = gs.find(x => x.inherited);
+        return <td><CellPick on={c.editable} label={`Goal of ${t.title || 'this task'}`} value={t.goal_id ?? ''}
+          onPick={v => void c.save(t.id, { goal_id: v || null })}
+          options={[['', fromProject ? `${tagOf(fromProject.goal)} (from project)` : '—'], ...goalTree(c.lens.goals).map(g => [g.id, goalOption(g)] as [string, string])]}>
+          <GoalTag g={gs[0]?.goal} goals={c.lens.goals} inherited={gs[0]?.inherited} more={gs.length - 1} /></CellPick></td>;
+      })()}
       {!c.projectId && <td><CellPick on={c.editable} label={`Project of ${t.title || 'this task'}`} value={t.project_id ?? ''}
         onPick={v => void c.save(t.id, { project_id: v || null })}
         options={[['', 'No project'], ...c.projects.filter(p => p.status !== 'closed' || p.id === t.project_id).map(p => [p.id, p.name] as [string, string])]}>

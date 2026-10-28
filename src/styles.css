@@ -776,3 +776,17 @@ button.brand:hover{background:var(--bar-hi)}
 .cellpick:focus-within{outline:2px solid var(--accent);outline-offset:1px}
 .cellpick select{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:14px;border:0}
 .cellpick select option{color:var(--fg);background:var(--surface)}
+
+/* goal tags: a short name in the goal's colour, used wherever the full title does not fit */
+.gtagw{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+.gtag{--c:#999;display:inline-flex;align-items:center;gap:4px;padding:1px 7px 1px 5px;border-radius:6px;font-size:12px;font-weight:600;letter-spacing:.03em;
+  background:color-mix(in srgb,var(--c) 22%,var(--surface));border:1px solid transparent;white-space:nowrap;line-height:18px}
+.gtag svg{width:11px;height:11px;flex:none}
+.gtag svg circle:first-child{fill:none;stroke:var(--c);stroke-width:1.8}
+.gtag svg circle:last-child{fill:var(--c)}
+.gtag.inh{background:transparent;border:1px dashed color-mix(in srgb,var(--c) 70%,var(--line))}
+.gtag.sub svg circle:first-child{stroke-dasharray:2.2 1.4}
+.gmore{font-size:12px}
+.gtags{display:inline-flex;flex-wrap:wrap;gap:4px}
+.swatches.gsw{gap:6px;margin-top:4px}.swatches.gsw .swt{width:22px;height:22px;border-radius:6px}
+.goal h3 .gtagw{margin-left:8px;vertical-align:3px}

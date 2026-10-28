@@ -385,4 +385,14 @@ do $$ begin
 end $$;
 reset role;
 
+-- goal tags: short names stay short, colours are hex
+update goals set short_name = 'P2-GOAL', color = '#4A7FC1' where title = 'Goal linked to P2';
+select pg_temp.check((select short_name = 'P2-GOAL' from goals where title = 'Goal linked to P2'), 'a goal keeps its short name');
+do $$ begin
+  begin update goals set short_name = 'TOO-LONG-1' where title = 'Goal linked to P2'; raise exception 'FAILED: saved a short name longer than 8 characters';
+  exception when check_violation then raise notice 'ok  goal short names are at most 8 characters'; end;
+  begin update goals set color = 'red' where title = 'Goal linked to P2'; raise exception 'FAILED: saved a colour that is not #RRGGBB';
+  exception when check_violation then raise notice 'ok  goal colours are #RRGGBB'; end;
+end $$;
+
 select 'ALL ACCESS TESTS PASSED' as result;

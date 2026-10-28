@@ -3,6 +3,7 @@ import { useSolo } from '../lib/solo';
 import { createPortal } from 'react-dom';
 import { useWorkspace } from '../auth/session';
 import { useLens } from '../lib/lens';
+import { goalOption, goalTree, tagOf } from '../lib/goaltag';
 import { canManage, type Dim } from '../lib/types';
 import { Icon } from './Logo';
 import { DimensionsDialog } from './DimensionsDialog';
@@ -36,6 +37,15 @@ export function LensBar({ page, self }: { page: string; self: boolean }) {
         ? <span className="fsel on" title="Members see their own work in Review and Insights. Managers and admins can see anyone's.">Person: me</span>
         : sel('person', 'Person', lens.members.map(m => [m.id, m.id === ws.member_id ? `${m.display_name} (me)` : m.display_name]))}
       {!solo && lens.teams.length > 0 && sel('team', 'Team', lens.teams.map(t => [t.id, t.name]))}
+      {lens.goals.length > 0 && (() => {
+        // the chosen goal shows as its short tag, so the bar stays short; the list shows tag and full title
+        const v = lens.filt.goal ?? '';
+        return <select className={`fsel ${v ? 'on' : ''}`} aria-label="Filter by Goal" value={v} onChange={e => lens.setFilt('goal', e.target.value)}
+          title={v && v !== 'none' ? lens.goals.find(g => g.id === v)?.title : undefined}>
+          <option value="">Goal: any</option>
+          {goalTree(lens.goals).map(g => <option key={g.id} value={g.id}>{g.id === v ? `Goal: ${tagOf(g)}` : goalOption(g)}</option>)}
+          <option value="none">{v === 'none' ? 'Goal: none' : 'No goal'}</option></select>;
+      })()}
       {page !== 'project' && sel('project', 'Project', [...lens.projects.map(p => [p.id, p.name] as [string, string]), ['none', 'No project']])}
       {lens.dims.map(d => sel(d.id, d.name, d.options.map(o => [o.id, o.label])))}
       {lens.any && <button className="btn sm ghost" onClick={lens.clear}><Icon name="x" />Clear</button>}

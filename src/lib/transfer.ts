@@ -8,6 +8,7 @@
 import { db } from './supabase';
 import { listDims, listDimValues, listGoals, listMembers, listProjectsFull, listTasksFull, listTeams, todayISO } from './data';
 import { goalProgress } from './goals';
+import { cleanTag } from './goaltag';
 import { GOAL_STATUSES, STATUSES, type Dim, type Goal, type Member, type ProjectFull, type TaskFull, type Team } from './types';
 import { PROJECT_COLORS } from '../config';
 import { PROJECT_ICONS } from '../components/Logo';
@@ -54,8 +55,8 @@ export function exportTables(d: WsData): Tables {
   const gTitle = (id: string | null) => d.goals.find(g => g.id === id)?.title ?? '';
   const pName = (id: string | null) => d.projects.find(p => p.id === id)?.name ?? '';
   const opt = (dim: Dim, id: string | undefined) => dim.options.find(o => o.id === id)?.label ?? '';
-  const goals: Cell[][] = [['Goal ID', 'Level', 'Goal', 'Parent goal', 'Owner', 'Start', 'End', 'Status', 'Linked projects', 'Manual progress %', 'Notes', 'Progress %' + CALC],
-    ...ordered(d.goals).map(g => [g.id, g.parent_id ? 'Sub-goal' : 'Goal', g.title, gTitle(g.parent_id), name(g.owner_member_id), g.start_date, g.end_date ?? '',
+  const goals: Cell[][] = [['Goal ID', 'Level', 'Goal', 'Short name', 'Parent goal', 'Owner', 'Start', 'End', 'Status', 'Linked projects', 'Manual progress %', 'Notes', 'Progress %' + CALC],
+    ...ordered(d.goals).map(g => [g.id, g.parent_id ? 'Sub-goal' : 'Goal', g.title, g.short_name || '', gTitle(g.parent_id), name(g.owner_member_id), g.start_date, g.end_date ?? '',
       GOAL_STATUS_LABEL(g.status), g.project_ids.map(pName).filter(Boolean).join('; '), g.manual_progress || 0, g.notes || '', goalProgress(g, d.goals, d.tasks)])];
   const projects: Cell[][] = [['Project ID', 'Project', 'Owner', 'Members', 'Shared with teams', 'Kind', 'Status', 'Start', 'End', 'Colour', 'Symbol', ...d.dims.map(x => x.name), 'Open tasks' + CALC, 'Hours logged' + CALC],
     ...d.projects.map(p => { const ts = d.tasks.filter(t => t.project_id === p.id); return [p.id, p.name, name(p.owner_member_id), names(p.member_ids),
@@ -156,7 +157,7 @@ function detectType(name: string, headers: string[]): keyof ImportTables | 'skip
   return null;
 }
 const KNOWN: Record<keyof ImportTables, string[]> = {
-  goals: ['Goal ID', 'Level', 'Goal', 'Parent goal', 'Owner', 'Start', 'End', 'Status', 'Linked projects', 'Manual progress %', 'Notes'],
+  goals: ['Goal ID', 'Level', 'Goal', 'Short name', 'Parent goal', 'Owner', 'Start', 'End', 'Status', 'Linked projects', 'Manual progress %', 'Notes'],
   projects: ['Project ID', 'Project', 'Owner', 'Members', 'Shared with teams', 'Kind', 'Status', 'Start', 'End', 'Colour', 'Symbol'],
   tasks: ['Task ID', 'Task', 'Project', 'Goal', 'Assignee', 'Collaborators', 'Due date', 'Status', 'Completed on', 'Hours', 'Subtasks', 'Description'],
 };
@@ -326,11 +327,11 @@ export async function runImport(tables: ImportTables, d: WsData, ctx: { ws: stri
       let g = known(id, G) ? G.find(x => x.id === id) : goalByTitle(title);
       const before = g ? [...g.project_ids] : [];
       const isNew = !g;
-      const gsig = (x: Goal) => JSON.stringify([x.title, x.start_date, x.end_date, x.status, x.manual_progress, x.notes, x.owner_member_id, sorted(x.project_ids)]);
+      const gsig = (x: Goal) => JSON.stringify([x.title, x.short_name, x.start_date, x.end_date, x.status, x.manual_progress, x.notes, x.owner_member_id, sorted(x.project_ids)]);
       const was = g ? gsig(g) : '';
       if (!g) {
         g = { id: newId(), workspace_id: ctx.ws, parent_id: null, title, start_date: todayISO(), end_date: null, status: 'on_track', manual_progress: 0, notes: '',
-          owner_member_id: ctx.me, created_at: new Date().toISOString(), project_ids: [] };
+          owner_member_id: ctx.me, created_at: new Date().toISOString(), project_ids: [], short_name: '', color: null };
         G.push(g); C.goals.add++;
       }
       g.title = title;
@@ -343,12 +344,13 @@ export async function runImport(tables: ImportTables, d: WsData, ctx: { ws: stri
         .map(n => { const p = projByName(n); if (!p) W.push(`Goal “${title}”: no project called “${n}”.`); return p?.id; }).filter((x): x is string => !!x);
       if (has(r, 'Manual progress %')) { const v = parseFloat(str(val(r, 'Manual progress %')).replace(',', '.')); if (isFinite(v)) g.manual_progress = Math.round(Math.max(0, Math.min(100, v))); }
       if (has(r, 'Notes')) g.notes = str(val(r, 'Notes'));
+      if (has(r, 'Short name')) { const raw = str(val(r, 'Short name')), tg = cleanTag(raw); if (raw.trim() && tg !== raw.trim().toUpperCase()) W.push(`Goal “${title}”: short name shortened to “${tg}” (up to 8 characters).`); g.short_name = tg; }
       if (has(r, 'Owner')) { const o = person(str(val(r, 'Owner')), `Goal “${title}”`); if (o) g.owner_member_id = o; }
       if (has(r, 'Parent goal')) parents.push([g, str(val(r, 'Parent goal'))]);
       const changed = isNew || gsig(g) !== was;
       if (!isNew) { if (changed) C.goals.upd++; else { C.goals.same++; unchangedGoals.add(g.id); } }
       if (apply && changed) {
-        const row = { title: g.title, start_date: g.start_date, end_date: g.end_date, status: g.status, manual_progress: g.manual_progress, notes: g.notes, owner_member_id: g.owner_member_id };
+        const row = { title: g.title, short_name: g.short_name ?? '', start_date: g.start_date, end_date: g.end_date, status: g.status, manual_progress: g.manual_progress, notes: g.notes, owner_member_id: g.owner_member_id };
         if (isNew) check(await db().from('goals').insert({ id: g.id, workspace_id: ctx.ws, ...row }));
         else check(await db().from('goals').update(row).eq('id', g.id).select('id').single());
         await syncLinks('goal_projects', 'goal_id', g.id, 'project_id', before, g.project_ids);
@@ -538,7 +540,8 @@ export async function restoreBackup(b: Backup, name: string, me_: { uid: string;
   progress?.('Goals');
   const goals = rows('goals');
   const goalRow = (g: Row) => ({ id: fresh(g.id), workspace_id: ws, title: g.title, start_date: g.start_date, end_date: g.end_date, status: g.status, manual_progress: g.manual_progress,
-    notes: g.notes ?? '', owner_member_id: person(g.owner_member_id) ?? me, created_at: g.created_at });
+    notes: g.notes ?? '', owner_member_id: person(g.owner_member_id) ?? me, created_at: g.created_at,
+    short_name: g.short_name ?? '', color: g.color ?? null });
   await insert('goals', goals.filter(g => !g.parent_id).map(goalRow));
   await insert('goals', goals.filter(g => g.parent_id && map(g.parent_id)).map(g => ({ ...goalRow(g), parent_id: map(g.parent_id) })));
   await insert('goal_projects', rows('goal_projects').filter(x => map(x.goal_id) && map(x.project_id)).map(x => ({ goal_id: map(x.goal_id), project_id: map(x.project_id) })));

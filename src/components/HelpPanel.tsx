@@ -31,6 +31,7 @@ const TOPICS: Topic[] = [
       <li><b>Status</b> (On track, At risk, Off track, Achieved) is your judgement.</li>
       <li><b>Progress</b> is calculated: the share of done tasks in the linked projects and the tasks linked directly to the goal. Without tasks it is the average of the sub-goals; otherwise the value you set by hand.</li>
       <li>Link projects to a goal in the goal itself or in Project settings. <b>Add task to this goal</b> creates a task linked straight to it.</li>
+      <li>Every goal has a <b>tag</b>: a short name of up to 8 characters and a colour, set in the goal's form (Goose suggests one from the title). The tag stands for the goal where its name does not fit: the Goal column of the task list, project cards and pages, and the Lens. Sub-goals share their goal's colour, so a family reads as one. A <b>dashed</b> tag means the task counts towards the goal through its project.</li>
       <li><b>Journey</b> (top right) shows each goal as a route from a nest to a flag, with the people on it flying as a flock at the goal's progress. The dashed line is where the flock should be by now, going by the goal's dates. Whoever finished most this week leads; people with overdue tasks trail at the back. Hover a goose to see why.</li>
       <li>A goose that trails behind has overdue tasks; click it to <b>offer help</b> (see <i>No goose flies alone</i>).</li>
       <li><b>Goals with no end date fly in quarterly legs.</b> The route is the current quarter and the flag is last quarter's pace: finishing as many of the goal's tasks as last quarter. Ahead of the dashed line means faster than last quarter. The first quarter sets the pace.</li>
@@ -115,7 +116,7 @@ const TOPICS: Topic[] = [
   { id: 'lens', title: 'The Lens and dimensions', icon: 'filter', body: <>
     <p className="lead">The Lens is the filter bar under the top bar. Whatever you pick there filters every screen at once.</p>
     <ul>
-      <li>Filter by person, team, project, Priority or any other dimension; <b>Clear</b> resets it. New tasks follow the Lens (its project and person).</li>
+      <li>Filter by person, team, <b>goal</b>, project, Priority or any other dimension. A goal shows its own tasks, those of its sub-goals and those in its linked projects (the same tasks its progress counts); <b>No goal</b> shows work not connected to any goal; <b>Clear</b> resets it. New tasks follow the Lens (its project and person).</li>
       <li><b>Dimensions</b> (button on the right of the Lens) are shared labels such as Priority, Region or Client. Add your own, rename them and pick colours.</li>
       <li>Set default values per project; its tasks inherit them unless a task sets its own.</li>
     </ul></> },

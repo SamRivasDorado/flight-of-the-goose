@@ -1,11 +1,13 @@
 import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import { useWorkspace } from '../auth/session';
-import { listCollaborations, listDims, listDimValues, listMembers, listProjectsFull, listTeams, useLoad } from './data';
+import { listCollaborations, listDims, listDimValues, listGoals, listMembers, listProjectsFull, listTeams, useLoad } from './data';
+import { familyIds } from './goaltag';
+import { goalTasks } from './goals';
 import { useLocalPref, useUI } from './ui';
 import { useSolo } from './solo';
-import type { Dim, Member, ProjectFull, Task, Team } from './types';
+import type { Dim, Goal, Member, ProjectFull, Task, Team } from './types';
 
-/** The Lens: one set of filters (Person, Team, Project and each dimension) shared by every screen. */
+/** The Lens: one set of filters (Person, Team, Goal, Project and each dimension) shared by every screen. */
 export type Filt = Record<string, string>;
 
 interface LensState {
@@ -17,6 +19,8 @@ interface LensState {
   members: Member[];
   teams: Team[];
   projects: ProjectFull[];
+  /** Goals with their linked projects, for the Goal filter, the Goal column and goal tags. */
+  goals: Goal[];
   /** The value a task has for a dimension: its own, or else its project's default. */
   eff: (t: Pick<Task, 'id' | 'project_id'>, fieldId: string) => { option: string | null; inherited: boolean };
   /** The project's default value for a dimension. */
@@ -40,9 +44,10 @@ export function LensProvider({ children }: { children: ReactNode }) {
   const { solo } = useSolo();
   const [stored, setStored] = useLocalPref<Record<string, Filt>>('lens', {});
   const { data, reload } = useLoad(async () => {
-    const [dims, values, collabs, members, teams, projects] = await Promise.all([
-      listDims(ws.workspace_id), listDimValues(), listCollaborations(), listMembers(ws.workspace_id), listTeams(ws.workspace_id), listProjectsFull(ws.workspace_id)]);
-    return { dims, values, collabs, members, teams, projects };
+    const [dims, values, collabs, members, teams, projects, goals] = await Promise.all([
+      listDims(ws.workspace_id), listDimValues(), listCollaborations(), listMembers(ws.workspace_id), listTeams(ws.workspace_id), listProjectsFull(ws.workspace_id),
+      listGoals(ws.workspace_id).catch(() => [] as Goal[])]);
+    return { dims, values, collabs, members, teams, projects, goals };
   }, [ws.workspace_id, ui.version]);
 
   const value = useMemo<LensState>(() => {
@@ -56,7 +61,8 @@ export function LensProvider({ children }: { children: ReactNode }) {
       if (k === 'person' && !data.members.some(m => m.id === v)) continue;
       if (k === 'team' && !data.teams.some(t => t.id === v)) continue;
       if (k === 'project' && v !== 'none' && !data.projects.some(p => p.id === v)) continue;
-      if (!['person', 'team', 'project'].includes(k) && !data.dims.some(d => d.id === k && d.options.some(o => o.id === v))) continue;
+      if (k === 'goal' && v !== 'none' && !data.goals.some(g => g.id === v)) continue;
+      if (!['person', 'team', 'project', 'goal'].includes(k) && !data.dims.some(d => d.id === k && d.options.some(o => o.id === v))) continue;
       filt[k] = v;
     }
     const tv = new Map<string, string>(), pd = new Map<string, string>(), co = new Map<string, Set<string>>();
@@ -72,7 +78,12 @@ export function LensProvider({ children }: { children: ReactNode }) {
       return { option: inh, inherited: !!inh };
     };
     const involved = (t: Pick<Task, 'id' | 'assignee_member_id'>, m: string) => t.assignee_member_id === m || !!co.get(t.id)?.has(m);
-    const teams = data?.teams ?? [], projects = data?.projects ?? [], dims = data?.dims ?? [];
+    const teams = data?.teams ?? [], projects = data?.projects ?? [], dims = data?.dims ?? [], goals = data?.goals ?? [];
+    // Goal filter: the goal and its sub-goals, through tasks linked to them or to their projects (as progress counts them)
+    const fam = filt.goal && filt.goal !== 'none' ? goals.filter(g => familyIds(filt.goal, goals).includes(g.id)) : [];
+    const famProjects = new Set(fam.flatMap(g => g.project_ids));
+    const inGoal = (t: Task) => fam.some(g => goalTasks(g, [t]).length > 0);
+    const noGoal = (t: Task) => !(t.goal_id && goals.some(g => g.id === t.goal_id)) && !(t.project_id && goals.some(g => g.project_ids.includes(t.project_id!)));
     const task = (t: Task, self?: string | null) => {
       const person = self ?? filt.person;
       if (person && !involved(t, person)) return false;
@@ -80,6 +91,7 @@ export function LensProvider({ children }: { children: ReactNode }) {
         const tm = teams.find(x => x.id === filt.team), p = projects.find(x => x.id === t.project_id);
         if (!tm || !(tm.member_ids.some(m => involved(t, m)) || (p && p.team_ids.includes(tm.id)))) return false;
       }
+      if (filt.goal && (filt.goal === 'none' ? !noGoal(t) : !inGoal(t))) return false;
       if (filt.project && (filt.project === 'none' ? !!t.project_id && projects.some(p => p.id === t.project_id) : t.project_id !== filt.project)) return false;
       for (const d of dims) if (filt[d.id] && eff(t, d.id).option !== filt[d.id]) return false;
       return true;
@@ -88,6 +100,8 @@ export function LensProvider({ children }: { children: ReactNode }) {
     const project = (p: ProjectFull, tasks: Task[]) => {
       if (filt.project && filt.project !== p.id) return false;
       const mine = tasks.filter(t => t.project_id === p.id);
+      if (filt.goal === 'none' && goals.some(g => g.project_ids.includes(p.id))) return false;
+      if (fam.length && !famProjects.has(p.id) && !mine.some(t => t.goal_id && fam.some(g => g.id === t.goal_id))) return false;
       if (filt.person && !(people(p).has(filt.person) || mine.some(t => involved(t, filt.person)))) return false;
       if (filt.team && !(p.team_ids.includes(filt.team) || [...people(p)].some(m => teams.find(x => x.id === filt.team)?.member_ids.includes(m)))) return false;
       const activeDims = dims.filter(d => filt[d.id]);
@@ -97,7 +111,7 @@ export function LensProvider({ children }: { children: ReactNode }) {
     };
     const setFilt = (k: string, v: string) => setStored({ ...stored, [ws.workspace_id]: { ...filt, [k]: v } });
     const clear = () => setStored({ ...stored, [ws.workspace_id]: {} });
-    return { filt, setFilt, clear, any: Object.keys(filt).length > 0, dims, members: data?.members ?? [], teams, projects,
+    return { filt, setFilt, clear, any: Object.keys(filt).length > 0, dims, members: data?.members ?? [], teams, projects, goals,
       eff, projectDefault, taskOwn, involved, task, project, ready: !!data, reload };
   }, [data, stored, setStored, ws.workspace_id, reload, solo]);
 
