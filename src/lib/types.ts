@@ -77,6 +77,8 @@ export interface GoalRef {
   id: string;
   title: string;
   parent_id: string | null;
+  short_name?: string;
+  color?: string | null;
 }
 
 export const STATUSES: { id: Task['status']; label: string; color: string }[] = [
@@ -159,6 +161,10 @@ export interface Goal {
   notes: string;
   owner_member_id: string | null;
   created_at: string;
+  /** Short tag (up to 8 characters) shown in small places; empty until saved (the app then suggests one). */
+  short_name: string;
+  /** The goal's colour; sub-goals use their parent's. Null: picked from the palette by position. */
+  color: string | null;
   /** Linked projects, filled in from goal_projects. */
   project_ids: string[];
 }

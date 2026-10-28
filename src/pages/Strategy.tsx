@@ -11,6 +11,7 @@ import { ProjectChip } from '../components/ProjectChip';
 import { GoalDialog } from '../components/GoalDialog';
 import { AvStack, projectHref } from './Projects';
 import { GoalFlag, Journey, Stops } from '../components/Geese';
+import { GoalTag } from '../components/GoalTag';
 import { legProgress, plural, shownProgress, stopsOf } from '../lib/legs';
 
 export function Strategy() {
@@ -114,7 +115,7 @@ function GoalCard({ g, goals, projects, tasks, members, teams, canEdit, onEdit, 
   const direct = tasks.filter(t => t.goal_id === g.id).sort((a, b) => Number(a.status === 'done') - Number(b.status === 'done') || byDue(a, b));
   const chips = (x: Goal) => projects.filter(p => x.project_ids.includes(p.id)).map(p =>
     <a key={p.id} href={projectHref(p.id)} style={{ textDecoration: 'none', color: 'inherit' }}><ProjectChip p={p} /></a>);
-  const title = (x: Goal) => canEdit ? <button onClick={() => onEdit(x)}>{x.title}</button> : <span>{x.title}</span>;
+  const title = (x: Goal) => <>{canEdit ? <button onClick={() => onEdit(x)}>{x.title}</button> : <span>{x.title}</span>}<GoalTag g={x} goals={goals} /></>;
 
   return (
     <article className={`goal tone-${st.tone}`}>

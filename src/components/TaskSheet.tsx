@@ -5,6 +5,7 @@ import {
   addSubtask, createTask, deleteSubtask, deleteTask, getTaskFull, listGoalRefs, listMembers, listProjects,
   recordMentions, setCollaborator, setTaskValue, updateSubtask, updateTask, useLoad,
 } from '../lib/data';
+import { goalOption, goalTree } from '../lib/goaltag';
 import { canEdit, STATUSES, type Subtask, type Task, type TaskFull } from '../lib/types';
 import { useUI } from '../lib/ui';
 import { useLens } from '../lib/lens';
@@ -207,9 +208,7 @@ function Sheet({ id, defaults, close, changed }: SheetProps) {
             <dt><label htmlFor="d-goal">Goal</label></dt>
             <dd><select id="d-goal" className="field-in" disabled={!editable} value={t.goal_id ?? ''} onChange={e => patch({ goal_id: e.target.value || null })}>
               <option value="">{lists.goals.length ? 'None' : 'No goals yet'}</option>
-              {lists.goals.filter(g => !g.parent_id).flatMap(g => [
-                <option key={g.id} value={g.id}>{g.title}</option>,
-                ...lists.goals.filter(k => k.parent_id === g.id).map(k => <option key={k.id} value={k.id}>{'  ↳ ' + k.title}</option>)])}</select></dd>
+              {goalTree(lists.goals).map(g => <option key={g.id} value={g.id}>{goalOption(g)}</option>)}</select></dd>
             {!solo && <><dt><label htmlFor="d-asg">Assignee</label></dt>
             <dd><select id="d-asg" className="field-in" disabled={!editable} value={t.assignee_member_id ?? ''} onChange={e => patch({ assignee_member_id: e.target.value || null })}>
               <option value="">Nobody yet</option>

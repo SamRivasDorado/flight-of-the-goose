@@ -158,7 +158,7 @@ export async function getTaskFull(id: string): Promise<TaskFull | null> {
 }
 
 export async function listGoalRefs(ws: string): Promise<GoalRef[]> {
-  return check(await db().from('goals').select('id, title, parent_id').eq('workspace_id', ws).order('start_date'));
+  return check(await db().from('goals').select('*').eq('workspace_id', ws).order('start_date').order('created_at'));
 }
 
 export async function createTask(ws: string, me: string, t: Partial<Task>): Promise<Task> {
@@ -272,7 +272,7 @@ export async function listGoals(ws: string): Promise<Goal[]> {
   return goals.map(g => ({ ...g, project_ids: links.filter(l => l.goal_id === g.id).map(l => l.project_id) }));
 }
 
-export type GoalInput = Pick<Goal, 'title' | 'start_date' | 'end_date' | 'status' | 'parent_id' | 'owner_member_id' | 'manual_progress' | 'notes' | 'project_ids'>;
+export type GoalInput = Pick<Goal, 'title' | 'short_name' | 'color' | 'start_date' | 'end_date' | 'status' | 'parent_id' | 'owner_member_id' | 'manual_progress' | 'notes' | 'project_ids'>;
 
 /** Creates a goal (existing = null) or saves changes, including its linked projects. */
 export async function saveGoal(ws: string, existing: Goal | null, d: GoalInput): Promise<string> {

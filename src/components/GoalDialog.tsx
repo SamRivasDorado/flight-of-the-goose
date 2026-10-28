@@ -3,6 +3,8 @@ import { useSolo } from '../lib/solo';
 import { useWorkspace } from '../auth/session';
 import { deleteGoal, saveGoal, todayISO, type GoalInput } from '../lib/data';
 import { GOAL_STATUSES, type Goal, type Member, type Project } from '../lib/types';
+import { cleanTag, colorOf, GOAL_COLORS, suggestTag, TAG_MAX } from '../lib/goaltag';
+import { GoalTag } from './GoalTag';
 import { Icon } from './Logo';
 import { ProjectIcon } from './ProjectChip';
 
@@ -14,10 +16,13 @@ export function GoalDialog({ goal, parentId, goals, members, projects, onClose, 
   const ws = useWorkspace();
   const { solo } = useSolo();
   const [d, setD] = useState<GoalInput>(() => goal
-    ? { title: goal.title, start_date: goal.start_date, end_date: goal.end_date, status: goal.status, parent_id: goal.parent_id,
+    ? { title: goal.title, short_name: goal.short_name || suggestTag(goal.title), color: goal.color ?? colorOf(goal, goals), start_date: goal.start_date, end_date: goal.end_date, status: goal.status, parent_id: goal.parent_id,
         owner_member_id: goal.owner_member_id, manual_progress: goal.manual_progress, notes: goal.notes, project_ids: goal.project_ids }
-    : (() => { const y = new Date().getFullYear(); return { title: '', start_date: todayISO(), end_date: `${y}-12-31`, status: 'on_track' as const, parent_id: parentId ?? null,
+    : (() => { const y = new Date().getFullYear(); const tops = goals.filter(g => !g.parent_id), used = new Set(tops.map(g => colorOf(g, goals)));
+        return { title: '', short_name: '', color: GOAL_COLORS.find(c => !used.has(c)) ?? GOAL_COLORS[tops.length % GOAL_COLORS.length], start_date: todayISO(), end_date: `${y}-12-31`, status: 'on_track' as const, parent_id: parentId ?? null,
         owner_member_id: ws.member_id, manual_progress: 0, notes: '', project_ids: [] }; })());
+  // the short name follows the title until someone types their own
+  const [tagTouched, setTagTouched] = useState(!!goal?.short_name);
   const [openEnded, setOpenEnded] = useState(goal ? !goal.end_date : false);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -33,11 +38,12 @@ export function GoalDialog({ goal, parentId, goals, members, projects, onClose, 
 
   async function save() {
     if (!d.title.trim()) { setErr('Give the goal a name.'); return; }
+    const tag = cleanTag(d.short_name) || suggestTag(d.title);
     if (!d.start_date) { setErr('Choose a start date.'); return; }
     if (!openEnded && !d.end_date) { setErr('Choose an end date, or tick “No end date”.'); return; }
     if (!openEnded && d.end_date! < d.start_date) { setErr('The end date is before the start date.'); return; }
     setBusy(true);
-    try { await saveGoal(ws.workspace_id, goal, { ...d, title: d.title.trim(), end_date: openEnded ? null : d.end_date }); onSaved(); }
+    try { await saveGoal(ws.workspace_id, goal, { ...d, title: d.title.trim(), short_name: tag, color: d.parent_id ? null : d.color, end_date: openEnded ? null : d.end_date }); onSaved(); }
     catch (e) { setErr(e instanceof Error ? e.message : String(e)); setBusy(false); }
   }
   async function remove() {
@@ -55,7 +61,24 @@ export function GoalDialog({ goal, parentId, goals, members, projects, onClose, 
           {!goal && parentTitle && <div className="hint">Part of <b>{parentTitle}</b>.</div>}
           <div><label className="lbl" htmlFor="gm-title">Goal</label>
             <input id="gm-title" className="field-in" style={{ width: '100%' }} value={d.title} autoFocus placeholder="e.g. Grow our presence in North Africa"
-              onChange={e => set({ title: e.target.value })} onKeyDown={e => { if (e.key === 'Enter') void save(); }} /></div>
+              onChange={e => set({ title: e.target.value, ...(tagTouched ? {} : { short_name: suggestTag(e.target.value) }) })} onKeyDown={e => { if (e.key === 'Enter') void save(); }} /></div>
+          <div className="row2">
+            <div><label className="lbl" htmlFor="gm-tag">Short name</label>
+              <input id="gm-tag" className="field-in mono" style={{ width: '100%' }} value={d.short_name} maxLength={TAG_MAX} placeholder={suggestTag(d.title || 'Goal')}
+                onChange={e => { setTagTouched(true); set({ short_name: cleanTag(e.target.value) }); }} /></div>
+            <div><span className="lbl">Colour</span>
+              {d.parent_id
+                ? <div className="hint" style={{ marginTop: 6 }}>Same as {parentTitle ?? 'its goal'}, so the family reads as one.</div>
+                : <div className="swatches gsw">{GOAL_COLORS.map(c => <button key={c} type="button" className={`swt ${d.color?.toLowerCase() === c.toLowerCase() ? 'on' : ''}`}
+                    style={{ ['--c' as string]: c }} aria-label={`Colour ${c}`} onClick={() => set({ color: c })} />)}
+                  {(() => { const own = !!d.color && !GOAL_COLORS.some(c => c.toLowerCase() === d.color!.toLowerCase());
+                    return <label className={`swt custom ${own ? 'on' : ''}`} title="Any colour" style={own ? { background: d.color! } : undefined}>{own ? '' : '+'}
+                      <input type="color" value={d.color ?? GOAL_COLORS[0]} onChange={e => set({ color: e.target.value })} aria-label="Pick any colour" /></label>; })()}</div>}</div>
+          </div>
+          <div className="hint" style={{ marginTop: -6, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <GoalTag g={{ id: goal?.id ?? 'new', title: d.title || 'New goal', parent_id: d.parent_id, short_name: cleanTag(d.short_name) || suggestTag(d.title || 'Goal'), color: d.color }}
+              goals={[...goals.filter(g => g.id !== goal?.id), { id: goal?.id ?? 'new', title: d.title, parent_id: d.parent_id, short_name: d.short_name, color: d.color }]} />
+            Up to {TAG_MAX} characters. This tag stands for the goal in the task list, on projects and in the Lens.</div>
           <div className="row2">
             <div><label className="lbl" htmlFor="gm-start">Start</label>
               <input id="gm-start" type="date" className="field-in" style={{ width: '100%' }} value={d.start_date} onChange={e => set({ start_date: e.target.value })} /></div>

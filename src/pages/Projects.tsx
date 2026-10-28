@@ -5,6 +5,8 @@ import { listMembers, listNoteDates, listProjectsFull, listTasks, useLoad } from
 import { canManage, type Member, type ProjectFull, type Task } from '../lib/types';
 import { useLocalPref, useUI } from '../lib/ui';
 import { useLens } from '../lib/lens';
+import { GoalTag } from '../components/GoalTag';
+import { goalTree } from '../lib/goaltag';
 import { OptPill } from '../components/Lens';
 import { byDue, diffDays, dueLabel, firstName, hrs } from '../lib/format';
 import { elapsed, fmtDate, health, lastActivity, type Health } from '../lib/projects';
@@ -155,5 +157,6 @@ export function ProjectProgress({ p, tasks, members = [], wide = false }: { p: P
 /** The project's default dimension values as pills (Priority, Region, …). */
 export function ProjectDims({ id }: { id: string }) {
   const lens = useLens();
-  return <>{lens.dims.map(d => <OptPill key={d.id} dim={d} option={lens.projectDefault(id, d.id)} />)}</>;
+  const goals = goalTree(lens.goals).filter(g => g.project_ids.includes(id));
+  return <>{goals.map(g => <GoalTag key={g.id} g={g} goals={lens.goals} />)}{lens.dims.map(d => <OptPill key={d.id} dim={d} option={lens.projectDefault(id, d.id)} />)}</>;
 }
