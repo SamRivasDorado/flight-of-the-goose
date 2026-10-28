@@ -519,7 +519,7 @@ textarea.notes{width:100%;min-height:90px;border:1px solid var(--line);border-ra
 .builder{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:18px}
 .builder .ctrls{display:flex;flex-wrap:wrap;gap:10px;align-items:end}
 .builder label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
-.dash{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,380px),1fr));gap:14px}
+.dash{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,380px),1fr));gap:14px}
 .ccard{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
 .ccard h3{margin:0;font-family:var(--f-display);font-weight:500;font-size:16px;display:flex;gap:8px;align-items:center}
 .ccard h3 span{flex:1;min-width:0}
@@ -802,4 +802,10 @@ button.brand:hover{background:var(--bar-hi)}
 .periodbar .mono{margin-left:4px;font-size:13px}
 .cbody.fill .canv canvas{position:absolute;inset:0}
 .iconbtn.failc{color:var(--danger)}
-.preview .ccard{max-width:1040px}
+
+
+/* Insights: on wide screens the chart builder and the dashboard sit side by side, so no space is left empty */
+.insgrid{display:grid;grid-template-columns:minmax(0,1fr);gap:18px;align-items:start}
+.insgrid>section{min-width:0}.insgrid .sech{margin-top:0}
+.insgrid .builder{margin-bottom:0}
+@media (min-width:1280px){.insgrid{grid-template-columns:minmax(520px,5fr) minmax(0,7fr)}}
