@@ -72,7 +72,9 @@ const TOPICS: Topic[] = [
   { id: 'insights', title: 'Insights', icon: 'chart', page: 'insights', go: '#/insights', body: <>
     <p className="lead">Numbers and charts about your work.</p>
     <ul>
-      <li>Key numbers: open tasks, overdue, hours logged in the last 30 days and completion rate.</li>
+      <li>Choose a <b>Period</b> at the top: last 30 or 90 days, this or last month, quarter or year, all time, or your own dates. Everything on the page follows it: the key numbers, the chart builder and your dashboard. Your choice is remembered.</li>
+      <li>How tasks fall in a period: a finished task counts on the day it was completed; an open task on its due date (or the day it was created, if it has none). Hours are logged per task, so they count with their task.</li>
+      <li>Key numbers: tasks completed and hours logged in the period, how many of the tasks due in the period are done, and what is open and overdue right now.</li>
       <li>The <b>chart builder</b> answers questions such as “how much of our time went to North Africa?”: group by project, status, due month or any dimension, count tasks or sum hours.</li>
       <li><b>Save to dashboard</b> keeps a chart; it updates by itself as tasks change and follows you to any computer.</li>
     </ul></> },

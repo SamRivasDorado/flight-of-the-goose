@@ -3,10 +3,10 @@ import type { Chart as ChartT } from 'chart.js';
 import { useWorkspace } from '../auth/session';
 import { getMySettings, listProjects, listTasks, saveMySettings, useLoad } from '../lib/data';
 import { STATUSES, type Project, type Task } from '../lib/types';
-import { useUI } from '../lib/ui';
+import { useLocalPref, useUI } from '../lib/ui';
+import { buckets, byWeek, inRange, PERIODS, range, rangeLabel, taskDay, type Period } from '../lib/period';
 import { useLens } from '../lib/lens';
 import { diffDays, hrs, parseISO } from '../lib/format';
-import { weeklyDone } from '../lib/projects';
 import { Icon } from '../components/Logo';
 import { NO_PROJECT_COLOR } from '../components/ProjectChip';
 
@@ -71,14 +71,14 @@ function ChartBox({ data, type, label }: { data: Datum[]; type: ChartType; label
   return <div className="canv"><canvas ref={ref} aria-label={label} /></div>;
 }
 
-function ChartCard({ c, tasks, projects, onRemove, plain }: { c: Cfg; tasks: Task[]; projects: Project[]; onRemove?: () => void; plain?: boolean }) {
+function ChartCard({ c, tasks, projects, onRemove, plain, when }: { c: Cfg; tasks: Task[]; projects: Project[]; onRemove?: () => void; plain?: boolean; when: string }) {
   const lens = useLens(), groups: [string, string][] = [...GROUPS, ...lens.dims.map(d => [d.id, d.name] as [string, string])];
   const data = aggregate(c, tasks, projects, lens), tot = data.reduce((s, d) => s + d.value, 0) || 1, unit = c.measure === 'hours' ? ' h' : '';
   const scope = c.scope === 'all' ? 'All projects' : projects.find(p => p.id === c.scope)?.name ?? 'Deleted project';
   return (
     <div className="ccard" style={plain ? { border: 0, padding: 0 } : undefined}>
       <h3><span>{title(c, groups)}</span>{onRemove && <button className="iconbtn" onClick={onRemove} aria-label="Remove chart"><Icon name="x" /></button>}</h3>
-      <div className="sub2">{scope}</div>
+      <div className="sub2">{scope} · {when}</div>
       {data.length ? <>
         <ChartBox data={data} type={c.type} label={title(c, groups)} />
         <table className="ltab"><tbody>{data.map(d => <tr key={d.label}><td><span className="sw2" style={{ ['--c' as string]: d.color }} />{d.label}</td>
@@ -98,16 +98,23 @@ export function Insights() {
   const [cfg, setCfg] = useState<Cfg>(DEFAULT);
   const [dash, setDash] = useState<Cfg[] | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+  const [period, setPeriod] = useLocalPref<Period>('insightsPeriod', { kind: 'last30' });
   useEffect(() => { if (data) setDash(data.dash); }, [data]);
 
   if (error) return <div className="err">{error}</div>;
   if (!data || !dash) return <span className="muted">Loading…</span>;
   const self = ws.access === 'member' || ws.access === 'guest';
   const q = ui.q.trim().toLowerCase();
-  const all = data.tasks.filter(t => (!q || t.title.toLowerCase().includes(q)) && lens.task(t, self ? ws.member_id : null));
-  const open = all.filter(t => t.status !== 'done'), done = all.filter(t => t.status === 'done');
+  const base = data.tasks.filter(t => (!q || t.title.toLowerCase().includes(q)) && lens.task(t, self ? ws.member_id : null));
+  // the period: finished tasks count on the day they were completed, open ones on their due date (or creation day)
+  const days = base.map(taskDay).filter(Boolean).sort();
+  const r = range(period, days[0], days[days.length - 1]), when = period.kind === 'custom' || period.kind === 'all' ? rangeLabel(r) : `${PERIODS.find(x => x[0] === period.kind)?.[1]} (${rangeLabel(r)})`;
+  const all = base.filter(t => inRange(taskDay(t), r));
+  const open = base.filter(t => t.status !== 'done');
   const overdue = open.filter(t => t.due_date && diffDays(t.due_date) < 0).length;
-  const h30 = done.filter(t => t.completed_at && diffDays(t.completed_at) >= -30).reduce((s, t) => s + (Number(t.hours) || 0), 0);
+  const doneIn = all.filter(t => t.status === 'done');
+  const hours = all.reduce((s, t) => s + (Number(t.hours) || 0), 0);
+  const dueIn = base.filter(t => t.due_date && inRange(t.due_date, r)), dueDone = dueIn.filter(t => t.status === 'done').length;
 
   async function store(next: Cfg[], note: string) {
     const before = dash; setDash(next);
@@ -117,19 +124,29 @@ export function Insights() {
   const sel = <K extends keyof Cfg>(k: K, opts: [string, string][]) => (
     <select className="field-in" value={cfg[k] as string} onChange={e => setCfg({ ...cfg, [k]: e.target.value })}>
       {opts.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>);
-  const weekly = weeklyDone(all).map((value, i) => {
-    const s = new Date(); s.setDate(s.getDate() - ((s.getDay() + 6) % 7) - (11 - i) * 7);
-    return { label: s.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }), value, color: '#6B9160' };
-  });
+  const bs = buckets(r), perWeek = byWeek(r);
+  const overTime = bs.map(b => ({ label: b.label, value: doneIn.filter(t => inRange(taskDay(t), b)).length, color: '#6B9160' }));
+  const setKind = (kind: Period['kind']) => setPeriod(kind === 'custom' ? { kind, from: r.from, to: r.to } : { kind });
 
   return (
     <>
-      <div className="ph"><h1>Insights</h1><span className="sub">{self ? `Your own tasks: ${all.length}` : `Across ${data.projects.length} projects and ${all.length} tasks`}{q ? ` · search: ${ui.q}` : ''}</span></div>
+      <div className="ph"><h1>Insights</h1><span className="sub">{self ? `Your own tasks: ${all.length}` : `${all.length} tasks across ${data.projects.length} projects`} in this period{q ? ` · search: ${ui.q}` : ''}</span></div>
+      <div className="periodbar">
+        <label className="chk">Period <select className="field-in" aria-label="Period" value={period.kind} onChange={e => setKind(e.target.value as Period['kind'])}>
+          {PERIODS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>
+        {period.kind === 'custom'
+          ? <><label className="chk">From <input type="date" className="field-in" aria-label="From" value={r.from} max={r.to} onChange={e => e.target.value && setPeriod({ ...period, from: e.target.value })} /></label>
+              <label className="chk">To <input type="date" className="field-in" aria-label="To" value={r.to} min={r.from} onChange={e => e.target.value && setPeriod({ ...period, to: e.target.value })} /></label></>
+          : <span className="mono muted">{rangeLabel(r)}</span>}
+        <span className="hint">Finished tasks count on the day they were completed; open tasks on their due date. Hours follow their task.</span>
+      </div>
       <div className="kpis">
-        <div className="kpi"><div className="k">Open tasks</div><div className="v">{open.length}</div></div>
-        <div className="kpi"><div className="k">Overdue</div><div className="v" style={{ color: overdue ? 'var(--danger)' : 'inherit' }}>{overdue}</div></div>
-        <div className="kpi"><div className="k">Hours logged, last 30 days</div><div className="v">{hrs(h30)}</div></div>
-        <div className="kpi"><div className="k">Completion rate</div><div className="v">{all.length ? Math.round(done.length / all.length * 100) : 0}%</div></div>
+        <div className="kpi"><div className="k">Completed in the period</div><div className="v">{doneIn.length}</div></div>
+        <div className="kpi"><div className="k">Hours logged in the period</div><div className="v">{hrs(hours)}</div></div>
+        <div className="kpi" title="Of the tasks due in this period, how many are done"><div className="k">Due in the period: done</div><div className="v">{dueIn.length ? `${Math.round(dueDone / dueIn.length * 100)}%` : '–'}</div>
+          {dueIn.length > 0 && <div className="muted" style={{ fontSize: 12 }}>{dueDone} of {dueIn.length}</div>}</div>
+        <div className="kpi"><div className="k">Open now</div><div className="v">{open.length}</div></div>
+        <div className="kpi"><div className="k">Overdue now</div><div className="v" style={{ color: overdue ? 'var(--danger)' : 'inherit' }}>{overdue}</div></div>
       </div>
       <div className="builder">
         <div className="ctrls">
@@ -141,16 +158,16 @@ export function Insights() {
           <button className="btn primary" onClick={() => void store([...dash, { ...cfg, id: crypto.randomUUID() }], 'Added to your dashboard.')}><Icon name="plus" />Save to dashboard</button>
         </div>
         <div className="preview">
-          <ChartCard c={cfg} tasks={all} projects={data.projects} plain />
+          <ChartCard c={cfg} tasks={all} projects={data.projects} plain when={when} />
           <div className="hint">Hours by project answers “where did our time go” more honestly than counting tasks, because a quick email and a three-day calculation no longer weigh the same. Group by Priority or any other dimension to see where effort goes; the Lens at the top filters these charts too.</div>
         </div>
       </div>
       {msg && <div className="note">{msg}</div>}
-      <h2 className="sech" style={{ marginTop: 6 }}>Dashboard <span className="muted" style={{ fontSize: 13 }}>· charts you saved stay here and update as your tasks change</span></h2>
+      <h2 className="sech" style={{ marginTop: 6 }}>Dashboard <span className="muted" style={{ fontSize: 13 }}>· charts you saved stay here, update as your tasks change and follow the period above</span></h2>
       <div className="dash">
-        <div className="ccard"><h3><span>Tasks completed per week</span></h3><div className="sub2">Last 12 weeks</div>
-          <ChartBox data={weekly} type="bar" label="Tasks completed per week" /></div>
-        {dash.map((c, i) => <ChartCard key={c.id ?? i} c={c} tasks={all} projects={data.projects}
+        <div className="ccard"><h3><span>Tasks completed per {perWeek ? 'week' : 'month'}</span></h3><div className="sub2">{when}</div>
+          <ChartBox data={overTime} type="bar" label={`Tasks completed per ${perWeek ? 'week' : 'month'}`} /></div>
+        {dash.map((c, i) => <ChartCard key={c.id ?? i} c={c} tasks={all} projects={data.projects} when={when}
           onRemove={() => void store(dash.filter((_, j) => j !== i), 'Chart removed.')} />)}
       </div>
     </>

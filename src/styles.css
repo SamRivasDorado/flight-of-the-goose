@@ -790,3 +790,6 @@ button.brand:hover{background:var(--bar-hi)}
 .gtags{display:inline-flex;flex-wrap:wrap;gap:4px}
 .swatches.gsw{gap:6px;margin-top:4px}.swatches.gsw .swt{width:22px;height:22px;border-radius:6px}
 .goal h3 .gtagw{margin-left:8px;vertical-align:3px}
+/* Insights: the period everything on the page is taken from */
+.periodbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:-4px 0 14px}
+.periodbar .hint{flex:1 1 280px}
