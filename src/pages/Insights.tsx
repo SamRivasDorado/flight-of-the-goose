@@ -4,7 +4,8 @@ import { useWorkspace } from '../auth/session';
 import { getMySettings, listProjects, listTasks, saveMySettings, useLoad } from '../lib/data';
 import { STATUSES, type Project, type Task } from '../lib/types';
 import { useLocalPref, useUI } from '../lib/ui';
-import { buckets, byWeek, inRange, PERIODS, range, rangeLabel, taskDay, type Period } from '../lib/period';
+import { buckets, byWeek, inRange, periodName, range, rangeLabel, taskDay, type Period } from '../lib/period';
+import { PeriodPicker } from '../components/PeriodPicker';
 import { useLens } from '../lib/lens';
 import { diffDays, hrs, parseISO } from '../lib/format';
 import { Icon } from '../components/Logo';
@@ -41,6 +42,24 @@ function title(c: Cfg, groups: [string, string][] = GROUPS) {
   return `${what} by ${(groups.find(g => g[0] === c.by)?.[1] ?? 'a removed dimension').toLowerCase()}`;
 }
 
+interface Look { fg: string; grid: string; surf: string }
+/** The Chart.js settings for a chart, in the given colours (the page's, or light ones for a copied picture). */
+function chartConfig(data: Datum[], type: ChartType, look: Look, still = false) {
+  const pie = type === 'pie' || type === 'doughnut', tot = data.reduce((s, d) => s + d.value, 0) || 1;
+  return {
+    type: type === 'hbar' ? 'bar' : type,
+    data: { labels: data.map(d => d.label), datasets: [{ data: data.map(d => d.value), backgroundColor: data.map(d => d.color), borderColor: pie ? look.surf : 'transparent', borderWidth: pie ? 2 : 0, borderRadius: pie ? 0 : 5, maxBarThickness: 42 }] },
+    options: {
+      indexAxis: type === 'hbar' ? 'y' : 'x', maintainAspectRatio: false, animation: still ? false : { duration: 300 }, ...(still ? { responsive: false, devicePixelRatio: 2 } : {}),
+      ...(type === 'doughnut' ? { cutout: '58%' } : {}),
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c: { raw: unknown }) => ` ${hrs(Number(c.raw))} (${Math.round(Number(c.raw) / tot * 100)}%)` } } },
+      scales: pie ? {} : {
+        x: { ticks: { color: look.fg }, grid: { display: type === 'hbar', color: look.grid }, border: { color: look.grid }, beginAtZero: true },
+        y: { ticks: { color: look.fg, precision: 0 }, grid: { display: type !== 'hbar', color: look.grid }, border: { color: look.grid }, beginAtZero: true } },
+    },
+  } as never;
+}
+
 /** A Chart.js chart that redraws when its data or type changes (the library loads on first use). */
 function ChartBox({ data, type, label }: { data: Datum[]; type: ChartType; label: string }) {
   const ref = useRef<HTMLCanvasElement>(null);
@@ -52,18 +71,7 @@ function ChartBox({ data, type, label }: { data: Datum[]; type: ChartType; label
       const css = getComputedStyle(document.documentElement);
       const fg = css.getPropertyValue('--muted').trim(), grid = css.getPropertyValue('--line').trim(), surf = css.getPropertyValue('--surface').trim();
       Chart.defaults.font.family = css.getPropertyValue('--f-content');
-      const pie = type === 'pie' || type === 'doughnut', tot = data.reduce((s, d) => s + d.value, 0) || 1;
-      chart = new Chart(ref.current, {
-        type: type === 'hbar' ? 'bar' : type,
-        data: { labels: data.map(d => d.label), datasets: [{ data: data.map(d => d.value), backgroundColor: data.map(d => d.color), borderColor: pie ? surf : 'transparent', borderWidth: pie ? 2 : 0, borderRadius: pie ? 0 : 5, maxBarThickness: 42 }] },
-        options: {
-          indexAxis: type === 'hbar' ? 'y' : 'x', maintainAspectRatio: false, animation: { duration: 300 }, ...(type === 'doughnut' ? { cutout: '58%' } : {}),
-          plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c: { raw: unknown }) => ` ${hrs(Number(c.raw))} (${Math.round(Number(c.raw) / tot * 100)}%)` } } },
-          scales: pie ? {} : {
-            x: { ticks: { color: fg }, grid: { display: type === 'hbar', color: grid }, border: { color: grid }, beginAtZero: true },
-            y: { ticks: { color: fg, precision: 0 }, grid: { display: type !== 'hbar', color: grid }, border: { color: grid }, beginAtZero: true } },
-        },
-      } as never);
+      chart = new Chart(ref.current, chartConfig(data, type, { fg, grid, surf }));
     });
     return () => { live = false; chart?.destroy(); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -77,14 +85,72 @@ function ChartCard({ c, tasks, projects, onRemove, plain, when }: { c: Cfg; task
   const scope = c.scope === 'all' ? 'All projects' : projects.find(p => p.id === c.scope)?.name ?? 'Deleted project';
   return (
     <div className="ccard" style={plain ? { border: 0, padding: 0 } : undefined}>
-      <h3><span>{title(c, groups)}</span>{onRemove && <button className="iconbtn" onClick={onRemove} aria-label="Remove chart"><Icon name="x" /></button>}</h3>
+      <h3><span>{title(c, groups)}</span>{data.length > 0 && <CopyChart title={title(c, groups)} sub={`${scope} · ${when}`} data={data} type={c.type} unit={unit} legend />}
+        {onRemove && <button className="iconbtn" onClick={onRemove} aria-label="Remove chart" title="Remove chart"><Icon name="x" /></button>}</h3>
       <div className="sub2">{scope} · {when}</div>
-      {data.length ? <>
+      {data.length ? <div className="cbody">
         <ChartBox data={data} type={c.type} label={title(c, groups)} />
         <table className="ltab"><tbody>{data.map(d => <tr key={d.label}><td><span className="sw2" style={{ ['--c' as string]: d.color }} />{d.label}</td>
           <td>{hrs(d.value)}{unit}</td><td>{Math.round(d.value / tot * 100)}%</td></tr>)}</tbody></table>
-      </> : <div className="empty">{c.measure === 'hours' ? 'No hours logged on matching tasks yet.' : 'No matching tasks.'}</div>}
+      </div> : <div className="empty">{c.measure === 'hours' ? 'No hours logged on matching tasks yet.' : 'No matching tasks.'}</div>}
     </div>);
+}
+
+/** "Tasks completed per week/month" over the period. */
+function OverTime({ data, name, when }: { data: Datum[]; name: string; when: string }) {
+  return (
+    <div className="ccard">
+      <h3><span>{name}</span><CopyChart title={name} sub={when} data={data} type="bar" unit="" legend={false} /></h3><div className="sub2">{when}</div>
+      <div className="cbody fill"><ChartBox data={data} type="bar" label={name} /></div></div>);
+}
+
+/** Copies a chart to the clipboard as a picture for documents, slides and emails: drawn afresh on white, whatever the
+    app's theme, with its title, dates and (for grouped charts) the legend. */
+function CopyChart({ title, sub, data, type, unit, legend }: { title: string; sub: string; data: Datum[]; type: ChartType; unit: string; legend: boolean }) {
+  const [state, setState] = useState<'idle' | 'done' | 'fail'>('idle');
+  async function picture(): Promise<Blob> {
+    const { default: Chart } = await import('chart.js/auto');
+    const font = getComputedStyle(document.documentElement).getPropertyValue('--f-content').trim() || 'sans-serif';
+    const ink = '#1E2519', soft = '#5E6A58', line = '#E2E6DC', pie = type === 'pie' || type === 'doughnut';
+    const W = 760, pad = 32, cw = W - pad * 2, ch = pie ? 300 : 340;
+    // draw the chart off screen, still and at double resolution
+    const off = document.createElement('canvas'); off.width = cw; off.height = ch;
+    off.style.cssText = `position:fixed;left:-10000px;top:0;width:${cw}px;height:${ch}px`;
+    document.body.appendChild(off);
+    Chart.defaults.font.family = font;
+    const chart = new Chart(off, chartConfig(data, type, { fg: soft, grid: line, surf: '#ffffff' }, true));
+    try {
+      const rows = legend ? data : [], tot = data.reduce((s, d) => s + d.value, 0) || 1, rowH = 28;
+      const H = pad + 30 + 24 + 16 + ch + (rows.length ? 18 + rows.length * rowH : 0) + pad, k = 2;
+      const cv = document.createElement('canvas'); cv.width = W * k; cv.height = H * k;
+      const g = cv.getContext('2d')!; g.scale(k, k);
+      g.fillStyle = '#ffffff'; g.fillRect(0, 0, W, H);
+      g.textBaseline = 'top'; g.fillStyle = ink; g.font = `600 21px ${font}`; g.fillText(title, pad, pad);
+      g.fillStyle = soft; g.font = `14px ${font}`; g.fillText(sub, pad, pad + 32);
+      let y = pad + 30 + 24 + 16;
+      g.drawImage(off, pad, y, cw, ch); y += ch + 18;
+      g.font = `15px ${font}`; g.textBaseline = 'middle';
+      for (const d of rows) {
+        g.strokeStyle = line; g.lineWidth = 1; g.beginPath(); g.moveTo(pad, y + 0.5); g.lineTo(W - pad, y + 0.5); g.stroke();
+        g.fillStyle = d.color; g.beginPath(); g.roundRect(pad, y + rowH / 2 - 5, 10, 10, 3); g.fill();
+        g.fillStyle = ink; g.textAlign = 'left'; g.fillText(d.label, pad + 20, y + rowH / 2);
+        g.textAlign = 'right'; g.fillText(`${hrs(d.value)}${unit}`, W - pad - 72, y + rowH / 2); g.fillStyle = soft; g.fillText(`${Math.round(d.value / tot * 100)}%`, W - pad, y + rowH / 2);
+        y += rowH;
+      }
+      return await new Promise<Blob>((ok, fail) => cv.toBlob(b => (b ? ok(b) : fail(new Error('no picture'))), 'image/png'));
+    } finally { chart.destroy(); off.remove(); }
+  }
+  async function copy() {
+    try {
+      // the picture is passed as a promise so Safari keeps the click's permission to write to the clipboard
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': picture() })]);
+      setState('done');
+    } catch { setState('fail'); }
+    setTimeout(() => setState('idle'), 2500);
+  }
+  const tip = state === 'done' ? 'Copied: paste it into a document, slide or email' : state === 'fail' ? 'This browser did not allow copying the picture' : 'Copy chart as a picture';
+  return <button className={`iconbtn ${state === 'done' ? 'okc' : state === 'fail' ? 'failc' : ''}`} onClick={() => void copy()} aria-label={tip} title={tip}>
+    <Icon name={state === 'done' ? 'check' : state === 'fail' ? 'x' : 'copy'} /></button>;
 }
 
 export function Insights() {
@@ -108,7 +174,7 @@ export function Insights() {
   const base = data.tasks.filter(t => (!q || t.title.toLowerCase().includes(q)) && lens.task(t, self ? ws.member_id : null));
   // the period: finished tasks count on the day they were completed, open ones on their due date (or creation day)
   const days = base.map(taskDay).filter(Boolean).sort();
-  const r = range(period, days[0], days[days.length - 1]), when = period.kind === 'custom' || period.kind === 'all' ? rangeLabel(r) : `${PERIODS.find(x => x[0] === period.kind)?.[1]} (${rangeLabel(r)})`;
+  const r = range(period, days[0], days[days.length - 1]), when = period.kind === 'custom' || period.kind === 'all' ? rangeLabel(r) : `${periodName(period)} (${rangeLabel(r)})`;
   const all = base.filter(t => inRange(taskDay(t), r));
   const open = base.filter(t => t.status !== 'done');
   const overdue = open.filter(t => t.due_date && diffDays(t.due_date) < 0).length;
@@ -126,20 +192,12 @@ export function Insights() {
       {opts.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>);
   const bs = buckets(r), perWeek = byWeek(r);
   const overTime = bs.map(b => ({ label: b.label, value: doneIn.filter(t => inRange(taskDay(t), b)).length, color: '#6B9160' }));
-  const setKind = (kind: Period['kind']) => setPeriod(kind === 'custom' ? { kind, from: r.from, to: r.to } : { kind });
+
 
   return (
     <>
       <div className="ph"><h1>Insights</h1><span className="sub">{self ? `Your own tasks: ${all.length}` : `${all.length} tasks across ${data.projects.length} projects`} in this period{q ? ` · search: ${ui.q}` : ''}</span></div>
-      <div className="periodbar">
-        <label className="chk">Period <select className="field-in" aria-label="Period" value={period.kind} onChange={e => setKind(e.target.value as Period['kind'])}>
-          {PERIODS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>
-        {period.kind === 'custom'
-          ? <><label className="chk">From <input type="date" className="field-in" aria-label="From" value={r.from} max={r.to} onChange={e => e.target.value && setPeriod({ ...period, from: e.target.value })} /></label>
-              <label className="chk">To <input type="date" className="field-in" aria-label="To" value={r.to} min={r.from} onChange={e => e.target.value && setPeriod({ ...period, to: e.target.value })} /></label></>
-          : <span className="mono muted">{rangeLabel(r)}</span>}
-        <span className="hint">Finished tasks count on the day they were completed; open tasks on their due date. Hours follow their task.</span>
-      </div>
+      <PeriodPicker p={period} r={r} onChange={setPeriod} />
       <div className="kpis">
         <div className="kpi"><div className="k">Completed in the period</div><div className="v">{doneIn.length}</div></div>
         <div className="kpi"><div className="k">Hours logged in the period</div><div className="v">{hrs(hours)}</div></div>
@@ -159,14 +217,12 @@ export function Insights() {
         </div>
         <div className="preview">
           <ChartCard c={cfg} tasks={all} projects={data.projects} plain when={when} />
-          <div className="hint">Hours by project answers “where did our time go” more honestly than counting tasks, because a quick email and a three-day calculation no longer weigh the same. Group by Priority or any other dimension to see where effort goes; the Lens at the top filters these charts too.</div>
         </div>
       </div>
       {msg && <div className="note">{msg}</div>}
-      <h2 className="sech" style={{ marginTop: 6 }}>Dashboard <span className="muted" style={{ fontSize: 13 }}>· charts you saved stay here, update as your tasks change and follow the period above</span></h2>
+      <h2 className="sech" style={{ marginTop: 6 }}>Dashboard</h2>
       <div className="dash">
-        <div className="ccard"><h3><span>Tasks completed per {perWeek ? 'week' : 'month'}</span></h3><div className="sub2">{when}</div>
-          <ChartBox data={overTime} type="bar" label={`Tasks completed per ${perWeek ? 'week' : 'month'}`} /></div>
+        <OverTime data={overTime} name={`Tasks completed per ${perWeek ? 'week' : 'month'}`} when={when} />
         {dash.map((c, i) => <ChartCard key={c.id ?? i} c={c} tasks={all} projects={data.projects} when={when}
           onRemove={() => void store(dash.filter((_, j) => j !== i), 'Chart removed.')} />)}
       </div>

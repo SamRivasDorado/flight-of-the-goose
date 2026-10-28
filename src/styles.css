@@ -529,8 +529,14 @@ textarea.notes{width:100%;min-height:90px;border:1px solid var(--line);border-ra
 .ltab td{padding:3px 0;border-top:1px solid var(--line)}
 .ltab td:nth-child(2),.ltab td:nth-child(3){text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums;width:64px}
 .ltab .sw2{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:7px;background:var(--c)}
-.preview{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:18px;margin-top:14px;align-items:start}
-@media (max-width:860px){.preview{grid-template-columns:minmax(0,1fr)}}
+.preview{margin-top:14px}
+/* builder preview: the chart and its legend side by side */
+.preview .cbody{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:24px;align-items:center}
+@media (max-width:860px){.preview .cbody{grid-template-columns:minmax(0,1fr)}}
+.cbody{display:flex;flex-direction:column;gap:10px;min-width:0}
+/* a chart without a legend fills its card, so it lines up with taller cards next to it */
+.cbody.fill{flex:1 1 auto}.cbody.fill .canv{flex:1 1 220px;min-height:220px;height:auto}
+.iconbtn.okc{color:var(--good,#6B9160)}
 
 /* ===== Lens bar and Dimensions (from the prototype) ===== */
 .fbar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding-block:8px;border-bottom:1px solid var(--bar-line);background:var(--bar-bg);color:var(--bar-fg);box-shadow:0 4px 14px -10px rgb(0 0 0 / .35);position:relative;z-index:2;font-size:13px}
@@ -791,5 +797,9 @@ button.brand:hover{background:var(--bar-hi)}
 .swatches.gsw{gap:6px;margin-top:4px}.swatches.gsw .swt{width:22px;height:22px;border-radius:6px}
 .goal h3 .gtagw{margin-left:8px;vertical-align:3px}
 /* Insights: the period everything on the page is taken from */
-.periodbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:-4px 0 14px}
-.periodbar .hint{flex:1 1 280px}
+.periodbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:-4px 0 14px}
+.periodbar .pdates{display:inline-flex;align-items:center;gap:6px}
+.periodbar .mono{margin-left:4px;font-size:13px}
+.cbody.fill .canv canvas{position:absolute;inset:0}
+.iconbtn.failc{color:var(--danger)}
+.preview .ccard{max-width:1040px}

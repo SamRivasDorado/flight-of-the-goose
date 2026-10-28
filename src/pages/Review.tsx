@@ -8,33 +8,25 @@ import { byDue, dueLabel, hrs, parseISO } from '../lib/format';
 import { fmtDate, lastActivity } from '../lib/projects';
 import { goalProgress, goalStatus } from '../lib/goals';
 import { Icon } from '../components/Logo';
+import { PeriodPicker } from '../components/PeriodPicker';
+import { periodName, range as periodRange, taskDay, type Period } from '../lib/period';
 import { NO_PROJECT_COLOR, ProjectChip } from '../components/ProjectChip';
 import { projectHref } from './Projects';
 
-const PRESETS: [string, string][] = [['this_week', 'This week'], ['last_week', 'Last week'], ['last_7', 'Last 7 days'], ['this_month', 'This month'], ['last_month', 'Last month'],
-  ['last_30', 'Last 30 days'], ['this_q', 'This quarter'], ['last_q', 'Last quarter'], ['this_year', 'This year'], ['last_year', 'Last year']];
 const addDays = (d: Date, n: number) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
 const monday = (d: Date) => addDays(new Date(d.getFullYear(), d.getMonth(), d.getDate()), -((d.getDay() + 6) % 7));
 const iso = (d: Date) => todayISO(d);
 const spanDays = (a: string, b: string) => Math.round((parseISO(b).getTime() - parseISO(a).getTime()) / 864e5) + 1;
 
-function presetRange(k: string): [string, string] {
-  const t = parseISO(todayISO()), y = t.getFullYear(), m = t.getMonth(), q = Math.floor(m / 3);
-  const R: Record<string, () => [Date, Date]> = {
-    this_week: () => [monday(t), addDays(monday(t), 6)], last_week: () => [addDays(monday(t), -7), addDays(monday(t), -1)],
-    last_7: () => [addDays(t, -6), t], this_month: () => [new Date(y, m, 1), new Date(y, m + 1, 0)], last_month: () => [new Date(y, m - 1, 1), new Date(y, m, 0)],
-    last_30: () => [addDays(t, -29), t], this_q: () => [new Date(y, q * 3, 1), new Date(y, q * 3 + 3, 0)], last_q: () => [new Date(y, q * 3 - 3, 1), new Date(y, q * 3, 0)],
-    this_year: () => [new Date(y, 0, 1), new Date(y, 11, 31)], last_year: () => [new Date(y - 1, 0, 1), new Date(y - 1, 11, 31)],
-  };
-  const [a, b] = (R[k] ?? R.this_week)();
-  return [iso(a), iso(b)];
-}
+/** Periods saved before Review and Insights shared one control, in the new form. */
+const OLD: Record<string, Period['kind']> = { this_week: 'thisWeek', last_week: 'lastWeek', last_7: 'last7', this_month: 'thisMonth', last_month: 'lastMonth',
+  last_30: 'last30', this_q: 'thisQuarter', last_q: 'lastQuarter', this_year: 'thisYear', last_year: 'lastYear' };
 function fmtRange(a: string, b: string) {
   const A = parseISO(a), B = parseISO(b), sy = A.getFullYear() === B.getFullYear();
   return `${A.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', ...(sy ? {} : { year: 'numeric' }) })} – ${B.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`;
 }
 
-interface RV { preset: string; from?: string; to?: string; months?: number; week?: boolean; inc: boolean | null; dims?: string[] }
+interface RV { period?: Period; preset?: string; from?: string; to?: string; months?: number; week?: boolean; inc: boolean | null; dims?: string[] }
 
 export function Review() {
   const ws = useWorkspace();
@@ -45,22 +37,16 @@ export function Review() {
     const [tasks, projects, goals, noteDates] = await Promise.all([listTasks(ws.workspace_id), listProjectsFull(ws.workspace_id), listGoals(ws.workspace_id), listNoteDates(ws.workspace_id)]);
     return { tasks, projects, goals, noteDates };
   }, [ws.workspace_id, ui.version]);
-  const [rv, setRv] = useLocalPref<RV>('review', { preset: 'this_week', inc: null });
+  const [rv, setRv] = useLocalPref<RV>('review', { period: { kind: 'thisWeek' }, inc: null });
   const [msg, setMsg] = useState<string | null>(null);
 
-  const [a, b] = rv.preset === 'custom' && rv.from && rv.to ? [rv.from, rv.to] : presetRange(rv.preset);
+  const period: Period = rv.period ?? (rv.preset === 'custom' && rv.from && rv.to ? { kind: 'custom', from: rv.from, to: rv.to, months: rv.months, week: rv.week }
+    : { kind: OLD[rv.preset ?? ''] ?? 'thisWeek' });
+  const days = (data?.tasks ?? []).map(taskDay).filter(Boolean).sort();
+  const { from: a, to: b } = periodRange(period, days[0], days[days.length - 1]);
   const today = todayISO();
-  const presetName = PRESETS.find(p => p[0] === rv.preset)?.[1] ?? 'Custom range';
-
-  function shift(d: number) {
-    const k = rv.preset;
-    const months = k === 'custom' ? (rv.months ?? 0) : /month/.test(k) ? 1 : /_q$/.test(k) ? 3 : /year/.test(k) ? 12 : 0;
-    const week = k === 'custom' ? !!rv.week : /week/.test(k);
-    let A: Date, B: Date;
-    if (months) { const s0 = parseISO(a); A = new Date(s0.getFullYear(), s0.getMonth() + d * months, 1); B = new Date(A.getFullYear(), A.getMonth() + months, 0); }
-    else { const n = week ? 7 : spanDays(a, b); A = addDays(parseISO(a), d * n); B = addDays(parseISO(b), d * n); }
-    setRv({ preset: 'custom', from: iso(A), to: iso(B), inc: null, months, week, dims: rv.dims });
-  }
+  const presetName = periodName(period);
+  const setPeriod = (p: Period) => setRv({ period: p, inc: null, dims: rv.dims });
   async function act(t: Task, patch: Partial<Task>, note: string) {
     try { await updateTask(t.id, patch); setMsg(note); ui.changed(); void reload(); }
     catch (e) { setMsg(e instanceof Error ? e.message : String(e)); }
@@ -142,15 +128,7 @@ export function Review() {
   return (
     <>
       <div className="ph"><h1>Review</h1><span className="sub">{presetName} · {range}{self ? ' · your own tasks' : ''}</span></div>
-      <div className="rvbar">
-        <button className="iconbtn" onClick={() => shift(-1)} aria-label="Previous period"><Icon name="left" /></button>
-        <div className="presets">{PRESETS.map(([k, l]) => <button key={k} className={`chipbtn ${rv.preset === k ? 'on' : ''}`} onClick={() => setRv({ preset: k, inc: null, dims: rv.dims })}>{l}</button>)}</div>
-        <button className="iconbtn" onClick={() => shift(1)} aria-label="Next period"><Icon name="right" /></button>
-        <span className="rvdates"><label htmlFor="rv-from">From</label>
-          <input id="rv-from" type="date" className="field-in" value={a} onChange={e => e.target.value && setRv({ preset: 'custom', from: e.target.value, to: e.target.value > b ? e.target.value : b, inc: null, dims: rv.dims })} />
-          <label htmlFor="rv-to">to</label>
-          <input id="rv-to" type="date" className="field-in" value={b} onChange={e => e.target.value && setRv({ preset: 'custom', from: e.target.value < a ? e.target.value : a, to: e.target.value, inc: null, dims: rv.dims })} /></span>
-      </div>
+      <PeriodPicker p={period} r={{ from: a, to: b }} onChange={setPeriod} />
       {msg && <div className="note">{msg}</div>}
       <div className="rv"><div className="colm">
         <div className="panel"><div className="bigrow">

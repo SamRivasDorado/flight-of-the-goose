@@ -5,14 +5,18 @@
  */
 import type { Task } from './types';
 
-export type PeriodKind = 'last30' | 'last90' | 'thisMonth' | 'lastMonth' | 'thisQuarter' | 'lastQuarter' | 'thisYear' | 'lastYear' | 'all' | 'custom';
-export interface Period { kind: PeriodKind; from?: string; to?: string }
+export type PeriodKind = 'thisWeek' | 'lastWeek' | 'last7' | 'last30' | 'last90' | 'thisMonth' | 'lastMonth' | 'thisQuarter' | 'lastQuarter'
+  | 'thisYear' | 'lastYear' | 'all' | 'custom';
+/** A period; a custom one remembers how the arrows step it (by whole months, or by weeks, or by its own length). */
+export interface Period { kind: PeriodKind; from?: string; to?: string; months?: number; week?: boolean }
 
+/** The same choices on Review and Insights. */
 export const PERIODS: [PeriodKind, string][] = [
-  ['last30', 'Last 30 days'], ['last90', 'Last 90 days'], ['thisMonth', 'This month'], ['lastMonth', 'Last month'],
-  ['thisQuarter', 'This quarter'], ['lastQuarter', 'Last quarter'], ['thisYear', 'This year'], ['lastYear', 'Last year'],
-  ['all', 'All time'], ['custom', 'Choose dates…'],
+  ['thisWeek', 'This week'], ['lastWeek', 'Last week'], ['last7', 'Last 7 days'], ['last30', 'Last 30 days'], ['last90', 'Last 90 days'],
+  ['thisMonth', 'This month'], ['lastMonth', 'Last month'], ['thisQuarter', 'This quarter'], ['lastQuarter', 'Last quarter'],
+  ['thisYear', 'This year'], ['lastYear', 'Last year'], ['all', 'All time'], ['custom', 'Choose dates…'],
 ];
+export const periodName = (p: Period) => p.kind === 'custom' ? 'Chosen dates' : PERIODS.find(x => x[0] === p.kind)?.[1] ?? '';
 
 const pad = (n: number) => String(n).padStart(2, '0');
 export const iso = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -26,7 +30,11 @@ export const taskDay = (t: Pick<Task, 'status' | 'completed_at' | 'due_date' | '
 /** First and last day of a period (inclusive). All time runs from the earliest to the latest task day (or today). */
 export function range(p: Period, earliest?: string, latest?: string, today = new Date()): { from: string; to: string } {
   const y = today.getFullYear(), m = today.getMonth(), q = Math.floor(m / 3) * 3, t = iso(today);
+  const mon = addDays(today, -((today.getDay() + 6) % 7));
   switch (p.kind) {
+    case 'thisWeek': return { from: iso(mon), to: iso(addDays(mon, 6)) };
+    case 'lastWeek': return { from: iso(addDays(mon, -7)), to: iso(addDays(mon, -1)) };
+    case 'last7': return { from: iso(addDays(today, -6)), to: t };
     case 'last30': return { from: iso(addDays(today, -29)), to: t };
     case 'last90': return { from: iso(addDays(today, -89)), to: t };
     case 'thisMonth': return { from: iso(new Date(y, m, 1)), to: iso(new Date(y, m + 1, 0)) };
@@ -71,4 +79,15 @@ export function buckets(r: { from: string; to: string }): { label: string; from:
     }
   }
   return out;
+}
+
+/** The period before (d = -1) or after (d = 1): whole months, quarters and years step as such, weeks by 7 days, others by their length. */
+export function shiftPeriod(p: Period, r: { from: string; to: string }, d: number): Period {
+  const k = p.kind;
+  const months = k === 'custom' ? (p.months ?? 0) : /Month/.test(k) ? 1 : /Quarter/.test(k) ? 3 : /Year/.test(k) ? 12 : 0;
+  const week = k === 'custom' ? !!p.week : /Week/.test(k);
+  let A: Date, B: Date;
+  if (months) { const s0 = day(r.from); A = new Date(s0.getFullYear(), s0.getMonth() + d * months, 1); B = new Date(A.getFullYear(), A.getMonth() + months, 0); }
+  else { const n = week ? 7 : Math.round((day(r.to).getTime() - day(r.from).getTime()) / 864e5) + 1; A = addDays(day(r.from), d * n); B = addDays(day(r.to), d * n); }
+  return { kind: 'custom', from: iso(A), to: iso(B), months, week };
 }

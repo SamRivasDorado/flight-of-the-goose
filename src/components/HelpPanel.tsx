@@ -63,6 +63,7 @@ const TOPICS: Topic[] = [
   { id: 'review', title: 'Review', icon: 'review', page: 'review', go: '#/review', body: <>
     <p className="lead">Look back on a week, month or any period, and decide what happens next.</p>
     <ul>
+      <li>Pick the <b>period</b> at the top, the same choices as in Insights: this or last week, the last 7, 30 or 90 days, a month, quarter or year, all time, or your own dates. The arrows step to the period before or after.</li>
       <li><b>Slipped</b>: overdue tasks, each with one-click Done, Next Monday, +1 week or No date.</li>
       <li><b>Done</b> and <b>Coming up</b> for the period, and <b>Quiet projects</b> where nothing happened.</li>
       <li><b>Where the time went</b> by goal, project, or any dimension (combine them, for example Region × Priority).</li>
@@ -72,11 +73,13 @@ const TOPICS: Topic[] = [
   { id: 'insights', title: 'Insights', icon: 'chart', page: 'insights', go: '#/insights', body: <>
     <p className="lead">Numbers and charts about your work.</p>
     <ul>
-      <li>Choose a <b>Period</b> at the top: last 30 or 90 days, this or last month, quarter or year, all time, or your own dates. Everything on the page follows it: the key numbers, the chart builder and your dashboard. Your choice is remembered.</li>
+      <li>Choose a <b>period</b> at the top, the same choices as in Review: this or last week, the last 7, 30 or 90 days, a month, quarter or year, all time, or your own dates; the arrows step to the period before or after. Everything on the page follows it: the key numbers, the chart builder and your dashboard. Your choice is remembered.</li>
       <li>How tasks fall in a period: a finished task counts on the day it was completed; an open task on its due date (or the day it was created, if it has none). Hours are logged per task, so they count with their task.</li>
       <li>Key numbers: tasks completed and hours logged in the period, how many of the tasks due in the period are done, and what is open and overdue right now.</li>
-      <li>The <b>chart builder</b> answers questions such as “how much of our time went to North Africa?”: group by project, status, due month or any dimension, count tasks or sum hours.</li>
-      <li><b>Save to dashboard</b> keeps a chart; it updates by itself as tasks change and follows you to any computer.</li>
+      <li>The <b>chart builder</b> answers questions such as “how much of our time went to North Africa?”: group by project, status, due month or any dimension, count tasks or sum hours. The Lens at the top filters these charts too.</li>
+      <li>Tip: <b>hours</b> by project says where the time went more honestly than counting tasks, because a quick email and a three-day calculation no longer weigh the same. Group by Priority or another dimension to see where effort goes.</li>
+      <li>The <b>copy</b> icon on each chart puts it on the clipboard as a picture, with its title, dates and legend, ready to paste into a document, slide or email.</li>
+      <li><b>Save to dashboard</b> keeps a chart; it updates by itself as tasks change, follows the period you pick and follows you to any computer.</li>
     </ul></> },
   { id: 'team', title: 'Team and sharing', icon: 'users', page: 'team', go: '#/team', team: true, body: <>
     <p className="lead">Work together, while each person sees only what they are part of.</p>
