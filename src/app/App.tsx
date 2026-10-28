@@ -28,7 +28,7 @@ import { Insights } from '../pages/Insights';
 type Page = 'timeline' | 'strategy' | 'projects' | 'tasks' | 'review' | 'team' | 'insights';
 const NAV: [Page, string, Parameters<typeof Icon>[0]['name']][] = [
   ['timeline', 'Timeline', 'timeline'], ['strategy', 'Strategy', 'target'], ['projects', 'Projects', 'wall'], ['tasks', 'Tasks', 'tasks'],
-  ['review', 'Review', 'review'], ['team', 'Team', 'users'], ['insights', 'Insights', 'chart'],
+  ['team', 'Team', 'users'], ['review', 'Review', 'review'], ['insights', 'Insights', 'chart'],
 ];
 const pageFromHash = (): Page | 'project' => {
   const h = location.hash.replace('#/', '');
