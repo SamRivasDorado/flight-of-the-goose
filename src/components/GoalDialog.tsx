@@ -70,7 +70,10 @@ export function GoalDialog({ goal, parentId, goals, members, projects, onClose, 
               {d.parent_id
                 ? <div className="hint" style={{ marginTop: 6 }}>Same as {parentTitle ?? 'its goal'}, so the family reads as one.</div>
                 : <div className="swatches gsw">{GOAL_COLORS.map(c => <button key={c} type="button" className={`swt ${d.color?.toLowerCase() === c.toLowerCase() ? 'on' : ''}`}
-                    style={{ ['--c' as string]: c }} aria-label={`Colour ${c}`} onClick={() => set({ color: c })} />)}</div>}</div>
+                    style={{ ['--c' as string]: c }} aria-label={`Colour ${c}`} onClick={() => set({ color: c })} />)}
+                  {(() => { const own = !!d.color && !GOAL_COLORS.some(c => c.toLowerCase() === d.color!.toLowerCase());
+                    return <label className={`swt custom ${own ? 'on' : ''}`} title="Any colour" style={own ? { background: d.color! } : undefined}>{own ? '' : '+'}
+                      <input type="color" value={d.color ?? GOAL_COLORS[0]} onChange={e => set({ color: e.target.value })} aria-label="Pick any colour" /></label>; })()}</div>}</div>
           </div>
           <div className="hint" style={{ marginTop: -6, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <GoalTag g={{ id: goal?.id ?? 'new', title: d.title || 'New goal', parent_id: d.parent_id, short_name: cleanTag(d.short_name) || suggestTag(d.title || 'Goal'), color: d.color }}
