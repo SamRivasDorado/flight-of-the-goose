@@ -206,6 +206,8 @@ export function Insights() {
         <div className="kpi"><div className="k">Open now</div><div className="v">{open.length}</div></div>
         <div className="kpi"><div className="k">Overdue now</div><div className="v" style={{ color: overdue ? 'var(--danger)' : 'inherit' }}>{overdue}</div></div>
       </div>
+      <div className="insgrid">
+      <section><h2 className="sech">New chart</h2>
       <div className="builder">
         <div className="ctrls">
           <label>Group by {sel('by', [...GROUPS, ...lens.dims.map(d => [d.id, d.name] as [string, string])])}</label>
@@ -218,13 +220,14 @@ export function Insights() {
         <div className="preview">
           <ChartCard c={cfg} tasks={all} projects={data.projects} plain when={when} />
         </div>
-      </div>
-      {msg && <div className="note">{msg}</div>}
-      <h2 className="sech" style={{ marginTop: 6 }}>Dashboard</h2>
+      </div></section>
+      <section><h2 className="sech">Dashboard</h2>
+      {msg && <div className="note" style={{ marginBottom: 10 }}>{msg}</div>}
       <div className="dash">
         <OverTime data={overTime} name={`Tasks completed per ${perWeek ? 'week' : 'month'}`} when={when} />
         {dash.map((c, i) => <ChartCard key={c.id ?? i} c={c} tasks={all} projects={data.projects} when={when}
           onRemove={() => void store(dash.filter((_, j) => j !== i), 'Chart removed.')} />)}
+      </div></section>
       </div>
     </>
   );
