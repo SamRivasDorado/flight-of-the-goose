@@ -50,6 +50,7 @@ const TOPICS: Topic[] = [
     <p className="lead">All your tasks in three views.</p>
     <ul>
       <li><b>List</b>, grouped by due date, project or Priority; <b>Board</b> by status (drag a card between To do, In progress and Done); <b>Calendar</b> by day.</li>
+      <li>In the List, click a task’s <b>Project</b>, <b>Priority</b> or other dimension to change it from a drop-down, without opening the task. Pick the first choice, “(from project)”, to go back to the project’s default.</li>
       <li>In the calendar, drag a task to another day and choose <b>Move here</b> or <b>Copy here</b> (hold Alt while dropping to copy at once). Untick “Ask to move or copy” to always move.</li>
       <li><b>New task</b> (top bar) opens a draft that is only saved when you press <b>Create task</b>. Existing tasks save as you edit.</li>
       <li>Log <b>Time spent</b> on each task: Review and Insights use it to show where your time went.</li>

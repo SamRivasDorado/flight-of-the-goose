@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type DragEvent, type Keyb
 import { createPortal } from 'react-dom';
 import { useSolo } from '../lib/solo';
 import { useWorkspace } from '../auth/session';
-import { copyTask, createTask, listMembers, listProjects, listTasksFull, todayISO, updateTask, useLoad } from '../lib/data';
+import { copyTask, createTask, listMembers, listProjects, listTasksFull, setTaskValue, todayISO, updateTask, useLoad } from '../lib/data';
 import { canEdit, STATUSES, type Member, type Project, type Task, type TaskFull } from '../lib/types';
 import { useLocalPref, useUI } from '../lib/ui';
 import { useLens } from '../lib/lens';
@@ -28,6 +28,8 @@ interface Ctx {
   solo: boolean;
   open: (id: string) => void;
   save: (id: string, patch: Partial<Task>) => Promise<void>;
+  /** Sets a task's own value for a dimension (null: back to the project's default). */
+  setDim: (id: string, fieldId: string, optionId: string | null) => Promise<void>;
   add: (extra: Partial<Task>, openIt?: boolean) => Promise<void>;
 }
 
@@ -51,6 +53,10 @@ export function useTaskViews(projectId: string | null = null) {
     open: id => ui.openTask(id),
     save: async (id, patch) => {
       try { setMsg(null); await updateTask(id, patch); await reload(); ui.changed(); }
+      catch (e) { setMsg(e instanceof Error ? e.message : String(e)); }
+    },
+    setDim: async (id, fieldId, optionId) => {
+      try { setMsg(null); await setTaskValue(id, fieldId, optionId); await lens.reload(); ui.changed(); }
       catch (e) { setMsg(e instanceof Error ? e.message : String(e)); }
     },
     add: async (extra, openIt = true) => {
@@ -175,11 +181,33 @@ function Row({ t, c }: { t: TaskFull; c: Ctx }) {
       <td className="mono"><span className={due.cls}>{due.text}</span></td>
       {!c.solo && <td>{who ? <span className="who"><Avatar m={who} size="sm" />{firstName(who.display_name)}
         {t.collaborator_ids.length > 0 && <span className="muted"> +{t.collaborator_ids.length}</span>}</span> : <span className="muted">—</span>}</td>}
-      {!c.projectId && <td><ProjectChip p={c.projects.find(p => p.id === t.project_id)} /></td>}
+      {!c.projectId && <td><CellPick on={c.editable} label={`Project of ${t.title || 'this task'}`} value={t.project_id ?? ''}
+        onPick={v => void c.save(t.id, { project_id: v || null })}
+        options={[['', 'No project'], ...c.projects.filter(p => p.status !== 'closed' || p.id === t.project_id).map(p => [p.id, p.name] as [string, string])]}>
+        <ProjectChip p={c.projects.find(p => p.id === t.project_id)} /></CellPick></td>}
       <td className="mono">{t.hours ? `${hrs(t.hours)} h` : ''}</td>
-      {c.lens.dims.map(d => { const v = c.lens.eff(t, d.id); return <td key={d.id}><OptPill dim={d} option={v.option} inherited={v.inherited} /></td>; })}
+      {c.lens.dims.map(d => {
+        const v = c.lens.eff(t, d.id), own = c.lens.taskOwn(t.id, d.id);
+        const inh = t.project_id ? d.options.find(o => o.id === c.lens.projectDefault(t.project_id!, d.id)) : undefined;
+        return <td key={d.id}><CellPick on={c.editable} label={`${d.name} of ${t.title || 'this task'}`} value={own ?? ''}
+          onPick={o => void c.setDim(t.id, d.id, o || null)}
+          options={[['', inh ? `${inh.label} (from project)` : '—'], ...d.options.map(o => [o.id, o.label] as [string, string])]}>
+          {v.option ? <OptPill dim={d} option={v.option} inherited={v.inherited} /> : <span className="muted">—</span>}</CellPick></td>;
+      })}
     </tr>
   );
+}
+
+/** A cell in the list that shows its chip and opens a drop-down to change it, without opening the task. */
+function CellPick({ on, label, value, options, onPick, children }: {
+  on: boolean; label: string; value: string; options: [string, string][]; onPick: (v: string) => void; children: React.ReactNode }) {
+  if (!on) return <>{children}</>;
+  return (
+    <span className="cellpick" onClick={e => e.stopPropagation()} title="Click to change">
+      {children}<Icon name="down" />
+      <select aria-label={label} value={value} onChange={e => { if (e.target.value !== value) onPick(e.target.value); }}>
+        {options.map(([v, l]) => <option key={v || 'none'} value={v}>{l}</option>)}</select>
+    </span>);
 }
 
 /* ---------- board ---------- */
