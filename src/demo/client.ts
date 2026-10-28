@@ -6,6 +6,7 @@
  * same app code as the live Goose without touching the real database. You are always
  * signed in as the sample admin. Nothing here is used by the live build.
  */
+import { nextDue, type Repeat } from '../lib/repeat';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { makeSeed } from './seed';
 
@@ -14,7 +15,7 @@ type Store = { tables: Record<string, Row[]>; files: Record<string, string> };
 
 export const DEMO_UID = '00000000-0000-4000-8000-000000000001';
 export const DEMO_EMAIL = 'sam@example.com';
-const KEY = 'goose.demo.v5';
+const KEY = 'goose.demo.v6';
 
 const PK: Record<string, string[]> = {
   team_members: ['team_id', 'member_id'], project_members: ['project_id', 'member_id'], project_teams: ['project_id', 'team_id'],
@@ -37,7 +38,7 @@ const DEFAULTS: Record<string, () => Row> = {
   projects: () => ({ icon: 'folder', image_path: null, image_fit: 'fit', kind: 'ongoing', status: 'active', start_date: null, end_date: null, owner_member_id: null, created_at: now(), completed_at: null }),
   notes: () => ({ entry_date: today(), kind: 'note', created_by_member: null, created_at: now() }),
   tasks: () => ({ project_id: null, goal_id: null, title: '', description: '', due_date: null, status: 'todo', completed_at: null, hours: null, assignee_member_id: null,
-    created_by_member: null, source_note_id: null, source_line: null, created_at: now() }),
+    created_by_member: null, source_note_id: null, source_line: null, created_at: now(), repeat: null, next_task_id: null }),
   subtasks: () => ({ done: false, position: 0 }),
   task_values: () => ({ option_id: null, value: null }),
   member_settings: () => ({ settings: {} }),
@@ -87,6 +88,20 @@ function removeRows(table: string, pred: (r: Row) => boolean) {
     if (how === 'cascade') removeRows(child, r => ids.has(r[col]));
     else T(child).forEach(r => { if (ids.has(r[col])) r[col] = null; });
   }
+}
+
+/** A repeating task that is completed gets its next one (the live database does this with a trigger). */
+function nextOccurrence(row: Row, old: Row) {
+  if (row.status !== 'done' || old.status === 'done' || !row.repeat || row.next_task_id) return;
+  const r = row.repeat as Repeat, nd = nextDue(r, (row.due_date as string | null) ?? null, String(row.completed_at ?? today()).slice(0, 10));
+  if (!nd) return;
+  const id = crypto.randomUUID();
+  T('tasks').push({ ...DEFAULTS.tasks(), id, workspace_id: row.workspace_id, project_id: row.project_id, goal_id: row.goal_id, title: row.title, description: row.description,
+    due_date: nd, status: 'todo', assignee_member_id: row.assignee_member_id, created_by_member: row.created_by_member, repeat: r.left != null ? { ...r, left: r.left - 1 } : r });
+  T('task_collaborators').filter(c => c.task_id === row.id).forEach(c => T('task_collaborators').push({ ...c, task_id: id }));
+  T('task_values').filter(v => v.task_id === row.id).forEach(v => T('task_values').push({ ...v, task_id: id }));
+  T('subtasks').filter(x => x.task_id === row.id).forEach(x => T('subtasks').push({ ...x, id: crypto.randomUUID(), task_id: id, done: false }));
+  row.next_task_id = id;
 }
 
 /** Projects record when they were finished (the live database does this with a trigger). */
@@ -204,7 +219,7 @@ class Query implements PromiseLike<Res> {
     }
     if (this.op === 'update') {
       const hit = rows.filter(r => this.match(r));
-      for (const r of hit) { const old = { ...r }; Object.assign(r, this.payload); if (this.table === 'projects') projectTrigger(r, old);
+      for (const r of hit) { const old = { ...r }; Object.assign(r, this.payload); if (this.table === 'projects') projectTrigger(r, old); if (this.table === 'tasks') nextOccurrence(r, old);
         if (this.table === 'help_offers' && r.status !== old.status) r.answered_at = now(); }
       persist();
       return this.returning ? this.shape(hit) : { data: null, error: null };

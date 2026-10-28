@@ -11,6 +11,7 @@ import { byDue, diffDays, dueLabel, firstName, hrs, parseISO } from '../lib/form
 import { Avatar, Icon, type IconName } from '../components/Logo';
 import { NO_PROJECT_COLOR, ProjectChip } from '../components/ProjectChip';
 import { GoalTag } from '../components/GoalTag';
+import { describe, nextDue } from '../lib/repeat';
 import { goalOption, goalTree, tagOf, taskGoals } from '../lib/goaltag';
 
 type Tab = 'list' | 'board' | 'calendar';
@@ -184,6 +185,7 @@ function Row({ t, c }: { t: TaskFull; c: Ctx }) {
           onClick={e => { e.stopPropagation(); void c.save(t.id, { status: done ? 'todo' : 'done' }); }}><Icon name="check" /></button>
         <span className="ttl">{t.title || <span className="muted">Untitled task</span>}</span>
         {t.subtasks.length > 0 && <span className="subn mono">{subDone}/{t.subtasks.length}<Icon name="sub" /></span>}
+        {t.repeat && t.status !== 'done' && <span className="subn" title={describe(t.repeat, t.due_date)}><Icon name="repeat" /></span>}
       </div></td>
       <td className="mono"><span className={due.cls}>{due.text}</span></td>
       {!c.solo && <td>{who ? <span className="who"><Avatar m={who} size="sm" />{firstName(who.display_name)}
@@ -301,6 +303,18 @@ function CalendarView({ c, tools }: { c: Ctx; tools: React.ReactNode }) {
   const today = todayISO();
   const days: Date[] = [];
   for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) days.push(new Date(d));
+  // repeating tasks on a fixed schedule: show the coming ones faintly (each is created when the one before it is done)
+  const ghosts = new Map<string, TaskFull[]>();
+  const gFirst = todayISO(start), gLast = todayISO(end);
+  for (const t of c.tasks) {
+    if (!t.repeat || t.status === 'done' || t.repeat.from !== 'due' || !t.due_date) continue;
+    let d = t.due_date, r = { ...t.repeat };
+    for (let i = 0; i < 62; i++) {
+      const n = nextDue(r, d, d); if (!n || n > gLast) break;
+      if (n >= gFirst) ghosts.set(n, [...(ghosts.get(n) ?? []), t]);
+      d = n; if (r.left != null) r = { ...r, left: r.left - 1 };
+    }
+  }
   const shift = (n: number) => setMonth(n === 0 ? (() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); })() : new Date(month.getFullYear(), month.getMonth() + n, 1));
 
   return (
@@ -338,6 +352,10 @@ function CalendarView({ c, tools }: { c: Ctx; tools: React.ReactNode }) {
                     {who && who.id !== c.me && <Avatar m={who} size="xs" />}
                   </button>);
               })}
+              {(ghosts.get(k) ?? []).map(t => { const p = c.projects.find(x => x.id === t.project_id); return (
+                <button key={`g${t.id}`} className="chip ghost" style={{ ['--c' as string]: p ? p.color : NO_PROJECT_COLOR }}
+                  title={`${describe(t.repeat!, t.due_date)}. This one is created when the one before it is done.`} onClick={() => c.open(t.id)}>
+                  <Icon name="repeat" /><span className="t">{t.title || 'Untitled task'}</span></button>); })}
             </div>);
         })}
       </div></div>

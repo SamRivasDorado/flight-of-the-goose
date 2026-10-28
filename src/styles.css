@@ -809,3 +809,12 @@ button.brand:hover{background:var(--bar-hi)}
 .insgrid>section{min-width:0}.insgrid .sech{margin-top:0}
 .insgrid .builder{margin-bottom:0}
 @media (min-width:1280px){.insgrid{grid-template-columns:minmax(520px,5fr) minmax(0,7fr)}}
+/* repeating tasks */
+.repf{display:flex;flex-direction:column;gap:4px;min-width:0}
+.repf-row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.repf-row select{min-width:0;flex:1}
+.repf-next{font-size:12px}
+.modal .chk input[type=date],.modal .chk input[type=number]{margin-left:4px}
+.chip.ghost{background:transparent;border:1px dashed color-mix(in srgb,var(--c) 70%,var(--line));color:var(--muted);cursor:pointer}
+.chip.ghost .ic{width:11px;height:11px;flex:none;margin-top:2px}
+.repends{display:flex;flex-direction:column;gap:6px;align-items:flex-start}

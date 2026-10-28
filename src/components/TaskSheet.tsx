@@ -6,6 +6,7 @@ import {
   recordMentions, setCollaborator, setTaskValue, updateSubtask, updateTask, useLoad,
 } from '../lib/data';
 import { goalOption, goalTree } from '../lib/goaltag';
+import { RepeatField } from './RepeatField';
 import { canEdit, STATUSES, type Subtask, type Task, type TaskFull } from '../lib/types';
 import { useUI } from '../lib/ui';
 import { useLens } from '../lib/lens';
@@ -92,7 +93,7 @@ function Sheet({ id, defaults, close, changed }: SheetProps) {
     const ok = await run(async () => {
       const saved = await createTask(ws.workspace_id, ws.member_id, {
         title: title.trim(), description: desc, project_id: t.project_id, goal_id: t.goal_id, assignee_member_id: t.assignee_member_id,
-        due_date: t.due_date, status: t.status, hours: hoursValue(),
+        due_date: t.due_date, status: t.status, hours: hoursValue(), ...(t.repeat ? { repeat: t.repeat } : {}),
         ...(t.status === 'done' ? { completed_at: new Date().toISOString().slice(0, 10) } : {}),
       });
       for (const [i, s] of t.subtasks.entries()) { const x = await addSubtask(saved.id, s.title, i); if (s.done) await updateSubtask(x.id, { done: true }); }
@@ -224,6 +225,8 @@ function Sheet({ id, defaults, close, changed }: SheetProps) {
             </div></dd></>}
             <dt><label htmlFor="d-due">Due date</label></dt>
             <dd><input id="d-due" className="field-in" type="date" disabled={!editable} value={t.due_date ?? ''} onChange={e => patch({ due_date: e.target.value || null })} /></dd>
+            <dt><label htmlFor="d-rep">Repeat</label></dt>
+            <dd><RepeatField rule={t.repeat ?? null} due={t.due_date} done={t.status === 'done'} disabled={!editable} onChange={r => patch({ repeat: r })} /></dd>
             <dt><label htmlFor="d-st">Status</label></dt>
             <dd><select id="d-st" className="field-in" disabled={!editable} value={t.status} onChange={e => patch({ status: e.target.value as Task['status'] })}>
               {STATUSES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}</select></dd>
