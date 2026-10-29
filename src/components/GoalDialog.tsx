@@ -47,7 +47,7 @@ export function GoalDialog({ goal, parentId, goals, members, projects, onClose, 
     if (!openEnded && !d.end_date) { setErr('Choose an end date, or tick “No end date”.'); return; }
     if (!openEnded && d.end_date! < d.start_date) { setErr('The end date is before the start date.'); return; }
     setBusy(true);
-    try { await saveGoal(ws.workspace_id, goal, { ...d, title: d.title.trim(), short_name: tag, color: d.parent_id ? null : d.color, scene: d.parent_id ? null : d.scene, end_date: openEnded ? null : d.end_date }); onSaved(); }
+    try { await saveGoal(ws.workspace_id, goal, { ...d, status: d.status === 'quiet' ? 'on_track' : d.status, title: d.title.trim(), short_name: tag, color: d.parent_id ? null : d.color, scene: d.parent_id ? null : d.scene, end_date: openEnded ? null : d.end_date }); onSaved(); }
     catch (e) { setErr(e instanceof Error ? e.message : String(e)); setBusy(false); }
   }
   async function remove() {
@@ -107,9 +107,9 @@ export function GoalDialog({ goal, parentId, goals, members, projects, onClose, 
               <select id="gm-status" className="field-in" style={{ width: '100%' }} value={d.status_auto ? 'auto' : d.status}
                 onChange={e => e.target.value === 'auto' ? set({ status_auto: true }) : set({ status_auto: false, status: e.target.value as GoalInput['status'] })}>
                 <option value="auto">Automatic{goal && goal.status_auto !== false ? ` (now ${GOAL_STATUSES.find(s => s.id === goal.status)?.label.toLowerCase()})` : ''}</option>
-                {GOAL_STATUSES.map(s => <option key={s.id} value={s.id}>{s.label} (set by hand)</option>)}</select>
+                {GOAL_STATUSES.filter(s => s.id !== 'quiet').map(s => <option key={s.id} value={s.id}>{s.label} (set by hand)</option>)}</select>
               <div className="hint" style={{ marginTop: 4 }}>{d.status_auto
-                ? (goal?.auto_why && goal.status_auto !== false ? `From progress against the calendar: ${goal.auto_why}.` : 'Worked out from progress against the calendar. See Help → Strategy.')
+                ? (goal?.auto_why && goal.status_auto !== false ? `Now: ${goal.auto_why}.` : 'Worked out from overdue work, activity and (with an end date) the calendar. See Help → Status.')
                 : 'Set by hand: it stays as you choose until you change it.'}</div></div>
             {hasKids ? <div /> : <div><label className="lbl" htmlFor="gm-parent">Part of</label>
               <select id="gm-parent" className="field-in" style={{ width: '100%' }} value={d.parent_id ?? ''} onChange={e => set({ parent_id: e.target.value || null })}>

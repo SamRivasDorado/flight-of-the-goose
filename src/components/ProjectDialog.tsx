@@ -94,12 +94,12 @@ export function ProjectDialog({ project, kind, count, onClose, onSaved, onDelete
     <select id="pm-status" className="field-in" style={{ width: '100%' }} value={statusVal} onChange={e => {
       const v = e.target.value;
       if (v === 'paused' || v === 'closed') set({ status: v, health_manual: null });
-      else set({ status: 'active', health_manual: v === 'auto' ? null : v as Verdict });
+      else set({ status: 'active', health_manual: v === 'auto' ? null : v as Exclude<Verdict, 'quiet'> });
     }}>
       <option value="auto">Automatic{now ? ` (now ${now.label.toLowerCase()})` : ''}</option>
       {(['on_track', 'at_risk', 'off_track'] as const).map(k => <option key={k} value={k}>{STATUS[k].label} (set by hand)</option>)}
       <option value="paused">Paused</option><option value="closed">Done</option></select>
-    <div className="hint" style={{ marginTop: 4 }}>{statusVal === 'auto' ? (now ? `From progress against the calendar: ${now.why}.` : 'Worked out from progress against the calendar. See Help.')
+    <div className="hint" style={{ marginTop: 4 }}>{statusVal === 'auto' ? (now ? `Now: ${now.why}.` : 'Worked out from overdue work, activity and (with an end date) the calendar. See Help → Status.')
       : statusVal === 'paused' ? 'Paused: left out of the status counts until you resume it.' : statusVal === 'closed' ? 'Done: the project is finished.'
       : 'Set by hand: it stays as you choose until you switch back to Automatic.'}</div></>);
   const hint = (t: string) => <div className="hint" style={{ margin: '-2px 0 8px' }}>{t}</div>;

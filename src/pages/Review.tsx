@@ -36,7 +36,7 @@ export function Review() {
   const self = ws.access === 'member' || ws.access === 'guest';
   const { data, error, reload } = useLoad(async () => {
     const [tasks, projects, goals, noteDates] = await Promise.all([listTasks(ws.workspace_id), listProjectsFull(ws.workspace_id), listGoals(ws.workspace_id), listNoteDates(ws.workspace_id)]);
-    return { tasks, projects, goals: resolveStatuses(goals, tasks, projects), noteDates };
+    return { tasks, projects, goals: resolveStatuses(goals, tasks, projects, noteDates), noteDates };
   }, [ws.workspace_id, ui.version]);
   const [rv, setRv] = useLocalPref<RV>('review', { period: { kind: 'thisWeek' }, inc: null });
   const [msg, setMsg] = useState<string | null>(null);

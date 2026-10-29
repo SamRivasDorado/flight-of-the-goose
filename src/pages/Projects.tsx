@@ -9,7 +9,7 @@ import { GoalTag } from '../components/GoalTag';
 import { goalTree } from '../lib/goaltag';
 import { OptPill } from '../components/Lens';
 import { byDue, diffDays, dueLabel, firstName, hrs } from '../lib/format';
-import { elapsed, fmtDate, health, lastActivity, quietDays, type Health } from '../lib/projects';
+import { elapsed, fmtDate, health, lastActivity, type Health } from '../lib/projects';
 import { STATUS } from '../lib/status';
 import { Avatar, Icon } from '../components/Logo';
 import { ProjectIcon } from '../components/ProjectChip';
@@ -36,7 +36,7 @@ export function Projects() {
   const hp = (p: ProjectFull) => health(p, data!.tasks, data!.noteDates);
   const live = ps.filter(p => p.status !== 'closed'), closed = ps.filter(p => p.status === 'closed');
   const fixed = live.filter(p => p.kind === 'fixed'), ongoing = live.filter(p => p.kind !== 'fixed');
-  const tally = { on_track: 0, at_risk: 0, off_track: 0, paused: 0, done: 0 };
+  const tally = { on_track: 0, at_risk: 0, off_track: 0, quiet: 0, paused: 0, done: 0 };
   if (data) ps.forEach(p => tally[hp(p).id]++);
   const card = (p: ProjectFull) => <ProjectCard key={p.id} p={p} h={hp(p)} tasks={data!.tasks} members={data!.members} noteDates={data!.noteDates} />;
 
@@ -48,7 +48,7 @@ export function Projects() {
       {data && (
         <>
           <div className="statusbar">
-            {(['on_track', 'at_risk', 'off_track', 'paused', 'done'] as const).map(k =>
+            {(['on_track', 'at_risk', 'off_track', 'quiet', 'paused', 'done'] as const).map(k =>
               <span key={k} className={`tonedot tone-${STATUS[k].tone}`}><b>{tally[k]}</b> {STATUS[k].label.toLowerCase()}</span>)}
             <label className="chk" style={{ marginLeft: 'auto' }}><input type="checkbox" checked={showDone} onChange={e => setShowDone(e.target.checked)} />Show completed</label>
           </div>
@@ -86,7 +86,7 @@ function ProjectCard({ p, h, tasks, members, noteDates }: { p: ProjectFull; h: H
   const { solo } = useSolo();
   const open = tasks.filter(t => t.project_id === p.id && t.status !== 'done');
   const next = open.filter(t => t.due_date).sort(byDue)[0];
-  const last = lastActivity(p, tasks, noteDates), quiet = quietDays(p, tasks, noteDates);
+  const last = lastActivity(p, tasks, noteDates);
   const owner = members.find(m => m.id === p.owner_member_id);
   const nextDue = next ? dueLabel(next.due_date) : null;
   return (
@@ -98,9 +98,7 @@ function ProjectCard({ p, h, tasks, members, noteDates }: { p: ProjectFull; h: H
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}><span className="pill" style={{ ['--c' as string]: h.color }} title={`${h.label}: ${h.why}`}>{h.label}</span><ProjectDims id={p.id} /></div>
         <ProjectProgress p={p} tasks={tasks} members={members} />
         <div className="next">{next ? <>Next: <b>{next.title || 'Untitled task'}</b> · <span className={nextDue!.cls}>{nextDue!.text}</span></> : 'No upcoming dated tasks'}</div>
-        {/* an ongoing project can be quiet and still fine: a note, not a status */}
-        <div className={`next ${quiet ? 'quietnote' : ''}`} title={quiet ? 'Nothing has happened for more than 30 days' : undefined}>
-          {quiet ? `Quiet: nothing for ${quiet} days` : last ? `Last activity: ${dueLabel(last, true).text}` : 'No activity yet'}</div>
+        <div className="next">{last ? `Last activity: ${dueLabel(last, true).text}` : 'No activity yet'}</div>
       </div>
     </a>);
 }

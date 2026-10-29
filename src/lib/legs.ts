@@ -8,7 +8,7 @@
  */
 import { goalProgress, goalTasks } from './goals';
 import type { Goal, Project, Task } from './types';
-import { judge, overdueText, pointsText } from './status';
+import { daysSince, judge, overdueOf } from './status';
 
 export const LEG_MONTHS = 3;
 
@@ -117,32 +117,33 @@ export function projectStops(p: Project, tasks: Task[], today = iso(new Date()))
 }
 
 /** Automatic goal status, with the rule shared with projects (lib/status.ts). `why` says it in words for the tooltip and form. */
-export function autoStatus(g: Goal, goals: Goal[], tasks: Task[], projects: Project[], today = iso(new Date())): { status: Goal['status']; why: string } {
+export function autoStatus(g: Goal, goals: Goal[], tasks: Task[], projects: Project[], today = iso(new Date()),
+  noteDates: { project_id: string; entry_date: string }[] = []): { status: Goal['status']; why: string } {
+  void projects;
   const base = { ...g, status: 'on_track' as const };
   const fam = [g, ...goals.filter(k => k.parent_id === g.id)];
   const ids = new Set(fam.flatMap(x => goalTasks(x, tasks).map(t => t.id)));
-  const overdue = tasks.filter(t => ids.has(t.id) && t.status !== 'done' && t.due_date && t.due_date < today).length;
-  if (!g.end_date) {
-    const lp = legProgress(base, goals, tasks, projects, today);
-    if (lp.target == null) return { status: judge(0, overdue), why: `${lp.leg.label} is the first leg: it sets the pace${overdueText(overdue)}` };
-    const behind = Math.round(lp.elapsed) - lp.pg;
-    return { status: judge(behind, overdue), why: `${lp.done} of ${lp.target} tasks (last quarter's pace) with ${Math.round(lp.elapsed)}% of the quarter gone: ${pointsText(behind)}${overdueText(overdue)}` };
-  }
+  const ts = tasks.filter(t => ids.has(t.id)), pids = new Set(fam.flatMap(x => x.project_ids));
+  // the last day anything happened: a task created or completed, a notebook entry in a linked project, or the goal being set up
+  const days = [g.created_at?.slice(0, 10), ...ts.flatMap(t => [t.completed_at, t.created_at?.slice(0, 10)]),
+    ...noteDates.filter(n => pids.has(n.project_id)).map(n => n.entry_date)].filter((x): x is string => !!x && x <= today).sort();
+  const facts = { ...overdueOf(ts, today), idle: daysSince(days[days.length - 1], today) };
+  if (!g.end_date) { const j = judge({ ...facts, behind: null }); return { status: j.status, why: j.why }; }
   const pg = goalProgress(base, goals, tasks);
   if (pg >= 100) return { status: 'achieved', why: 'all done' };
-  if (today > g.end_date) return { status: 'off_track', why: `${pg}% done and the end date has passed` };
   const span = parse(g.end_date).getTime() - parse(g.start_date).getTime();
   const el = span > 0 ? Math.max(0, Math.min(100, Math.round((parse(today).getTime() - parse(g.start_date).getTime()) / span * 100))) : 0;
-  return { status: judge(el - pg, overdue), why: `${pg}% done with ${el}% of the time gone: ${pointsText(el - pg)}${overdueText(overdue)}` };
+  const j = judge({ ...facts, behind: el - pg, pastEnd: today > g.end_date });
+  return { status: j.status, why: `${j.why} (${pg}% done, ${el}% of the time gone)` };
 }
 
 /** Goals with their automatic status worked out (goals set by hand keep theirs). */
-export function resolveStatuses<G extends Goal>(goals: G[], tasks: Task[], projects: Project[]): G[] {
+export function resolveStatuses<G extends Goal>(goals: G[], tasks: Task[], projects: Project[], noteDates: { project_id: string; entry_date: string }[] = []): G[] {
   // sub-goals first, so a parent that averages its sub-goals sees their worked-out status
   const out = new Map<string, G>(goals.map(g => [g.id, g]));
   for (const g of [...goals].sort((a, b) => Number(!a.parent_id) - Number(!b.parent_id))) {
     if (g.status_auto === false) continue;
-    const a = autoStatus(g, [...out.values()], tasks, projects);
+    const a = autoStatus(g, [...out.values()], tasks, projects, iso(new Date()), noteDates);
     out.set(g.id, { ...g, status: a.status, auto_why: a.why });
   }
   return goals.map(g => out.get(g.id)!);

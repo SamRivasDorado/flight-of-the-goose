@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { useWorkspace } from '../auth/session';
-import { listGoals, listMembers, listProjectsFull, listTasks, todayISO, useLoad } from '../lib/data';
+import { listGoals, listMembers, listNoteDates, listProjectsFull, listTasks, todayISO, useLoad } from '../lib/data';
 import { canManage, type Goal, type ProjectFull, type Task } from '../lib/types';
 import { useLocalPref, useUI } from '../lib/ui';
 import { useLens } from '../lib/lens';
@@ -30,7 +30,8 @@ export function Timeline() {
   const lens = useLens();
   const { data, error, reload } = useLoad(async () => {
     const [goals, projects, tasks, members] = await Promise.all([listGoals(ws.workspace_id), listProjectsFull(ws.workspace_id), listTasks(ws.workspace_id), listMembers(ws.workspace_id)]);
-    return { goals: resolveStatuses(goals, tasks, projects), projects, tasks, members };
+    const noteDates = await listNoteDates(ws.workspace_id).catch(() => []);
+    return { goals: resolveStatuses(goals, tasks, projects, noteDates), projects, tasks, members };
   }, [ws.workspace_id, ui.version]);
   const [zoom, setZoom] = useLocalPref<Zoom>('tlZoom', 'months');
   const [showDone, setShowDone] = useLocalPref('showDone', false);

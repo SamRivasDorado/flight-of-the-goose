@@ -1,8 +1,7 @@
 import { todayISO } from './data';
-import { diffDays, parseISO } from './format';
+import { parseISO } from './format';
 import type { Project, Task } from './types';
-import { judge, overdueText, pointsText, STATUS, type Tone, type Verdict } from './status';
-import { projectLeg } from './legs';
+import { daysSince, judge, overdueOf, STATUS, type Tone, type Verdict } from './status';
 
 export type { Tone } from './status';
 /** A project's status: label, colour and tone for the dot, and why (for the tooltip). */
@@ -26,31 +25,22 @@ export function elapsed(p: Project): number {
 }
 
 /** Project status, with the rule shared with goals (lib/status.ts, explained in Help). */
-export function health(p: Project, tasks: Task[], _noteDates?: unknown): Health {
+export function health(p: Project, tasks: Task[], noteDates: { project_id: string; entry_date: string }[] = []): Health {
   const make = (id: Verdict | 'done' | 'paused', why: string): Health => ({ id, ...STATUS[id], why });
   if (p.status === 'closed') return make('done', 'marked complete');
   if (p.status === 'paused') return make('paused', 'paused in its settings');
-  const ts = tasks.filter(t => t.project_id === p.id), open = ts.filter(t => t.status !== 'done');
-  const overdue = open.filter(t => t.due_date && diffDays(t.due_date) < 0).length;
   if (p.health_manual) return make(p.health_manual, 'set by hand in its settings');
+  const today = todayISO();
+  const ts = tasks.filter(t => t.project_id === p.id), open = ts.filter(t => t.status !== 'done');
+  const last = [lastActivity(p, tasks, noteDates), p.created_at?.slice(0, 10)].filter((x): x is string => !!x && x <= today).sort().pop() ?? null;
+  const facts = { ...overdueOf(ts, today), idle: daysSince(last, today) };
   if (p.kind === 'fixed' && p.end_date) {
-    if (diffDays(p.end_date) < 0 && open.length) return make('off_track', `past its end date with ${open.length} open task${open.length === 1 ? '' : 's'}`);
-    const pct = ts.length ? Math.round(ts.filter(t => t.status === 'done').length / ts.length * 100) : 0, el = Math.round(elapsed(p) * 100);
-    return make(judge(el - pct, overdue), `${pct}% of tasks done with ${el}% of the time gone: ${pointsText(el - pct)}${overdueText(overdue)}`);
+    const pct = ts.length ? Math.round((ts.length - open.length) / ts.length * 100) : 0, el = Math.round(elapsed(p) * 100);
+    const j = judge({ ...facts, behind: el - pct, pastEnd: p.end_date < today && open.length > 0 });
+    return make(j.status, `${j.why} (${pct}% of tasks done, ${el}% of the time gone)`);
   }
-  // ongoing: this quarter's pace against last quarter's
-  const lp = projectLeg(p, tasks);
-  if (lp.target == null) return make(judge(0, overdue), `${lp.leg.label} is the first leg: it sets the pace${overdueText(overdue)}`);
-  const behind = Math.round(lp.elapsed) - lp.pg;
-  return make(judge(behind, overdue), `${lp.done} of ${lp.target} tasks (last quarter's pace) with ${Math.round(lp.elapsed)}% of the quarter gone: ${pointsText(behind)}${overdueText(overdue)}`);
-}
-
-/** Days since anything happened, when it is more than 30 (an ongoing project gone quiet), else null. */
-export function quietDays(p: Project, tasks: Task[], noteDates: { project_id: string; entry_date: string }[]): number | null {
-  if (p.status !== 'active') return null;
-  const last = lastActivity(p, tasks, noteDates);
-  const d = last ? -diffDays(last) : null;
-  return d != null && d > 30 ? d : null;
+  const j = judge({ ...facts, behind: null });
+  return make(j.status, j.why);
 }
 
 /** Tasks completed per week for the last n weeks (oldest first). */

@@ -852,3 +852,5 @@ button.brand:hover{background:var(--bar-hi)}
 .hdots li{display:flex;gap:8px;align-items:baseline;margin:0}
 .hdots .tonedot{flex:none;min-width:104px;font-weight:600}
 .pcard .next.quietnote{color:var(--quiet,#8A6440);font-weight:500}
+.scene.sky-calm{background:linear-gradient(180deg,color-mix(in srgb,#B8B2A2 14%,var(--surface-2)) 0%,var(--surface-2) 100%)}
+.tone-quiet{--tone:#9A8566}

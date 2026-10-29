@@ -26,10 +26,10 @@ export function sceneOf(g: Pick<GoalRef, 'id' | 'parent_id'> & { scene?: string 
 }
 export const iconOf = (g: { icon?: string | null }) => (g.icon || 'target') as IconName;
 
-type Weather = 'clear' | 'clouds' | 'storm' | 'sunset';
+type Weather = 'clear' | 'clouds' | 'storm' | 'sunset' | 'calm';
 export const weatherOf = (status: Goal['status']): Weather =>
-  status === 'at_risk' ? 'clouds' : status === 'off_track' ? 'storm' : status === 'achieved' ? 'sunset' : 'clear';
-export const WEATHER_WORD: Record<Weather, string> = { clear: 'clear skies', clouds: 'clouds gathering', storm: 'stormy', sunset: 'landed at sunset' };
+  status === 'at_risk' ? 'clouds' : status === 'off_track' ? 'storm' : status === 'achieved' ? 'sunset' : status === 'quiet' ? 'calm' : 'clear';
+export const WEATHER_WORD: Record<Weather, string> = { clear: 'clear skies', clouds: 'clouds gathering', storm: 'stormy', sunset: 'landed at sunset', calm: 'still and misty' };
 
 /* ---- terrain: viewBox 0 0 1000 190, stretched to the box (keep the left and right ends below the nest and flag) ---- */
 const TERRAIN: Record<SceneId, JSX.Element> = {
@@ -118,6 +118,9 @@ const WEATHER: Record<Weather, JSX.Element> = {
       <path d="M206 42 l -9 16 h 9 l -7 17" /><path d="M486 40 l -10 18 h 10 l -8 18" /><path d="M790 44 l -9 16 h 9 l -7 16" /></g></>,
   // the setting sun is drawn behind the land (see Scene)
   sunset: <></>,
+  // quiet: still air, a pale sun behind mist
+  calm: <g><circle cx="150" cy="30" r="13" fill="rgba(240,236,220,.35)" />
+    <g fill="rgba(220,222,226,.16)"><rect x="-20" y="70" width="1040" height="10" rx="5" /><rect x="60" y="96" width="900" height="12" rx="6" /><rect x="-20" y="122" width="1040" height="9" rx="4.5" /></g></g>,
 };
 
 /** Where the horizon is on the right of each landscape (in the 190-high drawing), so the setting sun sits half behind it. */

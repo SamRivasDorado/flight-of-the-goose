@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useSolo } from '../lib/solo';
 import { useWorkspace } from '../auth/session';
-import { listGoals, listHelpOffers, listMembers, listProjectsFull, listTasks, listTeams, useLoad } from '../lib/data';
+import { listGoals, listHelpOffers, listNoteDates, listMembers, listProjectsFull, listTasks, listTeams, useLoad } from '../lib/data';
 import { canEdit as canEditWs, canManage, GOAL_STATUSES, type Goal, type Member, type ProjectFull, type Task, type Team } from '../lib/types';
 import { useLocalPref, useUI } from '../lib/ui';
 import { byDue, dueLabel, firstName } from '../lib/format';
@@ -23,7 +23,8 @@ export function Strategy() {
   const { data, error, reload } = useLoad(async () => {
     const [goals, projects, tasks, members, teams, offers] = await Promise.all([
       listGoals(ws.workspace_id), listProjectsFull(ws.workspace_id), listTasks(ws.workspace_id), listMembers(ws.workspace_id), listTeams(ws.workspace_id), listHelpOffers(ws.workspace_id)]);
-    return { goals: resolveStatuses(goals, tasks, projects), projects, tasks, members, teams, offers };
+    const noteDates = await listNoteDates(ws.workspace_id).catch(() => []);
+    return { goals: resolveStatuses(goals, tasks, projects, noteDates), projects, tasks, members, teams, offers };
   }, [ws.workspace_id, ui.version]);
   const [period, setPeriod] = useLocalPref<string>('goalPeriod', 'all');
   const [view, setView] = useLocalPref<'goals' | 'journey'>('strategyView', 'goals');
