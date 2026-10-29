@@ -825,10 +825,10 @@ button.brand:hover{background:var(--bar-hi)}
 .scene.sky-storm{background:linear-gradient(180deg,color-mix(in srgb,#3E4658 38%,var(--surface-2)) 0%,color-mix(in srgb,#3E4658 12%,var(--surface-2)) 100%)}
 .scene.sky-sunset{background:linear-gradient(180deg,color-mix(in srgb,#8E6BBF 14%,var(--surface-2)) 0%,color-mix(in srgb,#F28C28 18%,var(--surface-2)) 100%)}
 .scene .wcloud{animation:drift 46s ease-in-out infinite alternate}
-.scene .wrain{animation:rain .9s linear infinite}
+.scene .wdrop{animation:fall 1.5s linear infinite;opacity:0}
 @keyframes drift{from{transform:translateX(-26px)}to{transform:translateX(26px)}}
-@keyframes rain{from{transform:translate(0,-6px)}to{transform:translate(-3px,6px)}}
-@media (prefers-reduced-motion:reduce){.scene .wcloud,.scene .wrain{animation:none}}
+@keyframes fall{0%{transform:translate(0,0);opacity:0}10%{opacity:1}85%{opacity:1}100%{transform:translate(-24px,140px);opacity:0}}
+@media (prefers-reduced-motion:reduce){.scene .wcloud,.scene .wdrop{animation:none}.scene .wdrop{opacity:1}}
 .scene.thumb{position:relative;display:block;height:44px;border-radius:6px}
 .gicon{--c:#999;display:inline-grid;place-items:center;width:24px;height:24px;border-radius:7px;background:var(--c);color:#fff;flex:none}
 .gicon .ic{width:14px;height:14px}

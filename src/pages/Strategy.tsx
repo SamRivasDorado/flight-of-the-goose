@@ -127,7 +127,7 @@ function GoalCard({ g, goals, projects, tasks, members, teams, canEdit, onEdit, 
           <span style={{ flex: 1 }} />{owner && !solo && <span className="who"><Avatar m={owner} size="sm" />{firstName(owner.display_name)}<span className="muted">owner</span></span>}</div>
         <div className="gtitle"><GoalIcon g={g} goals={goals} size="lg" /><h3>{title(g)}</h3></div>
         {g.notes && <div className="hint">{g.notes}</div>}
-        <div><div className="prog"><div className="bar2" style={{ ['--c' as string]: st.color }}><i style={{ width: `${pg}%` }} /></div><GoalFlag color={st.color} reached={pg >= 100} /><span className="mono muted">{lp && lp.target == null ? '–' : `${pg}%`}</span></div>
+        <div><div className="prog"><div className="bar2" style={{ ['--c' as string]: colorOf(g, goals) }}><i style={{ width: `${pg}%` }} /></div><GoalFlag color={colorOf(g, goals)} reached={pg >= 100} /><span className="mono muted">{lp && lp.target == null ? '–' : `${pg}%`}</span></div>
           <div className="muted" style={{ fontSize: 12, marginTop: 3 }}>{lp
             ? (lp.target == null ? `${lp.leg.label}, first leg: ${plural(lp.done, 'task')} done, setting the pace` : `${lp.leg.label} leg: ${lp.done} of ${plural(lp.target, 'task')}, last quarter's pace`)
             : progressSource(g, goals, tasks)}</div>
@@ -147,7 +147,7 @@ function GoalCard({ g, goals, projects, tasks, members, teams, canEdit, onEdit, 
         {kids.map(k => { const ks = goalStatus(k.status), kp = shownProgress(k, goals, tasks, projects), kd = tasks.filter(t => t.goal_id === k.id).length; return (
           <div key={k.id} className={`child tone-${ks.tone}`}>
             <div className="ct"><i className="dot" style={{ ['--c' as string]: ks.color }} title={ks.label} />{title(k)}<span className="mono muted" style={{ fontSize: 12 }}>{kp}%</span></div>
-            <div className="prog sub"><div className="bar2" style={{ ['--c' as string]: ks.color, height: 5 }}><i style={{ width: `${kp}%` }} /></div><GoalFlag color={ks.color} reached={kp >= 100} small /></div>
+            <div className="prog sub"><div className="bar2" style={{ ['--c' as string]: colorOf(k, goals), height: 5 }}><i style={{ width: `${kp}%` }} /></div><GoalFlag color={colorOf(k, goals)} reached={kp >= 100} small /></div>
             <div className="cmeta"><span className="tag">{goalRange(k)}</span>{chips(k)}
               {kd > 0 && <span className="muted" style={{ fontSize: 12 }}>{kd} direct task{kd > 1 ? 's' : ''}</span>}
               {editor && <button className="btn ghost sm" onClick={() => ui.newTask({ goal_id: k.id })}><Icon name="plus" />Task</button>}</div>

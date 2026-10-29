@@ -107,8 +107,11 @@ const WEATHER: Record<Weather, JSX.Element> = {
   clouds: <>{cloud(260, 30, 1, 'rgba(200,204,214,.30)', 0)}{cloud(620, 22, 1.3, 'rgba(200,204,214,.34)', 1)}{cloud(860, 40, .9, 'rgba(200,204,214,.28)', 2)}
     <g stroke="rgba(200,204,214,.35)" strokeWidth="1.5" strokeLinecap="round" fill="none"><path d="M120 70 h40 M140 78 h30 M720 62 h44 M740 70 h28" /></g></>,
   storm: <>{cloud(200, 24, 1.3, 'rgba(95,100,118,.55)', 0)}{cloud(480, 18, 1.6, 'rgba(85,90,108,.60)', 1)}{cloud(780, 26, 1.4, 'rgba(95,100,118,.55)', 2)}
-    <g className="wrain" stroke="rgba(150,170,200,.45)" strokeWidth="1.5" strokeLinecap="round">{Array.from({ length: 34 }, (_, i) =>
-      <path key={i} d={`M${130 + i * 24 + (i % 3) * 7} ${44 + (i % 4) * 9} l -6 14`} />)}</g>
+    <g stroke="rgba(150,170,200,.5)" strokeWidth="1.5" strokeLinecap="round">{Array.from({ length: 46 }, (_, i) => {
+      // each drop falls from under the clouds to the ground, at its own moment, so the rain really falls
+      const x = 110 + ((i * 37) % 820), d = ((i * 53) % 100) / 100 * 1.6, s = 1.3 + ((i * 29) % 7) / 10;
+      return <path key={i} className="wdrop" style={{ animationDelay: `-${d.toFixed(2)}s`, animationDuration: `${s.toFixed(2)}s` }} d={`M${x} 40 l -3 9`} />;
+    })}</g>
     <path d="M520 40 l -10 18 h 10 l -8 18" fill="none" stroke="rgba(244,203,93,.7)" strokeWidth="2.2" strokeLinejoin="round" /></>,
   sunset: <g><circle cx="640" cy="128" r="44" fill="rgba(240,140,70,.14)" /><circle cx="640" cy="128" r="24" fill="rgba(240,140,70,.50)" /></g>,
 };
