@@ -5,7 +5,7 @@ import {
   addSubtask, createTask, deleteSubtask, deleteTask, getTaskFull, listGoalRefs, listMembers, listProjects,
   recordMentions, setCollaborator, setTaskValue, updateSubtask, updateTask, useLoad,
 } from '../lib/data';
-import { goalOption, goalTree } from '../lib/goaltag';
+import { goalOption, goalTree, tagOf } from '../lib/goaltag';
 import { RepeatField } from './RepeatField';
 import { canEdit, STATUSES, type Subtask, type Task, type TaskFull } from '../lib/types';
 import { useUI } from '../lib/ui';
@@ -208,7 +208,11 @@ function Sheet({ id, defaults, close, changed }: SheetProps) {
               <option value="">No project</option>{lists.projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></dd>
             <dt><label htmlFor="d-goal">Goal</label></dt>
             <dd><select id="d-goal" className="field-in" disabled={!editable} value={t.goal_id ?? ''} onChange={e => patch({ goal_id: e.target.value || null })}>
-              <option value="">{lists.goals.length ? 'None' : 'No goals yet'}</option>
+              <option value="">{(() => {
+                // like Priority or Region: a task in a project counts towards that project's goals unless it is linked to a goal of its own
+                const inh = t.project_id ? goalTree(lens.goals).filter(g => g.project_ids.includes(t.project_id!)) : [];
+                return inh.length ? `${inh.map(g => `${tagOf(g)} · ${g.title}`).join(', ')} (from project)` : lists.goals.length ? 'None' : 'No goals yet';
+              })()}</option>
               {goalTree(lists.goals).map(g => <option key={g.id} value={g.id}>{goalOption(g)}</option>)}</select></dd>
             {!solo && <><dt><label htmlFor="d-asg">Assignee</label></dt>
             <dd><select id="d-asg" className="field-in" disabled={!editable} value={t.assignee_member_id ?? ''} onChange={e => patch({ assignee_member_id: e.target.value || null })}>

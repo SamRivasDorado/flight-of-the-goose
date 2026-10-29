@@ -855,3 +855,10 @@ button.brand:hover{background:var(--bar-hi)}
 .scene.sky-calm{background:linear-gradient(180deg,color-mix(in srgb,#B8B2A2 14%,var(--surface-2)) 0%,var(--surface-2) 100%)}
 .tone-quiet{--tone:#9A8566}
 .hsteps{margin:6px 0 4px;padding-left:22px;display:flex;flex-direction:column;gap:3px}
+/* Goals view strips: a small sun, low and half behind the land on the left */
+.scene .sc-sunset.lowsun{left:16%;height:42%;background:radial-gradient(circle,rgba(250,212,100,.9) 0 58%,rgba(250,212,100,0) 60%);box-shadow:0 0 0 6px rgba(250,212,100,.12),0 0 18px 8px rgba(250,212,100,.12)}
+.scene .sc-sunset.lowsun.calm{background:radial-gradient(circle,rgba(240,236,220,.45) 0 58%,rgba(240,236,220,0) 60%);box-shadow:none}
+.scene.strip.sky-clear,.scene.strip.sky-calm{--land-solid:var(--surface-2)}
+.scene.strip .sc-sunset:not(.lowsun){height:42%}
+/* Journey: two goals side by side on wide screens */
+@media (min-width:1180px){.journeys{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}}
