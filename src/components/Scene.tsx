@@ -125,6 +125,8 @@ const WEATHER: Record<Weather, JSX.Element> = {
 
 /** Where the horizon is on the right of each landscape (in the 190-high drawing), so the setting sun sits half behind it. */
 const HORIZON: Record<SceneId, number> = { hills: 126, dunes: 124, mountains: 114, coast: 152, forest: 120, lake: 128, fields: 126, city: 152 };
+/** The same on the left, where the sun sits low in the small strips of the Goals view. */
+const HORIZON_LEFT: Record<SceneId, number> = { hills: 132, dunes: 134, mountains: 112, coast: 128, forest: 126, lake: 136, fields: 136, city: 158 };
 
 /** The land as one solid shape (the terrain is see-through), so a setting sun behind it is hidden. */
 function solidLand(scene: SceneId) {
@@ -133,15 +135,20 @@ function solidLand(scene: SceneId) {
     .map((c, i) => cloneElement(c as ReactElement<Record<string, unknown>>, { key: i, fill: 'var(--land-solid)', stroke: 'none' }));
 }
 
-export function Scene({ scene, weather, className = '' }: { scene: SceneId; weather: Weather; className?: string }) {
+/** `strip`: the low, wide version on the Goals view cards, where the sun sits small and half behind the land. */
+export function Scene({ scene, weather, className = '', strip = false }: { scene: SceneId; weather: Weather; className?: string; strip?: boolean }) {
+  // a sun low behind the land: always at sunset (on the right); in the strips also on clear and quiet days (on the left)
+  const low = weather === 'sunset' ? 'sunset' : strip && (weather === 'clear' || weather === 'calm') ? weather : null;
+  const top = low === 'sunset' ? HORIZON[scene] : HORIZON_LEFT[scene];
   return (
-    <div className={`scene sky-${weather} ${className}`} aria-hidden="true">
-      {weather === 'sunset' && <>
-        <span className="sc-sunset" style={{ top: `${(HORIZON[scene] / 190 * 100).toFixed(1)}%` }} />
+    <div className={`scene sky-${weather} ${strip ? 'strip' : ''} ${className}`} aria-hidden="true">
+      {low && <>
+        <span className={`sc-sunset ${low !== 'sunset' ? `lowsun ${low}` : ''}`} style={{ top: `${(top / 190 * 100).toFixed(1)}%` }} />
         <svg className="sc-solid" viewBox="0 0 1000 190" preserveAspectRatio="none">{solidLand(scene)}</svg></>}
       <svg className="sc-terrain" viewBox="0 0 1000 190" preserveAspectRatio="none">{TERRAIN[scene]}</svg>
       <svg className="sc-detail" viewBox="0 0 1600 190" preserveAspectRatio="xMidYMax slice">{DETAILS[scene]}</svg>
-      <svg className="sc-weather" viewBox="0 0 1000 190" preserveAspectRatio="xMidYMin slice">{WEATHER[weather]}</svg>
+      {/* in the strips the sun is drawn low behind the land instead, so leave it out of the sky */}
+      <svg className="sc-weather" viewBox="0 0 1000 190" preserveAspectRatio="xMidYMin slice">{low && weather !== 'sunset' ? (weather === 'calm' ? WEATHER.calm.props.children[1] : null) : WEATHER[weather]}</svg>
     </div>);
 }
 

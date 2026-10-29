@@ -108,7 +108,7 @@ function GoalCard({ g, goals, projects, tasks, members, teams, canEdit, onEdit, 
 
   return (
     <article className={`goal tone-${st.tone}`} style={{ ['--gc' as string]: colorOf(g, goals) }}>
-      <div className="gstrip"><Scene scene={sceneOf(g, goals)} weather={weatherOf(g.status)} /></div>
+      <div className="gstrip"><Scene scene={sceneOf(g, goals)} weather={weatherOf(g.status)} strip /></div>
       <div className="gmain">
         <div className="gh"><span className="glevel">Goal</span><span className="pill" style={{ ['--c' as string]: st.color }} title={g.status_auto === false ? 'Status set by hand' : `Status set automatically: ${g.auto_why ?? 'from progress against the calendar'}`}>{st.label}</span><span className="tag">{goalRange(g)}</span>
           <span style={{ flex: 1 }} />{owner && !solo && <span className="who"><Avatar m={owner} size="sm" />{firstName(owner.display_name)}<span className="muted">owner</span></span>}</div>
