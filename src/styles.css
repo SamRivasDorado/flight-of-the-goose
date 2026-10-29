@@ -823,7 +823,10 @@ button.brand:hover{background:var(--bar-hi)}
 .scene.sky-clear{background:linear-gradient(180deg,color-mix(in srgb,#7FB2E0 10%,var(--surface-2)) 0%,var(--surface-2) 100%)}
 .scene.sky-clouds{background:linear-gradient(180deg,color-mix(in srgb,#9AA3B2 16%,var(--surface-2)) 0%,var(--surface-2) 100%)}
 .scene.sky-storm{background:linear-gradient(180deg,color-mix(in srgb,#3E4658 38%,var(--surface-2)) 0%,color-mix(in srgb,#3E4658 12%,var(--surface-2)) 100%)}
-.scene.sky-sunset{background:linear-gradient(180deg,color-mix(in srgb,#8E6BBF 14%,var(--surface-2)) 0%,color-mix(in srgb,#F28C28 18%,var(--surface-2)) 100%)}
+.scene.sky-sunset{--land-solid:color-mix(in srgb,#F28C28 16%,var(--surface-2));background:linear-gradient(180deg,color-mix(in srgb,#8E6BBF 14%,var(--surface-2)) 0%,color-mix(in srgb,#F28C28 18%,var(--surface-2)) 100%)}
+/* the sun setting behind the land on the right */
+.scene .sc-sunset{position:absolute;left:86%;top:66%;height:28%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;
+  background:radial-gradient(circle,rgba(246,150,80,.95) 0 58%,rgba(246,150,80,0) 60%);box-shadow:0 0 0 14px rgba(246,150,80,.12),0 0 40px 18px rgba(246,150,80,.16)}
 .scene .wcloud{animation:drift 46s ease-in-out infinite alternate}
 .scene .wdrop{animation:fall 1.5s linear infinite;opacity:0}
 @keyframes drift{from{transform:translateX(-26px)}to{transform:translateX(26px)}}

@@ -139,7 +139,7 @@ export function Journey({ g, goals, tasks, projects, people, solo, onEdit, showL
           <svg width="34" height="44" viewBox="0 0 34 44" aria-hidden="true"><path d="M8 4 V42" stroke="var(--fg)" strokeWidth="2.4" strokeLinecap="round" />
             <path d="M9 5 C 16 2, 22 9, 31 6 V 20 C 22 23, 16 16, 9 19 Z" fill={gc} stroke="var(--fg)" strokeWidth="1.6" strokeLinejoin="round" />
             {pg >= 100 && <path d="M14 12 l4 4 l7 -8" stroke="#fff" strokeWidth="2.6" fill="none" strokeLinecap="round" strokeLinejoin="round" />}</svg>
-          <span title={lp ? fmtDate(lp.leg.end, { day: 'numeric', month: 'long', year: 'numeric' }) : undefined}>{lp ? `End of ${lp.leg.short}` : fmtDate(g.end_date!, { month: 'short', year: 'numeric' })}</span></div>
+          <span title={lp ? fmtDate(lp.leg.end, { day: 'numeric', month: 'long', year: 'numeric' }) : undefined}>{lp ? `End of ${lp.leg.short}` : g.end_date ? fmtDate(g.end_date, { month: 'short', year: 'numeric' }) : 'Done'}</span></div>
         {elapsed != null && elapsed > 0 && elapsed < 100 && pg < 100 &&
           <div className="jtoday" style={{ left: `${at(elapsed / 100)[0] / 10}%` }}><span>{lp ? 'Last quarter\'s pace, today' : 'Today, by the calendar'}</span></div>}
         <div className="jflock" style={{ left: `max(${fx / 10}%, ${arms * 34 + 50}px)`, top: fy - 22 - (pg >= 100 ? 16 : 0) }}>

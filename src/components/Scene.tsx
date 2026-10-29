@@ -4,6 +4,7 @@
  * (trees, palms, buildings), which keep their shape and sit on the ground; and the weather on top.
  * Colours are see-through so the scenes work on light and dark themes.
  */
+import { Children, cloneElement, isValidElement, type ReactElement, type ReactNode } from 'react';
 import type { Goal, GoalRef } from '../lib/types';
 import type { IconName } from './Logo';
 
@@ -115,12 +116,26 @@ const WEATHER: Record<Weather, JSX.Element> = {
     {/* a bolt of lightning under each cloud */}
     <g fill="none" stroke="rgba(244,203,93,.75)" strokeWidth="2.2" strokeLinejoin="round" strokeLinecap="round">
       <path d="M206 42 l -9 16 h 9 l -7 17" /><path d="M486 40 l -10 18 h 10 l -8 18" /><path d="M790 44 l -9 16 h 9 l -7 16" /></g></>,
-  sunset: <g><circle cx="640" cy="128" r="44" fill="rgba(240,140,70,.14)" /><circle cx="640" cy="128" r="24" fill="rgba(240,140,70,.50)" /></g>,
+  // the setting sun is drawn behind the land (see Scene)
+  sunset: <></>,
 };
+
+/** Where the horizon is on the right of each landscape (in the 190-high drawing), so the setting sun sits half behind it. */
+const HORIZON: Record<SceneId, number> = { hills: 126, dunes: 124, mountains: 114, coast: 152, forest: 120, lake: 128, fields: 126, city: 152 };
+
+/** The land as one solid shape (the terrain is see-through), so a setting sun behind it is hidden. */
+function solidLand(scene: SceneId) {
+  return Children.toArray((TERRAIN[scene] as ReactElement<{ children: ReactNode }>).props.children)
+    .filter((c): c is ReactElement<{ fill?: string }> => isValidElement(c) && (c.props as { fill?: string }).fill !== 'none')
+    .map((c, i) => cloneElement(c as ReactElement<Record<string, unknown>>, { key: i, fill: 'var(--land-solid)', stroke: 'none' }));
+}
 
 export function Scene({ scene, weather, className = '' }: { scene: SceneId; weather: Weather; className?: string }) {
   return (
     <div className={`scene sky-${weather} ${className}`} aria-hidden="true">
+      {weather === 'sunset' && <>
+        <span className="sc-sunset" style={{ top: `${(HORIZON[scene] / 190 * 100).toFixed(1)}%` }} />
+        <svg className="sc-solid" viewBox="0 0 1000 190" preserveAspectRatio="none">{solidLand(scene)}</svg></>}
       <svg className="sc-terrain" viewBox="0 0 1000 190" preserveAspectRatio="none">{TERRAIN[scene]}</svg>
       <svg className="sc-detail" viewBox="0 0 1600 190" preserveAspectRatio="xMidYMax slice">{DETAILS[scene]}</svg>
       <svg className="sc-weather" viewBox="0 0 1000 190" preserveAspectRatio="xMidYMin slice">{WEATHER[weather]}</svg>
