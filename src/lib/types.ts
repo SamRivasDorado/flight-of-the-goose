@@ -40,7 +40,7 @@ export interface Project {
   end_date: string | null;
   owner_member_id: string | null;
   /** On track / At risk / Off track set by hand; null (the default) when worked out automatically. */
-  health_manual?: 'on_track' | 'at_risk' | 'off_track' | null;
+  health_manual?: 'on_track' | 'at_risk' | 'off_track' | 'quiet' | null;
 }
 
 export interface Task {
@@ -150,14 +150,13 @@ export const ACCESS_DESC: Record<Access, string> = {
   guest: 'Read-only, for example a client',
 };
 
-/** 'quiet' is only ever worked out in the app (automatic status); it is never stored. */
 export type GoalStatus = 'on_track' | 'at_risk' | 'off_track' | 'achieved' | 'quiet';
 export const GOAL_STATUSES: { id: GoalStatus; label: string; color: string; tone: string; desc: string }[] = [
   { id: 'on_track', label: 'On track', color: '#6B9160', tone: 'good', desc: 'You expect to reach the goal in its period.' },
   { id: 'at_risk', label: 'At risk', color: '#E39A3E', tone: 'warn', desc: 'Reachable, but something needs attention.' },
   { id: 'off_track', label: 'Off track', color: '#C8634A', tone: 'bad', desc: 'Unlikely to be reached without a change of plan.' },
+  { id: 'quiet', label: 'Quiet', color: '#9A8566', tone: 'quiet', desc: 'Nothing wrong, but nothing is happening.' },
   { id: 'achieved', label: 'Done', color: '#5B83B5', tone: 'done', desc: 'Reached. Progress shows 100%.' },
-  { id: 'quiet', label: 'Quiet', color: '#9A8566', tone: 'quiet', desc: 'Nothing has happened for 15 days (automatic only).' },
 ];
 
 export interface Goal {

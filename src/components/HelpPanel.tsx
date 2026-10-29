@@ -52,7 +52,7 @@ const TOPICS: Topic[] = [
       <li>The project page also has a <b>flight log</b>: a column per quarter for the tasks finished, once the project has run for more than one quarter. Untick <b>Show flight log</b> (above the progress) to hide it.</li>
       <li><b>Mark complete</b> (on the project's page) finishes a project: it moves to Done, the geese fly, and the day is recorded for the flight log on Strategy. If tasks are still open, you choose whether to complete them too. <b>Reopen</b> undoes it.</li>
       <li><b>Project settings</b> holds the dates, status, colour, symbol or image, linked goals and default values (for example Priority) that its tasks inherit.</li>
-      <li><b>Status</b> (On track, At risk, Off track, Quiet) is worked out with the same rule as goals; see <i>Status: on track or not</i>. <b>Paused</b> and <b>Done</b> you set yourself: Paused in Project settings, Done with <b>Mark complete</b>. You can also set On track, At risk or Off track by hand in Project settings.</li>
+      <li><b>Status</b> (On track, At risk, Off track, Quiet) is worked out with the same rule as goals; see <i>Status: on track or not</i>. <b>Paused</b> and <b>Done</b> you set yourself: Paused in Project settings, Done with <b>Mark complete</b>. You can also set On track, At risk, Off track or Quiet by hand in Project settings.</li>
     </ul></> },
   { id: 'status', title: 'Status: on track or not', icon: 'flag', body: <>
     <p className="lead">Goals and projects use the same words, the same colours and the same rule.</p>
@@ -60,17 +60,19 @@ const TOPICS: Topic[] = [
       ['bad', 'Off track', 'Seriously late or behind.'], ['quiet', 'Quiet', 'Nothing wrong, but nothing has happened for 15 days.'],
       ['done', 'Done', 'Finished (100%, or a project marked complete).'], ['idle', 'Paused', 'Projects only: set aside for now.']]} />
     <ul>
-      <li><b>How it is decided</b>, from the most serious down; the first that applies wins:
-        <Dots items={[['bad', 'Off track', 'Past its end date and not finished; or a task more than 14 days overdue; or more than 25 points behind the calendar.'],
-          ['warn', 'At risk', 'At least one overdue task; or 11 to 25 points behind the calendar.'],
-          ['quiet', 'Quiet', 'Nothing has happened for 15 days or more: no task created or completed, no notebook entry.'],
-          ['good', 'On track', 'Everything else.']]} /></li>
+      <li><b>How it is decided.</b> Goose checks from the most serious down, and the first that applies wins:
+        <ol className="hsteps">
+          <li><b>Off track</b> if it is past its end date and not finished, a task is more than 14 days overdue, or it is more than 25 points behind the calendar.</li>
+          <li>Otherwise <b>At risk</b> if at least one task is overdue, or it is 11 to 25 points behind the calendar.</li>
+          <li>Otherwise <b>Quiet</b> if nothing has happened for 15 days or more: no task created or completed, no notebook entry.</li>
+          <li>Otherwise <b>On track</b>.</li>
+        </ol></li>
       <li><b>Points behind the calendar</b> only apply to things with an end date (fixed-term projects, goals with an end date). Goose compares two percentages: how much is done, and how much of the time has gone from the start date to the end date. The difference is the points behind or ahead.
         <br />Example: from 1 January to 31 December, the time is 50% gone on 1 July. At 40% done that is 10 points behind the calendar (still on track); at 60% done, 10 points ahead.</li>
       <li><b>Without an end date</b> (ongoing projects, open-ended goals such as “Maintain client satisfaction”) there is no deadline to be behind, so only overdue tasks and activity count. Their quarterly pace still shows on the card and in the Journey, as information.</li>
       <li><b>Quiet is not a warning.</b> A quiet support project may simply mean clients are happy. It only shows when nothing is overdue and nothing is behind; a real problem always shows first.</li>
       <li><b>Hover a status</b> to see why, for example “1 overdue task, 13 points ahead of the calendar (84% of tasks done, 71% of the time gone)”.</li>
-      <li><b>Set by hand</b> when you know something the numbers do not, such as a client delay: in the goal's form or in Project settings, choose On track, At risk or Off track instead of Automatic. It stays as you set it until you switch back to Automatic.</li>
+      <li><b>Set by hand</b> when you know something the numbers do not, such as a client delay: in the goal's form or in Project settings, choose On track, At risk, Off track or Quiet instead of Automatic. It stays as you set it until you switch back to Automatic.</li>
       <li>On Strategy, the <b>weather</b> over each goal follows its status: clear skies, clouds, a storm, mist when quiet, or sunset when done.</li>
     </ul></> },
   { id: 'tasks', title: 'Tasks', icon: 'tasks', page: 'tasks', go: '#/tasks', body: <>

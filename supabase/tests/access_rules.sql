@@ -436,9 +436,13 @@ end $$;
 update projects set health_manual = 'at_risk' where name = 'P2 private';
 select pg_temp.check((select health_manual = 'at_risk' from projects where name = 'P2 private'), 'a project keeps a status set by hand');
 do $$ begin
-  begin update projects set health_manual = 'quiet' where name = 'P2 private'; raise exception 'FAILED: saved an unknown project status';
+  begin update projects set health_manual = 'sleepy' where name = 'P2 private'; raise exception 'FAILED: saved an unknown project status';
   exception when check_violation then raise notice 'ok  only known project statuses are saved'; end;
 end $$;
 select pg_temp.check((select bool_and(status_auto) from goals), 'goals work out their status automatically by default');
+update goals set status = 'quiet', status_auto = false where title = 'Goal linked to P2';
+select pg_temp.check((select status = 'quiet' from goals where title = 'Goal linked to P2'), 'a goal can be set to Quiet by hand');
+update projects set health_manual = 'quiet' where name = 'P2 private';
+select pg_temp.check((select health_manual = 'quiet' from projects where name = 'P2 private'), 'a project can be set to Quiet by hand');
 
 select 'ALL ACCESS TESTS PASSED' as result;

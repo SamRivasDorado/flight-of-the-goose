@@ -854,3 +854,4 @@ button.brand:hover{background:var(--bar-hi)}
 .pcard .next.quietnote{color:var(--quiet,#8A6440);font-weight:500}
 .scene.sky-calm{background:linear-gradient(180deg,color-mix(in srgb,#B8B2A2 14%,var(--surface-2)) 0%,var(--surface-2) 100%)}
 .tone-quiet{--tone:#9A8566}
+.hsteps{margin:6px 0 4px;padding-left:22px;display:flex;flex-direction:column;gap:3px}
