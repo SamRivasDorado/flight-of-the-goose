@@ -334,7 +334,7 @@ textarea.notes{width:100%;min-height:90px;border:1px solid var(--line);border-ra
 .kindpick label{border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;gap:10px;align-items:flex-start;cursor:pointer;font-size:13px}
 .kindpick label.on{border-color:var(--accent);background:var(--accent-soft)}
 .kindpick b{display:block;font-size:14px}
-.tone-good{--tone:var(--ok)}.tone-warn{--tone:var(--warn)}.tone-bad{--tone:var(--danger)}.tone-idle{--tone:var(--faint)}.tone-quiet{--tone:var(--quiet)}.tone-done{--tone:var(--accent)}
+.tone-good{--tone:var(--ok)}.tone-warn{--tone:var(--warn)}.tone-bad{--tone:var(--danger)}.tone-idle{--tone:var(--faint)}.tone-quiet{--tone:var(--quiet)}.tone-done{--tone:#5B83B5}
 .panel[class*="tone-"],.pcard[class*="tone-"],.goal[class*="tone-"]{border:1.5px solid color-mix(in srgb,var(--tone) 70%,var(--line))}
 .panel[class*="tone-"]{background:color-mix(in srgb,var(--tone) 5%,var(--surface))}
 .panel[class*="tone-"] h2::before,.tonedot::before{content:"";width:10px;height:10px;border-radius:50%;background:var(--tone);display:inline-block;align-self:center;flex:none}
@@ -422,7 +422,7 @@ textarea.notes{width:100%;min-height:90px;border:1px solid var(--line);border-ra
 .goal{background:var(--surface);border:1px solid var(--line);border-radius:14px;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);overflow:hidden}
 .gmain{padding:18px;display:flex;flex-direction:column;gap:14px;min-width:0}
 .gsubs{padding:18px 18px 18px 22px;display:flex;flex-direction:column;gap:12px;min-width:0;position:relative;border-left:0;background:color-mix(in srgb,var(--surface-2) 45%,var(--surface))}
-.gsubs::before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:3px;border-radius:3px;background:var(--tone,var(--faint))}
+.gsubs::before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:3px;border-radius:3px;background:var(--gc,var(--tone,var(--faint)))}
 .glevel{font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:600;color:var(--muted)}
 .gtasks{display:flex;flex-direction:column;gap:2px}
 .gtasks .mini{padding:4px 6px;border-radius:6px}.gtasks .mini:hover{background:var(--surface-2)}
@@ -624,16 +624,14 @@ button.brand:hover{background:var(--bar-hi)}
 .sview button.on{background:var(--accent-soft);color:var(--fg);font-weight:600}
 .sview button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 .journeys{display:flex;flex-direction:column;gap:16px}
-.jlane{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px 12px;min-width:0}
+.jlane{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--gc,var(--line));border-radius:12px;padding:14px 16px 12px;min-width:0}
 .jhead{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
 .jhead h3{margin:0;font-size:16px}.jhead h3 button{all:unset;cursor:pointer}.jhead h3 button:hover{text-decoration:underline}
 .jhead h3 button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.jmap{position:relative;height:190px;margin:10px 0 6px;border-radius:10px;overflow:hidden;background:linear-gradient(180deg,color-mix(in srgb,var(--surface-2) 55%,var(--surface)) 0%,var(--surface-2) 100%)}
+.jmap{position:relative;height:190px;margin:10px 0 6px;border-radius:10px;overflow:hidden}
 .jmap .land{position:absolute;inset:0;width:100%;height:100%}
-.jmap .land .h1{fill:color-mix(in srgb,var(--accent) 9%,transparent)}
-.jmap .land .h2{fill:color-mix(in srgb,var(--accent) 15%,transparent)}
 .jmap .land .route{fill:none;stroke:var(--faint);stroke-width:2;stroke-dasharray:2 7;stroke-linecap:round;vector-effect:non-scaling-stroke}
-.jmap .land .flown{fill:none;stroke:var(--accent);stroke-width:2.5;stroke-linecap:round;vector-effect:non-scaling-stroke;opacity:.7}
+.jmap .land .flown{fill:none;stroke:var(--gc,var(--accent));stroke-width:3;stroke-linecap:round;vector-effect:non-scaling-stroke;opacity:.7}
 .jpin{position:absolute;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:2px;font-size:12px;color:var(--muted);white-space:nowrap}
 .jstart{left:6%;top:112px}.jdest{left:94%;top:72px}
 .jtoday{position:absolute;top:10px;bottom:36px;border-left:2px dashed color-mix(in srgb,var(--fg) 30%,transparent)}
@@ -818,3 +816,42 @@ button.brand:hover{background:var(--bar-hi)}
 .chip.ghost{background:transparent;border:1px dashed color-mix(in srgb,var(--c) 70%,var(--line));color:var(--muted);cursor:pointer}
 .chip.ghost .ic{width:11px;height:11px;flex:none;margin-top:2px}
 .repends{display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+
+/* goal scenes: landscape (destination) and weather (status) — components/Scene.tsx */
+.scene{position:absolute;inset:0;overflow:hidden}
+.scene svg{position:absolute;inset:0;width:100%;height:100%}
+.scene.sky-clear{background:linear-gradient(180deg,color-mix(in srgb,#7FB2E0 10%,var(--surface-2)) 0%,var(--surface-2) 100%)}
+.scene.sky-clouds{background:linear-gradient(180deg,color-mix(in srgb,#9AA3B2 16%,var(--surface-2)) 0%,var(--surface-2) 100%)}
+.scene.sky-storm{background:linear-gradient(180deg,color-mix(in srgb,#3E4658 38%,var(--surface-2)) 0%,color-mix(in srgb,#3E4658 12%,var(--surface-2)) 100%)}
+.scene.sky-sunset{--land-solid:color-mix(in srgb,#F28C28 16%,var(--surface-2));background:linear-gradient(180deg,color-mix(in srgb,#8E6BBF 14%,var(--surface-2)) 0%,color-mix(in srgb,#F28C28 18%,var(--surface-2)) 100%)}
+/* the sun setting behind the land on the right */
+.scene .sc-sunset{position:absolute;left:86%;top:66%;height:28%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;
+  background:radial-gradient(circle,rgba(246,150,80,.95) 0 58%,rgba(246,150,80,0) 60%);box-shadow:0 0 0 14px rgba(246,150,80,.12),0 0 40px 18px rgba(246,150,80,.16)}
+.scene .wcloud{animation:drift 46s ease-in-out infinite alternate}
+.scene .wdrop{animation:fall 1.5s linear infinite;opacity:0}
+@keyframes drift{from{transform:translateX(-26px)}to{transform:translateX(26px)}}
+@keyframes fall{0%{transform:translate(0,0);opacity:0}10%{opacity:1}85%{opacity:1}100%{transform:translate(-24px,140px);opacity:0}}
+@media (prefers-reduced-motion:reduce){.scene .wcloud,.scene .wdrop{animation:none}.scene .wdrop{opacity:1}}
+.scene.thumb{position:relative;display:block;height:44px;border-radius:6px}
+.gicon{--c:#999;display:inline-grid;place-items:center;width:24px;height:24px;border-radius:7px;background:var(--c);color:#fff;flex:none}
+.gicon .ic{width:14px;height:14px}
+.gicon.lg{width:30px;height:30px;border-radius:8px}.gicon.lg .ic{width:17px;height:17px}
+.jhead .gtagw{margin-right:2px}
+/* goal cards: the landscape as a strip across the top */
+.goal .gstrip{grid-column:1/-1;position:relative;height:54px;border-bottom:3px solid var(--gc,var(--line))}
+.goal .gtitle{display:flex;gap:10px;align-items:flex-start}
+.goal .gtitle .gicon{margin-top:2px}
+/* goal form: landscape choice */
+.scenepick{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}
+.scenepick button{all:unset;cursor:pointer;display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);border-radius:8px;padding:3px;border:2px solid transparent}
+.scenepick button.on{border-color:var(--accent);color:var(--fg)}
+.scenepick button:focus-visible{outline:2px solid var(--accent)}
+
+/* Help: statuses with their coloured dots */
+.hdots{list-style:none;margin:6px 0 8px;padding:0;display:flex;flex-direction:column;gap:4px}
+.hdots li{display:flex;gap:8px;align-items:baseline;margin:0}
+.hdots .tonedot{flex:none;min-width:104px;font-weight:600}
+.pcard .next.quietnote{color:var(--quiet,#8A6440);font-weight:500}
+.scene.sky-calm{background:linear-gradient(180deg,color-mix(in srgb,#B8B2A2 14%,var(--surface-2)) 0%,var(--surface-2) 100%)}
+.tone-quiet{--tone:#9A8566}
+.hsteps{margin:6px 0 4px;padding-left:22px;display:flex;flex-direction:column;gap:3px}

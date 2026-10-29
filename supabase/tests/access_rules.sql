@@ -424,4 +424,25 @@ update tasks set status = 'done', completed_at = current_date where title = 'Wee
 select pg_temp.check((select count(*) from tasks where title = 'Weekly report') = 2, 'reopening and completing again does not create a second copy');
 reset role;
 
+-- goal symbols and landscapes
+update goals set icon = 'globe', scene = 'dunes' where title = 'Goal linked to P2';
+select pg_temp.check((select scene = 'dunes' and icon = 'globe' from goals where title = 'Goal linked to P2'), 'a goal keeps its symbol and landscape');
+do $$ begin
+  begin update goals set scene = 'moon' where title = 'Goal linked to P2'; raise exception 'FAILED: saved an unknown landscape';
+  exception when check_violation then raise notice 'ok  only known landscapes are saved'; end;
+end $$;
+
+-- status set by hand on a project
+update projects set health_manual = 'at_risk' where name = 'P2 private';
+select pg_temp.check((select health_manual = 'at_risk' from projects where name = 'P2 private'), 'a project keeps a status set by hand');
+do $$ begin
+  begin update projects set health_manual = 'sleepy' where name = 'P2 private'; raise exception 'FAILED: saved an unknown project status';
+  exception when check_violation then raise notice 'ok  only known project statuses are saved'; end;
+end $$;
+select pg_temp.check((select bool_and(status_auto) from goals), 'goals work out their status automatically by default');
+update goals set status = 'quiet', status_auto = false where title = 'Goal linked to P2';
+select pg_temp.check((select status = 'quiet' from goals where title = 'Goal linked to P2'), 'a goal can be set to Quiet by hand');
+update projects set health_manual = 'quiet' where name = 'P2 private';
+select pg_temp.check((select health_manual = 'quiet' from projects where name = 'P2 private'), 'a project can be set to Quiet by hand');
+
 select 'ALL ACCESS TESTS PASSED' as result;

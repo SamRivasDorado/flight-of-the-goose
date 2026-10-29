@@ -1,9 +1,11 @@
 import { todayISO } from './data';
-import { diffDays, parseISO } from './format';
+import { parseISO } from './format';
 import type { Project, Task } from './types';
+import { daysSince, judge, overdueOf, STATUS, type Tone, type Verdict } from './status';
 
-export type Tone = 'good' | 'warn' | 'quiet' | 'bad' | 'idle';
-export interface Health { label: string; color: string; tone: Tone }
+export type { Tone } from './status';
+/** A project's status: label, colour and tone for the dot, and why (for the tooltip). */
+export interface Health { label: string; color: string; tone: Tone; why: string; id: Verdict | 'done' | 'paused' }
 
 /** Latest date something happened in the project: a task created or completed, or a notebook entry. */
 export function lastActivity(p: Project, tasks: Task[], noteDates: { project_id: string; entry_date: string }[]): string | null {
@@ -22,22 +24,23 @@ export function elapsed(p: Project): number {
   return e <= s ? 1 : Math.max(0, Math.min(1, (n - s) / (e - s)));
 }
 
-/** Project status, with the same rules as the prototype (explained on the Projects page). */
-export function health(p: Project, tasks: Task[], noteDates: { project_id: string; entry_date: string }[]): Health {
+/** Project status, with the rule shared with goals (lib/status.ts, explained in Help). */
+export function health(p: Project, tasks: Task[], noteDates: { project_id: string; entry_date: string }[] = []): Health {
+  const make = (id: Verdict | 'done' | 'paused', why: string): Health => ({ id, ...STATUS[id], why });
+  if (p.status === 'closed') return make('done', 'marked complete');
+  if (p.status === 'paused') return make('paused', 'paused in its settings');
+  if (p.health_manual) return make(p.health_manual, 'set by hand in its settings');
+  const today = todayISO();
   const ts = tasks.filter(t => t.project_id === p.id), open = ts.filter(t => t.status !== 'done');
-  const overdue = open.filter(t => t.due_date && diffDays(t.due_date) < 0).length;
-  if (p.status === 'closed') return { label: 'Done', color: '#7C8577', tone: 'idle' };
-  if (p.status === 'paused') return { label: 'Paused', color: '#B89A6A', tone: 'idle' };
+  const last = [lastActivity(p, tasks, noteDates), p.created_at?.slice(0, 10)].filter((x): x is string => !!x && x <= today).sort().pop() ?? null;
+  const facts = { ...overdueOf(ts, today), idle: daysSince(last, today) };
   if (p.kind === 'fixed' && p.end_date) {
-    if (diffDays(p.end_date) < 0 && open.length) return { label: 'Past end date', color: '#C8634A', tone: 'bad' };
-    const pct = ts.length ? ts.filter(t => t.status === 'done').length / ts.length : 0;
-    if (overdue || elapsed(p) - pct > 0.25) return { label: 'At risk', color: '#E39A3E', tone: 'warn' };
-    return { label: 'On track', color: '#6B9160', tone: 'good' };
+    const pct = ts.length ? Math.round((ts.length - open.length) / ts.length * 100) : 0, el = Math.round(elapsed(p) * 100);
+    const j = judge({ ...facts, behind: el - pct, pastEnd: p.end_date < today && open.length > 0 });
+    return make(j.status, `${j.why} (${pct}% of tasks done, ${el}% of the time gone)`);
   }
-  const last = lastActivity(p, tasks, noteDates);
-  if (overdue) return { label: `${overdue} overdue`, color: '#E39A3E', tone: 'warn' };
-  if (!last || diffDays(last) < -30) return { label: 'Quiet', color: '#8A6440', tone: 'quiet' };
-  return { label: 'Active', color: '#6B9160', tone: 'good' };
+  const j = judge({ ...facts, behind: null });
+  return make(j.status, j.why);
 }
 
 /** Tasks completed per week for the last n weeks (oldest first). */

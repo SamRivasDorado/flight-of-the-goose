@@ -10,6 +10,7 @@ import { goalTree } from '../lib/goaltag';
 import { OptPill } from '../components/Lens';
 import { byDue, diffDays, dueLabel, firstName, hrs } from '../lib/format';
 import { elapsed, fmtDate, health, lastActivity, type Health } from '../lib/projects';
+import { STATUS } from '../lib/status';
 import { Avatar, Icon } from '../components/Logo';
 import { ProjectIcon } from '../components/ProjectChip';
 import { ProjectRoute } from '../components/Geese';
@@ -28,7 +29,6 @@ export function Projects() {
     return { projects, tasks, members, noteDates };
   }, [ws.workspace_id, ui.version]);
   const [dialog, setDialog] = useState<null | { kind?: 'fixed' | 'ongoing' }>(null);
-  const [critOpen, setCritOpen] = useState(false);
   const manager = canManage(ws.access);
   const [showDone, setShowDone] = useLocalPref('showDoneProjects', false);
 
@@ -36,8 +36,8 @@ export function Projects() {
   const hp = (p: ProjectFull) => health(p, data!.tasks, data!.noteDates);
   const live = ps.filter(p => p.status !== 'closed'), closed = ps.filter(p => p.status === 'closed');
   const fixed = live.filter(p => p.kind === 'fixed'), ongoing = live.filter(p => p.kind !== 'fixed');
-  const tally = { good: 0, warn: 0, quiet: 0, bad: 0, idle: 0 };
-  if (data) ps.forEach(p => tally[hp(p).tone]++);
+  const tally = { on_track: 0, at_risk: 0, off_track: 0, quiet: 0, paused: 0, done: 0 };
+  if (data) ps.forEach(p => tally[hp(p).id]++);
   const card = (p: ProjectFull) => <ProjectCard key={p.id} p={p} h={hp(p)} tasks={data!.tasks} members={data!.members} noteDates={data!.noteDates} />;
 
   return (
@@ -48,27 +48,10 @@ export function Projects() {
       {data && (
         <>
           <div className="statusbar">
-            <span className="tonedot tone-good"><b>{tally.good}</b> on track or active</span>
-            <span className="tonedot tone-warn"><b>{tally.warn}</b> need attention</span>
-            <span className="tonedot tone-quiet"><b>{tally.quiet}</b> quiet</span>
-            <span className="tonedot tone-bad"><b>{tally.bad}</b> off track</span>
-            <span className="tonedot tone-idle"><b>{tally.idle}</b> paused or done</span>
+            {(['on_track', 'at_risk', 'off_track', 'quiet', 'paused', 'done'] as const).map(k =>
+              <span key={k} className={`tonedot tone-${STATUS[k].tone}`}><b>{tally[k]}</b> {STATUS[k].label.toLowerCase()}</span>)}
             <label className="chk" style={{ marginLeft: 'auto' }}><input type="checkbox" checked={showDone} onChange={e => setShowDone(e.target.checked)} />Show completed</label>
           </div>
-          <details className="criteria" open={critOpen} onToggle={e => setCritOpen((e.target as HTMLDetailsElement).open)}>
-            <summary>How project status is decided</summary>
-            <div className="cgrid">
-              <div><h4>Fixed-term projects</h4><ul>
-                <li><span className="tonedot tone-good">On track</span><span>No overdue tasks, and the share of tasks done keeps pace with the time elapsed.</span></li>
-                <li><span className="tonedot tone-warn">At risk</span><span>At least one task is overdue, or the time elapsed is more than 25 percentage points ahead of the tasks done (for example 70% of the time gone, under 45% of tasks done).</span></li>
-                <li><span className="tonedot tone-bad">Past end date</span><span>The end date has passed and tasks are still open.</span></li></ul></div>
-              <div><h4>Ongoing projects</h4><ul>
-                <li><span className="tonedot tone-good">Active</span><span>Something happened in the last 30 days (a task created or completed, or a notebook entry) and nothing is overdue.</span></li>
-                <li><span className="tonedot tone-warn">Overdue</span><span>At least one open task is past its due date.</span></li>
-                <li><span className="tonedot tone-quiet">Quiet</span><span>Nothing has happened for more than 30 days.</span></li></ul>
-                <h4 style={{ marginTop: 10 }}>Any project</h4><ul><li><span className="tonedot tone-idle">Paused, Done</span><span>Set by you: <b>Mark complete</b> on the project, or its settings.</span></li></ul></div>
-            </div>
-          </details>
           {ps.length === 0 && !manager && <div className="empty">You are not part of any project yet.</div>}
           <div className="sech" style={{ marginTop: 4 }}>Fixed term <span className="muted" style={{ fontSize: 13 }}>· the bar shows tasks done, the tick shows time elapsed</span></div>
           <div className="wall">{fixed.map(card)}
@@ -112,7 +95,7 @@ function ProjectCard({ p, h, tasks, members, noteDates }: { p: ProjectFull; h: H
       {!solo && <div className="ppl-row"><span className="who">{owner && <Avatar m={owner} size="sm" />}<span>{owner ? firstName(owner.display_name) : 'No owner'}</span><span className="muted">owner</span></span>
         <AvStack list={projectPeople(p, members)} /></div>}
       <div className="body">
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}><span className="pill" style={{ ['--c' as string]: h.color }}>{h.label}</span><ProjectDims id={p.id} /></div>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}><span className="pill" style={{ ['--c' as string]: h.color }} title={`${h.label}: ${h.why}`}>{h.label}</span><ProjectDims id={p.id} /></div>
         <ProjectProgress p={p} tasks={tasks} members={members} />
         <div className="next">{next ? <>Next: <b>{next.title || 'Untitled task'}</b> · <span className={nextDue!.cls}>{nextDue!.text}</span></> : 'No upcoming dated tasks'}</div>
         <div className="next">{last ? `Last activity: ${dueLabel(last, true).text}` : 'No activity yet'}</div>

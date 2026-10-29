@@ -5,6 +5,7 @@ import { deleteGoal, saveGoal, todayISO, type GoalInput } from '../lib/data';
 import { GOAL_STATUSES, type Goal, type Member, type Project } from '../lib/types';
 import { cleanTag, colorOf, GOAL_COLORS, suggestTag, TAG_MAX } from '../lib/goaltag';
 import { GoalTag } from './GoalTag';
+import { GOAL_ICONS, SCENES, SceneThumb, sceneOf } from './Scene';
 import { Icon } from './Logo';
 import { ProjectIcon } from './ProjectChip';
 
@@ -16,10 +17,13 @@ export function GoalDialog({ goal, parentId, goals, members, projects, onClose, 
   const ws = useWorkspace();
   const { solo } = useSolo();
   const [d, setD] = useState<GoalInput>(() => goal
-    ? { title: goal.title, short_name: goal.short_name || suggestTag(goal.title), color: goal.color ?? colorOf(goal, goals), start_date: goal.start_date, end_date: goal.end_date, status: goal.status, parent_id: goal.parent_id,
+    ? { title: goal.title, short_name: goal.short_name || suggestTag(goal.title), color: goal.color ?? colorOf(goal, goals),
+        icon: goal.icon ?? 'target', scene: goal.scene ?? sceneOf(goal, goals), status_auto: goal.status_auto !== false, start_date: goal.start_date, end_date: goal.end_date, status: goal.status, parent_id: goal.parent_id,
         owner_member_id: goal.owner_member_id, manual_progress: goal.manual_progress, notes: goal.notes, project_ids: goal.project_ids }
     : (() => { const y = new Date().getFullYear(); const tops = goals.filter(g => !g.parent_id), used = new Set(tops.map(g => colorOf(g, goals)));
-        return { title: '', short_name: '', color: GOAL_COLORS.find(c => !used.has(c)) ?? GOAL_COLORS[tops.length % GOAL_COLORS.length], start_date: todayISO(), end_date: `${y}-12-31`, status: 'on_track' as const, parent_id: parentId ?? null,
+        const scenesUsed = new Set(tops.map(g => sceneOf(g, goals)));
+        return { title: '', short_name: '', color: GOAL_COLORS.find(c => !used.has(c)) ?? GOAL_COLORS[tops.length % GOAL_COLORS.length],
+          icon: 'target', status_auto: true, scene: (parentId ? null : SCENES.find(([s]) => !scenesUsed.has(s))?.[0] ?? 'hills') as string | null, start_date: todayISO(), end_date: `${y}-12-31`, status: 'on_track' as const, parent_id: parentId ?? null,
         owner_member_id: ws.member_id, manual_progress: 0, notes: '', project_ids: [] }; })());
   // the short name follows the title until someone types their own
   const [tagTouched, setTagTouched] = useState(!!goal?.short_name);
@@ -43,7 +47,7 @@ export function GoalDialog({ goal, parentId, goals, members, projects, onClose, 
     if (!openEnded && !d.end_date) { setErr('Choose an end date, or tick “No end date”.'); return; }
     if (!openEnded && d.end_date! < d.start_date) { setErr('The end date is before the start date.'); return; }
     setBusy(true);
-    try { await saveGoal(ws.workspace_id, goal, { ...d, title: d.title.trim(), short_name: tag, color: d.parent_id ? null : d.color, end_date: openEnded ? null : d.end_date }); onSaved(); }
+    try { await saveGoal(ws.workspace_id, goal, { ...d, title: d.title.trim(), short_name: tag, color: d.parent_id ? null : d.color, scene: d.parent_id ? null : d.scene, end_date: openEnded ? null : d.end_date }); onSaved(); }
     catch (e) { setErr(e instanceof Error ? e.message : String(e)); setBusy(false); }
   }
   async function remove() {
@@ -79,6 +83,14 @@ export function GoalDialog({ goal, parentId, goals, members, projects, onClose, 
             <GoalTag g={{ id: goal?.id ?? 'new', title: d.title || 'New goal', parent_id: d.parent_id, short_name: cleanTag(d.short_name) || suggestTag(d.title || 'Goal'), color: d.color }}
               goals={[...goals.filter(g => g.id !== goal?.id), { id: goal?.id ?? 'new', title: d.title, parent_id: d.parent_id, short_name: d.short_name, color: d.color }]} />
             Up to {TAG_MAX} characters. This tag stands for the goal in the task list, on projects and in the Lens.</div>
+          <div><span className="lbl">Symbol</span><div className="icons">
+            {GOAL_ICONS.map(n => <button key={n} type="button" className={d.icon === n ? 'on' : ''} aria-label={n} aria-pressed={d.icon === n} onClick={() => set({ icon: n })}><Icon name={n} /></button>)}</div></div>
+          {d.parent_id
+            ? <div className="hint">A sub-goal flies over the same landscape as {parentTitle ?? 'its goal'}.</div>
+            : <div><span className="lbl">Landscape</span>
+              <div className="hint" style={{ margin: '-2px 0 8px' }}>Where the goal flies in the Journey; the weather there shows its status.</div>
+              <div className="scenepick">{SCENES.map(([id, label]) => <button key={id} type="button" className={d.scene === id ? 'on' : ''} aria-pressed={d.scene === id}
+                onClick={() => set({ scene: id })}><SceneThumb scene={id} />{label}</button>)}</div></div>}
           <div className="row2">
             <div><label className="lbl" htmlFor="gm-start">Start</label>
               <input id="gm-start" type="date" className="field-in" style={{ width: '100%' }} value={d.start_date} onChange={e => set({ start_date: e.target.value })} /></div>
@@ -92,8 +104,13 @@ export function GoalDialog({ goal, parentId, goals, members, projects, onClose, 
               {members.filter(m => m.access !== 'guest').map(m => <option key={m.id} value={m.id}>{m.display_name}</option>)}</select></div><div /></div>}
           <div className="row2">
             <div><label className="lbl" htmlFor="gm-status">Status</label>
-              <select id="gm-status" className="field-in" style={{ width: '100%' }} value={d.status} onChange={e => set({ status: e.target.value as GoalInput['status'] })}>
-                {GOAL_STATUSES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}</select></div>
+              <select id="gm-status" className="field-in" style={{ width: '100%' }} value={d.status_auto ? 'auto' : d.status}
+                onChange={e => e.target.value === 'auto' ? set({ status_auto: true }) : set({ status_auto: false, status: e.target.value as GoalInput['status'] })}>
+                <option value="auto">Automatic{goal && goal.status_auto !== false ? ` (now ${GOAL_STATUSES.find(s => s.id === goal.status)?.label.toLowerCase()})` : ''}</option>
+                {GOAL_STATUSES.map(s => <option key={s.id} value={s.id}>{s.label} (set by hand)</option>)}</select>
+              <div className="hint" style={{ marginTop: 4 }}>{d.status_auto
+                ? (goal?.auto_why && goal.status_auto !== false ? `Now: ${goal.auto_why}.` : 'Worked out from overdue work, activity and (with an end date) the calendar. See Help → Status.')
+                : 'Set by hand: it stays as you choose until you change it.'}</div></div>
             {hasKids ? <div /> : <div><label className="lbl" htmlFor="gm-parent">Part of</label>
               <select id="gm-parent" className="field-in" style={{ width: '100%' }} value={d.parent_id ?? ''} onChange={e => set({ parent_id: e.target.value || null })}>
                 <option value="">Nothing (top-level goal)</option>{parents.map(g => <option key={g.id} value={g.id}>{g.title}</option>)}</select></div>}

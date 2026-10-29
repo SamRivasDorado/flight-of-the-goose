@@ -7,11 +7,19 @@ import { legProgress, plural, stopsOf, type Stop } from '../lib/legs';
 import type { Goal, HelpOffer, Member, Project, Task } from '../lib/types';
 import { HelpPanel as OfferPanel } from './OfferHelp';
 import { useState } from 'react';
-import { Avatar } from './Logo';
+import { Avatar, Icon } from './Logo';
+import { Scene, iconOf, sceneOf, weatherOf } from './Scene';
+import { GoalTag } from './GoalTag';
+import { colorOf } from '../lib/goaltag';
 
 /** A goose in flight, drawn from the shared markup (static, no user content). */
 export function Goose({ delay = 0, still = false }: { delay?: number; still?: boolean }) {
   return <span className={`gwrap ${still ? 'still' : ''}`} dangerouslySetInnerHTML={{ __html: gooseMarkup(delay) }} />;
+}
+
+/** A goal's symbol on its colour, like a project's icon. */
+export function GoalIcon({ g, goals, size = '' }: { g: Goal; goals: Goal[]; size?: '' | 'lg' }) {
+  return <span className={`gicon ${size}`} style={{ ['--c' as string]: colorOf(g, goals) }} aria-hidden="true"><Icon name={iconOf(g)} /></span>;
 }
 
 /** The flag at the end of a goal's progress bar; ticked when the goal is reached. */
@@ -72,7 +80,7 @@ export function Journey({ g, goals, tasks, projects, people, solo, onEdit, showL
   const open = !g.end_date && g.status !== 'achieved';
   const lp = open ? legProgress(g, goals, tasks, projects, today) : null;
   const firstLeg = !!lp && lp.target == null;
-  const st = goalStatus(g.status), ts = goalTasks(g, tasks);
+  const st = goalStatus(g.status), ts = goalTasks(g, tasks), gc = colorOf(g, goals);
   const pg = lp ? lp.pg : goalProgress(g, goals, tasks);
   const rows = people.map(x => ({
     x,
@@ -110,15 +118,15 @@ export function Journey({ g, goals, tasks, projects, people, solo, onEdit, showL
     : <><b>On pace</b> with the calendar.</>;
 
   return (
-    <article className="jlane">
+    <article className="jlane" style={{ ['--gc' as string]: gc }}>
       <div className="jhead">
-        <h3>{onEdit ? <button onClick={() => onEdit(g)}>{g.title}</button> : g.title}</h3>
-        <span className="pill" style={{ ['--c' as string]: st.color }}>{st.label}</span><span className="tag">{goalRange(g)}</span>
+        <GoalIcon g={g} goals={goals} />
+        <h3>{onEdit ? <button onClick={() => onEdit(g)}>{g.title}</button> : g.title}</h3><GoalTag g={g} goals={goals} />
+        <span className="pill" style={{ ['--c' as string]: st.color }} title={g.status_auto === false ? 'Status set by hand' : `Status set automatically: ${g.auto_why ?? 'from progress against the calendar'}`}>{st.label}</span><span className="tag">{goalRange(g)}</span>
         <span className="grow" />{lp && <span className="tag">{lp.leg.label} leg</span>}<span className="mono muted">{firstLeg ? '–' : `${pg}%`}</span></div>
       <div className="jmap">
+        <Scene scene={sceneOf(g, goals)} weather={weatherOf(g.status)} />
         <svg className="land" viewBox="0 0 1000 190" preserveAspectRatio="none" aria-hidden="true">
-          <path className="h1" d="M0 150 C 120 112, 230 128, 330 140 C 450 154, 560 104, 690 118 C 800 130, 880 100, 1000 112 L1000 190 L0 190 Z" />
-          <path className="h2" d="M0 172 C 150 150, 260 164, 400 168 C 560 172, 650 146, 800 156 C 900 162, 950 150, 1000 154 L1000 190 L0 190 Z" />
           <path className="route" d={ROUTE} />
           {pg > 0 && <path className="flown" d={part(tf)} />}
         </svg>
@@ -129,9 +137,9 @@ export function Journey({ g, goals, tasks, projects, people, solo, onEdit, showL
           <span>{lp ? fmtDate(lp.leg.start, { day: 'numeric', month: 'short' }) : fmtDate(g.start_date, { month: 'short', year: 'numeric' })}</span></div>
         <div className="jpin jdest">
           <svg width="34" height="44" viewBox="0 0 34 44" aria-hidden="true"><path d="M8 4 V42" stroke="var(--fg)" strokeWidth="2.4" strokeLinecap="round" />
-            <path d="M9 5 C 16 2, 22 9, 31 6 V 20 C 22 23, 16 16, 9 19 Z" fill={st.color} stroke="var(--fg)" strokeWidth="1.6" strokeLinejoin="round" />
+            <path d="M9 5 C 16 2, 22 9, 31 6 V 20 C 22 23, 16 16, 9 19 Z" fill={gc} stroke="var(--fg)" strokeWidth="1.6" strokeLinejoin="round" />
             {pg >= 100 && <path d="M14 12 l4 4 l7 -8" stroke="#fff" strokeWidth="2.6" fill="none" strokeLinecap="round" strokeLinejoin="round" />}</svg>
-          <span title={lp ? fmtDate(lp.leg.end, { day: 'numeric', month: 'long', year: 'numeric' }) : undefined}>{lp ? `End of ${lp.leg.short}` : fmtDate(g.end_date!, { month: 'short', year: 'numeric' })}</span></div>
+          <span title={lp ? fmtDate(lp.leg.end, { day: 'numeric', month: 'long', year: 'numeric' }) : undefined}>{lp ? `End of ${lp.leg.short}` : g.end_date ? fmtDate(g.end_date, { month: 'short', year: 'numeric' }) : 'Done'}</span></div>
         {elapsed != null && elapsed > 0 && elapsed < 100 && pg < 100 &&
           <div className="jtoday" style={{ left: `${at(elapsed / 100)[0] / 10}%` }}><span>{lp ? 'Last quarter\'s pace, today' : 'Today, by the calendar'}</span></div>}
         <div className="jflock" style={{ left: `max(${fx / 10}%, ${arms * 34 + 50}px)`, top: fy - 22 - (pg >= 100 ? 16 : 0) }}>

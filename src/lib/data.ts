@@ -63,7 +63,7 @@ export async function listProjectsFull(ws: string): Promise<ProjectFull[]> {
     goal_ids: g.filter(x => x.project_id === p.id).map(x => x.goal_id) }));
 }
 
-export type ProjectInput = Pick<ProjectFull, 'name' | 'color' | 'icon' | 'kind' | 'status' | 'start_date' | 'end_date' | 'owner_member_id' | 'member_ids' | 'team_ids' | 'goal_ids'>;
+export type ProjectInput = Pick<ProjectFull, 'name' | 'color' | 'icon' | 'kind' | 'status' | 'health_manual' | 'start_date' | 'end_date' | 'owner_member_id' | 'member_ids' | 'team_ids' | 'goal_ids'>;
 
 /** Adds and removes link rows so the table matches the wanted list. */
 async function syncLinks(table: string, key: string, projectId: string, col: string, before: string[], after: string[]) {
@@ -272,7 +272,7 @@ export async function listGoals(ws: string): Promise<Goal[]> {
   return goals.map(g => ({ ...g, project_ids: links.filter(l => l.goal_id === g.id).map(l => l.project_id) }));
 }
 
-export type GoalInput = Pick<Goal, 'title' | 'short_name' | 'color' | 'start_date' | 'end_date' | 'status' | 'parent_id' | 'owner_member_id' | 'manual_progress' | 'notes' | 'project_ids'>;
+export type GoalInput = Pick<Goal, 'title' | 'short_name' | 'color' | 'icon' | 'scene' | 'status_auto' | 'start_date' | 'end_date' | 'status' | 'parent_id' | 'owner_member_id' | 'manual_progress' | 'notes' | 'project_ids'>;
 
 /** Creates a goal (existing = null) or saves changes, including its linked projects. */
 export async function saveGoal(ws: string, existing: Goal | null, d: GoalInput): Promise<string> {

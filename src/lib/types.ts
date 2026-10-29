@@ -39,6 +39,8 @@ export interface Project {
   start_date: string | null;
   end_date: string | null;
   owner_member_id: string | null;
+  /** On track / At risk / Off track set by hand; null (the default) when worked out automatically. */
+  health_manual?: 'on_track' | 'at_risk' | 'off_track' | 'quiet' | null;
 }
 
 export interface Task {
@@ -84,6 +86,8 @@ export interface GoalRef {
   parent_id: string | null;
   short_name?: string;
   color?: string | null;
+  icon?: string | null;
+  scene?: string | null;
 }
 
 export const STATUSES: { id: Task['status']; label: string; color: string }[] = [
@@ -146,12 +150,13 @@ export const ACCESS_DESC: Record<Access, string> = {
   guest: 'Read-only, for example a client',
 };
 
-export type GoalStatus = 'on_track' | 'at_risk' | 'off_track' | 'achieved';
+export type GoalStatus = 'on_track' | 'at_risk' | 'off_track' | 'achieved' | 'quiet';
 export const GOAL_STATUSES: { id: GoalStatus; label: string; color: string; tone: string; desc: string }[] = [
   { id: 'on_track', label: 'On track', color: '#6B9160', tone: 'good', desc: 'You expect to reach the goal in its period.' },
   { id: 'at_risk', label: 'At risk', color: '#E39A3E', tone: 'warn', desc: 'Reachable, but something needs attention.' },
   { id: 'off_track', label: 'Off track', color: '#C8634A', tone: 'bad', desc: 'Unlikely to be reached without a change of plan.' },
-  { id: 'achieved', label: 'Achieved', color: '#5B83B5', tone: 'done', desc: 'Done. Progress shows 100%.' },
+  { id: 'quiet', label: 'Quiet', color: '#9A8566', tone: 'quiet', desc: 'Nothing wrong, but nothing is happening.' },
+  { id: 'achieved', label: 'Done', color: '#5B83B5', tone: 'done', desc: 'Reached. Progress shows 100%.' },
 ];
 
 export interface Goal {
@@ -170,6 +175,13 @@ export interface Goal {
   short_name: string;
   /** The goal's colour; sub-goals use their parent's. Null: picked from the palette by position. */
   color: string | null;
+  /** The goal's symbol (an icon name) and the landscape it flies over in the Journey (null: chosen for it). */
+  icon?: string | null;
+  scene?: string | null;
+  /** Status worked out from progress against the calendar (true, the default) or set by hand (false). */
+  status_auto?: boolean;
+  /** Why the automatic status is what it is (worked out in the app, not stored). */
+  auto_why?: string;
   /** Linked projects, filled in from goal_projects. */
   project_ids: string[];
 }

@@ -82,7 +82,7 @@ const README: string[] = [
   'Dimension columns (Priority, Region, …) use the option labels. A label Goose does not know yet is added as a new option.',
   'Subtasks: one per line inside the cell, written as “[x] done subtask” or “[ ] open subtask”. Linked projects: names separated by semicolons.',
   'People (Owner, Assignee, Members, Collaborators) are matched by their name as shown on the Team page, or by email. Several are separated by semicolons.',
-  'An empty End on a goal means open-ended. Status values: To do, In progress, Done for tasks; Active, Paused, Done for projects; On track, At risk, Off track, Achieved for goals.',
+  'An empty End on a goal means open-ended. Status values: To do, In progress, Done for tasks; Active, Paused, Done for projects; On track, At risk, Off track, Done for goals (Achieved is also understood).',
   'Importing adds and updates items; it never deletes anything.',
 ];
 
@@ -339,7 +339,7 @@ export async function runImport(tables: ImportTables, d: WsData, ctx: { ws: stri
       const ed = date(r, 'End', title); if (ed !== undefined) g.end_date = ed || null;
       if (g.end_date && g.end_date < g.start_date) { W.push(`Goal “${title}” ends before it starts, so its end date was cleared.`); g.end_date = null; }
       const st = lc(val(r, 'Status'));
-      if (st) { const m = GOAL_STATUSES.find(x => lc(x.label) === st || x.id === st); if (m) g.status = m.id; else W.push(`Goal “${title}”: unknown status “${st}”.`); }
+      if (st) { const m = GOAL_STATUSES.find(x => lc(x.label) === st || x.id === st); if (m) g.status = m.id; else if (st === 'achieved') g.status = 'achieved'; else W.push(`Goal “${title}”: unknown status “${st}”.`); }
       if (has(r, 'Linked projects')) g.project_ids = str(val(r, 'Linked projects')).split(';').map(x => x.trim()).filter(Boolean)
         .map(n => { const p = projByName(n); if (!p) W.push(`Goal “${title}”: no project called “${n}”.`); return p?.id; }).filter((x): x is string => !!x);
       if (has(r, 'Manual progress %')) { const v = parseFloat(str(val(r, 'Manual progress %')).replace(',', '.')); if (isFinite(v)) g.manual_progress = Math.round(Math.max(0, Math.min(100, v))); }
@@ -541,7 +541,7 @@ export async function restoreBackup(b: Backup, name: string, me_: { uid: string;
   const goals = rows('goals');
   const goalRow = (g: Row) => ({ id: fresh(g.id), workspace_id: ws, title: g.title, start_date: g.start_date, end_date: g.end_date, status: g.status, manual_progress: g.manual_progress,
     notes: g.notes ?? '', owner_member_id: person(g.owner_member_id) ?? me, created_at: g.created_at,
-    short_name: g.short_name ?? '', color: g.color ?? null });
+    short_name: g.short_name ?? '', color: g.color ?? null, ...(g.icon ? { icon: g.icon } : {}), ...(g.scene ? { scene: g.scene } : {}) });
   await insert('goals', goals.filter(g => !g.parent_id).map(goalRow));
   await insert('goals', goals.filter(g => g.parent_id && map(g.parent_id)).map(g => ({ ...goalRow(g), parent_id: map(g.parent_id) })));
   await insert('goal_projects', rows('goal_projects').filter(x => map(x.goal_id) && map(x.project_id)).map(x => ({ goal_id: map(x.goal_id), project_id: map(x.project_id) })));
