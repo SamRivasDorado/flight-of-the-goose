@@ -28,7 +28,6 @@ export function Projects() {
     return { projects, tasks, members, noteDates };
   }, [ws.workspace_id, ui.version]);
   const [dialog, setDialog] = useState<null | { kind?: 'fixed' | 'ongoing' }>(null);
-  const [critOpen, setCritOpen] = useState(false);
   const manager = canManage(ws.access);
   const [showDone, setShowDone] = useLocalPref('showDoneProjects', false);
 
@@ -55,20 +54,6 @@ export function Projects() {
             <span className="tonedot tone-idle"><b>{tally.idle}</b> paused or done</span>
             <label className="chk" style={{ marginLeft: 'auto' }}><input type="checkbox" checked={showDone} onChange={e => setShowDone(e.target.checked)} />Show completed</label>
           </div>
-          <details className="criteria" open={critOpen} onToggle={e => setCritOpen((e.target as HTMLDetailsElement).open)}>
-            <summary>How project status is decided</summary>
-            <div className="cgrid">
-              <div><h4>Fixed-term projects</h4><ul>
-                <li><span className="tonedot tone-good">On track</span><span>No overdue tasks, and the share of tasks done keeps pace with the time elapsed.</span></li>
-                <li><span className="tonedot tone-warn">At risk</span><span>At least one task is overdue, or the time elapsed is more than 25 percentage points ahead of the tasks done (for example 70% of the time gone, under 45% of tasks done).</span></li>
-                <li><span className="tonedot tone-bad">Past end date</span><span>The end date has passed and tasks are still open.</span></li></ul></div>
-              <div><h4>Ongoing projects</h4><ul>
-                <li><span className="tonedot tone-good">Active</span><span>Something happened in the last 30 days (a task created or completed, or a notebook entry) and nothing is overdue.</span></li>
-                <li><span className="tonedot tone-warn">Overdue</span><span>At least one open task is past its due date.</span></li>
-                <li><span className="tonedot tone-quiet">Quiet</span><span>Nothing has happened for more than 30 days.</span></li></ul>
-                <h4 style={{ marginTop: 10 }}>Any project</h4><ul><li><span className="tonedot tone-idle">Paused, Done</span><span>Set by you: <b>Mark complete</b> on the project, or its settings.</span></li></ul></div>
-            </div>
-          </details>
           {ps.length === 0 && !manager && <div className="empty">You are not part of any project yet.</div>}
           <div className="sech" style={{ marginTop: 4 }}>Fixed term <span className="muted" style={{ fontSize: 13 }}>· the bar shows tasks done, the tick shows time elapsed</span></div>
           <div className="wall">{fixed.map(card)}

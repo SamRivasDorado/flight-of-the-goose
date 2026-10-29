@@ -6,6 +6,11 @@ import { Icon, Logo, type IconName } from './Logo';
 /** Help topics. `page` is the screen a topic explains, so Help opens on the right topic. */
 interface Topic { id: string; title: string; icon: IconName; page?: string; go?: string; body: ReactNode; team?: boolean }
 
+/** Statuses with their coloured dots, as they appear on the cards. */
+function Dots({ items }: { items: [string, string, string][] }) {
+  return <ul className="hdots">{items.map(([tone, label, desc]) => <li key={label}><span className={`tonedot tone-${tone}`}>{label}</span><span>{desc}</span></li>)}</ul>;
+}
+
 const TOPICS: Topic[] = [
   { id: 'start', title: `How ${APP_NAME} is organised`, icon: 'book', body: <>
     <p className="lead">{APP_NAME} works on three levels, from the long term to today:</p>
@@ -31,9 +36,13 @@ const TOPICS: Topic[] = [
       <li><b>Progress</b> is calculated, in this order: the share of done tasks in the linked projects and the tasks linked directly to the goal; if there are none, the average progress of its sub-goals; otherwise the manual progress set in the goal.</li>
       <li><b>Status</b> is <b>automatic</b>: Goose compares two percentages, how much of the goal is done (its progress) and how much of its time has gone (by the calendar, from its start date to its end date). The difference between them is how far <b>behind or ahead of the calendar</b> the goal is, in points.
         <br />Example: a goal from 1 January to 31 December is 50% through its time on 1 July. If it is 40% done, it is 10 points behind the calendar; if it is 60% done, it is 10 points ahead.
-        <br />Ahead of the calendar, or up to 10 points behind, is <i>On track</i>; 11 to 25 points behind is <i>At risk</i>; more than 25 points behind is <i>Off track</i>; 100% done is <i>Achieved</i>. A goal past its end date that is not reached is <i>Off track</i>. Hover the status to see the two numbers, for example “40% done with 62% of the time gone” (22 points behind: At risk).
+        <Dots items={[['good', 'On track', 'Ahead of the calendar, or up to 10 points behind.'], ['warn', 'At risk', '11 to 25 points behind.'],
+          ['bad', 'Off track', 'More than 25 points behind, or past its end date without being reached.'], ['done', 'Achieved', '100% done.']]} />
+        Hover the status to see the two numbers, for example “40% done with 62% of the time gone” (22 points behind: At risk).
         <br />Goals with no end date use the current quarter instead: this quarter's finished tasks, as a share of last quarter's, against how much of the quarter has gone.</li>
-      <li>Know something the numbers do not, such as a client delay? In the goal's form, set <b>Status</b> by hand instead of Automatic: <i>On track</i> (you expect to reach it in its period), <i>At risk</i> (reachable, but something needs attention), <i>Off track</i> (unlikely without a change of plan) or <i>Achieved</i>. It then stays as you set it until you switch back to Automatic.</li>
+      <li>Know something the numbers do not, such as a client delay? In the goal's form, set <b>Status</b> by hand instead of Automatic. It then stays as you set it until you switch back to Automatic.
+        <Dots items={[['good', 'On track', 'You expect to reach it in its period.'], ['warn', 'At risk', 'Reachable, but something needs attention.'],
+          ['bad', 'Off track', 'Unlikely to be reached without a change of plan.'], ['done', 'Achieved', 'Done. Progress shows 100%.']]} /></li>
       <li>Link projects to a goal in the goal itself or in Project settings. <b>Add task to this goal</b> creates a task linked straight to it.</li>
       <li>Every goal has a <b>tag</b>: a short name of up to 8 characters and a colour, set in the goal's form (Goose suggests one from the title). The tag stands for the goal where its name does not fit: the Goal column of the task list, project cards and pages, and the Lens. Sub-goals share their goal's colour, so a family reads as one. A <b>dashed</b> tag means the task counts towards the goal through its project.</li>
       <li><b>Journey</b> (top right) shows each goal as a route from a nest to a flag, with the people on it flying as a flock at the goal's progress. The dashed line is where the flock should be by now, going by the goal's dates. Whoever finished most this week leads; people with overdue tasks trail at the back. Hover a goose to see why.</li>
@@ -51,6 +60,15 @@ const TOPICS: Topic[] = [
       <li>The project page also has a <b>flight log</b>: a column per quarter for the tasks finished, once the project has run for more than one quarter. Untick <b>Show flight log</b> (above the progress) to hide it.</li>
       <li><b>Mark complete</b> (on the project's page) finishes a project: it moves to Done, the geese fly, and the day is recorded for the flight log on Strategy. If tasks are still open, you choose whether to complete them too. <b>Reopen</b> undoes it.</li>
       <li><b>Project settings</b> holds the dates, status, colour, symbol or image, linked goals and default values (for example Priority) that its tasks inherit.</li>
+      <li><b>How project status is decided.</b> Fixed-term projects:
+        <Dots items={[['good', 'On track', 'No overdue tasks, and the share of tasks done keeps pace with the time elapsed.'],
+          ['warn', 'At risk', 'At least one task is overdue, or the time elapsed is more than 25 percentage points ahead of the tasks done (for example 70% of the time gone, under 45% of tasks done).'],
+          ['bad', 'Past end date', 'The end date has passed and tasks are still open.']]} />
+        Ongoing projects:
+        <Dots items={[['good', 'Active', 'Something happened in the last 30 days (a task created or completed, or a notebook entry) and nothing is overdue.'],
+          ['warn', 'Overdue', 'At least one open task is past its due date.'], ['quiet', 'Quiet', 'Nothing has happened for more than 30 days.']]} />
+        Any project:
+        <Dots items={[['idle', 'Paused, Done', 'Set by you: Mark complete on the project, or its settings.']]} /></li>
     </ul></> },
   { id: 'tasks', title: 'Tasks', icon: 'tasks', page: 'tasks', go: '#/tasks', body: <>
     <p className="lead">All your tasks in three views.</p>
