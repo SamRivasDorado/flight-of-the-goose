@@ -112,7 +112,9 @@ const WEATHER: Record<Weather, JSX.Element> = {
       const x = 110 + ((i * 37) % 820), d = ((i * 53) % 100) / 100 * 1.6, s = 1.3 + ((i * 29) % 7) / 10;
       return <path key={i} className="wdrop" style={{ animationDelay: `-${d.toFixed(2)}s`, animationDuration: `${s.toFixed(2)}s` }} d={`M${x} 40 l -3 9`} />;
     })}</g>
-    <path d="M520 40 l -10 18 h 10 l -8 18" fill="none" stroke="rgba(244,203,93,.7)" strokeWidth="2.2" strokeLinejoin="round" /></>,
+    {/* a bolt of lightning under each cloud */}
+    <g fill="none" stroke="rgba(244,203,93,.75)" strokeWidth="2.2" strokeLinejoin="round" strokeLinecap="round">
+      <path d="M206 42 l -9 16 h 9 l -7 17" /><path d="M486 40 l -10 18 h 10 l -8 18" /><path d="M790 44 l -9 16 h 9 l -7 16" /></g></>,
   sunset: <g><circle cx="640" cy="128" r="44" fill="rgba(240,140,70,.14)" /><circle cx="640" cy="128" r="24" fill="rgba(240,140,70,.50)" /></g>,
 };
 
