@@ -8,6 +8,7 @@ import { byDue, dueLabel, hrs, parseISO } from '../lib/format';
 import { fmtDate, lastActivity } from '../lib/projects';
 import { goalProgress, goalStatus } from '../lib/goals';
 import { Icon } from '../components/Logo';
+import { resolveStatuses } from '../lib/legs';
 import { PeriodPicker } from '../components/PeriodPicker';
 import { periodName, range as periodRange, taskDay, type Period } from '../lib/period';
 import { NO_PROJECT_COLOR, ProjectChip } from '../components/ProjectChip';
@@ -35,7 +36,7 @@ export function Review() {
   const self = ws.access === 'member' || ws.access === 'guest';
   const { data, error, reload } = useLoad(async () => {
     const [tasks, projects, goals, noteDates] = await Promise.all([listTasks(ws.workspace_id), listProjectsFull(ws.workspace_id), listGoals(ws.workspace_id), listNoteDates(ws.workspace_id)]);
-    return { tasks, projects, goals, noteDates };
+    return { tasks, projects, goals: resolveStatuses(goals, tasks, projects), noteDates };
   }, [ws.workspace_id, ui.version]);
   const [rv, setRv] = useLocalPref<RV>('review', { period: { kind: 'thisWeek' }, inc: null });
   const [msg, setMsg] = useState<string | null>(null);

@@ -18,12 +18,12 @@ export function GoalDialog({ goal, parentId, goals, members, projects, onClose, 
   const { solo } = useSolo();
   const [d, setD] = useState<GoalInput>(() => goal
     ? { title: goal.title, short_name: goal.short_name || suggestTag(goal.title), color: goal.color ?? colorOf(goal, goals),
-        icon: goal.icon ?? 'target', scene: goal.scene ?? sceneOf(goal, goals), start_date: goal.start_date, end_date: goal.end_date, status: goal.status, parent_id: goal.parent_id,
+        icon: goal.icon ?? 'target', scene: goal.scene ?? sceneOf(goal, goals), status_auto: goal.status_auto !== false, start_date: goal.start_date, end_date: goal.end_date, status: goal.status, parent_id: goal.parent_id,
         owner_member_id: goal.owner_member_id, manual_progress: goal.manual_progress, notes: goal.notes, project_ids: goal.project_ids }
     : (() => { const y = new Date().getFullYear(); const tops = goals.filter(g => !g.parent_id), used = new Set(tops.map(g => colorOf(g, goals)));
         const scenesUsed = new Set(tops.map(g => sceneOf(g, goals)));
         return { title: '', short_name: '', color: GOAL_COLORS.find(c => !used.has(c)) ?? GOAL_COLORS[tops.length % GOAL_COLORS.length],
-          icon: 'target', scene: (parentId ? null : SCENES.find(([s]) => !scenesUsed.has(s))?.[0] ?? 'hills') as string | null, start_date: todayISO(), end_date: `${y}-12-31`, status: 'on_track' as const, parent_id: parentId ?? null,
+          icon: 'target', status_auto: true, scene: (parentId ? null : SCENES.find(([s]) => !scenesUsed.has(s))?.[0] ?? 'hills') as string | null, start_date: todayISO(), end_date: `${y}-12-31`, status: 'on_track' as const, parent_id: parentId ?? null,
         owner_member_id: ws.member_id, manual_progress: 0, notes: '', project_ids: [] }; })());
   // the short name follows the title until someone types their own
   const [tagTouched, setTagTouched] = useState(!!goal?.short_name);
@@ -104,8 +104,13 @@ export function GoalDialog({ goal, parentId, goals, members, projects, onClose, 
               {members.filter(m => m.access !== 'guest').map(m => <option key={m.id} value={m.id}>{m.display_name}</option>)}</select></div><div /></div>}
           <div className="row2">
             <div><label className="lbl" htmlFor="gm-status">Status</label>
-              <select id="gm-status" className="field-in" style={{ width: '100%' }} value={d.status} onChange={e => set({ status: e.target.value as GoalInput['status'] })}>
-                {GOAL_STATUSES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}</select></div>
+              <select id="gm-status" className="field-in" style={{ width: '100%' }} value={d.status_auto ? 'auto' : d.status}
+                onChange={e => e.target.value === 'auto' ? set({ status_auto: true }) : set({ status_auto: false, status: e.target.value as GoalInput['status'] })}>
+                <option value="auto">Automatic{goal && goal.status_auto !== false ? ` (now ${GOAL_STATUSES.find(s => s.id === goal.status)?.label.toLowerCase()})` : ''}</option>
+                {GOAL_STATUSES.map(s => <option key={s.id} value={s.id}>{s.label} (set by hand)</option>)}</select>
+              <div className="hint" style={{ marginTop: 4 }}>{d.status_auto
+                ? (goal?.auto_why && goal.status_auto !== false ? `From progress against the calendar: ${goal.auto_why}.` : 'Worked out from progress against the calendar. See Help → Strategy.')
+                : 'Set by hand: it stays as you choose until you change it.'}</div></div>
             {hasKids ? <div /> : <div><label className="lbl" htmlFor="gm-parent">Part of</label>
               <select id="gm-parent" className="field-in" style={{ width: '100%' }} value={d.parent_id ?? ''} onChange={e => set({ parent_id: e.target.value || null })}>
                 <option value="">Nothing (top-level goal)</option>{parents.map(g => <option key={g.id} value={g.id}>{g.title}</option>)}</select></div>}

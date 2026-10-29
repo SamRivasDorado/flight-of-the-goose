@@ -175,6 +175,10 @@ export interface Goal {
   /** The goal's symbol (an icon name) and the landscape it flies over in the Journey (null: chosen for it). */
   icon?: string | null;
   scene?: string | null;
+  /** Status worked out from progress against the calendar (true, the default) or set by hand (false). */
+  status_auto?: boolean;
+  /** Why the automatic status is what it is (worked out in the app, not stored). */
+  auto_why?: string;
   /** Linked projects, filled in from goal_projects. */
   project_ids: string[];
 }

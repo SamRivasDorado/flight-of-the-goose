@@ -122,7 +122,7 @@ export function Journey({ g, goals, tasks, projects, people, solo, onEdit, showL
       <div className="jhead">
         <GoalIcon g={g} goals={goals} />
         <h3>{onEdit ? <button onClick={() => onEdit(g)}>{g.title}</button> : g.title}</h3><GoalTag g={g} goals={goals} />
-        <span className="pill" style={{ ['--c' as string]: st.color }}>{st.label}</span><span className="tag">{goalRange(g)}</span>
+        <span className="pill" style={{ ['--c' as string]: st.color }} title={g.status_auto === false ? 'Status set by hand' : `Status set automatically: ${g.auto_why ?? 'from progress against the calendar'}`}>{st.label}</span><span className="tag">{goalRange(g)}</span>
         <span className="grow" />{lp && <span className="tag">{lp.leg.label} leg</span>}<span className="mono muted">{firstLeg ? '–' : `${pg}%`}</span></div>
       <div className="jmap">
         <Scene scene={sceneOf(g, goals)} weather={weatherOf(g.status)} />

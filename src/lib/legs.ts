@@ -114,3 +114,38 @@ export function projectStops(p: Project, tasks: Task[], today = iso(new Date()))
     out.push({ leg: l, current: l.key === cur, projects: 0, tasks: fin.filter(t => t.completed_at! >= l.start && t.completed_at! <= l.end).length });
   return out;
 }
+
+/**
+ * Automatic status: progress against the calendar. Behind by up to 10 points is On track, by up to 25 At risk,
+ * more Off track; a fixed-term goal at 100% is Achieved, and one past its end date without reaching it is Off track.
+ * Open-ended goals compare this quarter's pace with last quarter's; their first quarter is On track.
+ * `why` says it in words, for the status pill's tooltip and the goal form.
+ */
+export const AUTO_ON = 10, AUTO_RISK = 25;
+export function autoStatus(g: Goal, goals: Goal[], tasks: Task[], projects: Project[], today = iso(new Date())): { status: Goal['status']; why: string } {
+  const base = { ...g, status: 'on_track' as const };
+  const judge = (behind: number) => behind <= AUTO_ON ? 'on_track' : behind <= AUTO_RISK ? 'at_risk' : 'off_track';
+  if (!g.end_date) {
+    const lp = legProgress(base, goals, tasks, projects, today);
+    if (lp.target == null) return { status: 'on_track', why: `${lp.leg.label} is the first leg: it sets the pace` };
+    return { status: judge(Math.round(lp.elapsed) - lp.pg), why: `${lp.done} of ${lp.target} tasks (last quarter's pace) with ${Math.round(lp.elapsed)}% of the quarter gone` };
+  }
+  const pg = goalProgress(base, goals, tasks);
+  if (pg >= 100) return { status: 'achieved', why: 'all done' };
+  if (today > g.end_date) return { status: 'off_track', why: `${pg}% done and the end date has passed` };
+  const span = parse(g.end_date).getTime() - parse(g.start_date).getTime();
+  const el = span > 0 ? Math.max(0, Math.min(100, Math.round((parse(today).getTime() - parse(g.start_date).getTime()) / span * 100))) : 0;
+  return { status: judge(el - pg), why: `${pg}% done with ${el}% of the time gone` };
+}
+
+/** Goals with their automatic status worked out (goals set by hand keep theirs). */
+export function resolveStatuses<G extends Goal>(goals: G[], tasks: Task[], projects: Project[]): G[] {
+  // sub-goals first, so a parent that averages its sub-goals sees their worked-out status
+  const out = new Map<string, G>(goals.map(g => [g.id, g]));
+  for (const g of [...goals].sort((a, b) => Number(!a.parent_id) - Number(!b.parent_id))) {
+    if (g.status_auto === false) continue;
+    const a = autoStatus(g, [...out.values()], tasks, projects);
+    out.set(g.id, { ...g, status: a.status, auto_why: a.why });
+  }
+  return goals.map(g => out.get(g.id)!);
+}

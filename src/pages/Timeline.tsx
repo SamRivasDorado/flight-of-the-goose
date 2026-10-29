@@ -11,6 +11,7 @@ import { legProgress } from '../lib/legs';
 import { Icon } from '../components/Logo';
 import { NO_PROJECT_COLOR, ProjectIcon } from '../components/ProjectChip';
 import { GoalDialog } from '../components/GoalDialog';
+import { resolveStatuses } from '../lib/legs';
 import { projectHref } from './Projects';
 
 type Zoom = 'weeks' | 'months' | 'quarters';
@@ -29,7 +30,7 @@ export function Timeline() {
   const lens = useLens();
   const { data, error, reload } = useLoad(async () => {
     const [goals, projects, tasks, members] = await Promise.all([listGoals(ws.workspace_id), listProjectsFull(ws.workspace_id), listTasks(ws.workspace_id), listMembers(ws.workspace_id)]);
-    return { goals, projects, tasks, members };
+    return { goals: resolveStatuses(goals, tasks, projects), projects, tasks, members };
   }, [ws.workspace_id, ui.version]);
   const [zoom, setZoom] = useLocalPref<Zoom>('tlZoom', 'months');
   const [showDone, setShowDone] = useLocalPref('showDone', false);

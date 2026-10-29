@@ -15,7 +15,7 @@ type Store = { tables: Record<string, Row[]>; files: Record<string, string> };
 
 export const DEMO_UID = '00000000-0000-4000-8000-000000000001';
 export const DEMO_EMAIL = 'sam@example.com';
-const KEY = 'goose.demo.v7';
+const KEY = 'goose.demo.v8';
 
 const PK: Record<string, string[]> = {
   team_members: ['team_id', 'member_id'], project_members: ['project_id', 'member_id'], project_teams: ['project_id', 'team_id'],

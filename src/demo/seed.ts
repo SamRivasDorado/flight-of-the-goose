@@ -148,14 +148,19 @@ export function makeSeed(myUid: string, myEmail: string): Record<string, Row[]> 
   };
   const gNaf = goal('Grow our presence in North Africa', { tag: 'NA-GROW', icon: 'globe', scene: 'dunes', start: -200, end: 250, status: 'on_track', owner: karim, projects: [neag, nafbd] });
   goal('Present at EAGE Morocco', { tag: 'EAGE-MA', icon: 'mic', start: -20, end: 230, status: 'on_track', owner: sam, parent: gNaf, projects: [eage] });
-  goal('Sign two new North African clients', { tag: 'NA-SIGN', icon: 'briefcase', start: -200, end: 250, status: 'at_risk', owner: karim, parent: gNaf, manual: 35 });
+  goal('Sign two new North African clients', { tag: 'NA-SIGN', icon: 'briefcase', start: -200, end: 250, status: 'at_risk', owner: karim, parent: gNaf, manual: 20 });
   goal('Make tNavigator workflows easier for European clients', { tag: 'TNAV-EU', icon: 'layers', scene: 'city', start: -300, end: null, status: 'at_risk', owner: sam, projects: [tnav, enagas, support],
     notes: 'Ongoing: fewer support tickets and more self-service material.' });
   goal('Deliver every consulting study on time', { tag: 'ON-TIME', icon: 'mountain', scene: 'mountains', start: -400, end: 60, status: 'on_track', owner: lucia, projects: [igme, genel, cardon, neag] });
-  const gDirect = goal('Write two technical papers', { icon: 'book', scene: 'lake', start: -120, end: 150, status: 'off_track', owner: sam });
+  const gDirect = goal('Write two technical papers', { icon: 'book', scene: 'lake', start: -120, end: 90, status: 'on_track', owner: sam });
   task(null, 'Paper outline: DFN calibration', { done: -60, goal: gDirect, who: sam });
   task(null, 'Draft figures', { done: -20, goal: gDirect, who: sam });
   task(null, 'First full draft', { due: 21, goal: gDirect, who: sam });
+  // the papers have fallen behind (the Journey shows a storm)
+  task(null, 'Literature review for paper 2', { due: -12, goal: gDirect, who: sam });
+  task(null, 'Methods section', { due: 9, goal: gDirect, who: sam });
+  task(null, 'Figures for paper 2', { due: 40, goal: gDirect, who: sam });
+  task(null, 'Submit both papers', { due: 85, goal: gDirect, who: sam });
 
   // ---- notebook
   const note = (p: Proj, off: number, kind: string, body: string) => t.notes.push({ id: uid(), workspace_id: ws, project_id: p.id, entry_date: day(off), kind, body, created_by_member: sam, created_at: stamp(off) });

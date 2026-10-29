@@ -14,7 +14,7 @@ import { GoalFlag, GoalIcon, Journey, Stops } from '../components/Geese';
 import { Scene, sceneOf, weatherOf } from '../components/Scene';
 import { colorOf } from '../lib/goaltag';
 import { GoalTag } from '../components/GoalTag';
-import { legProgress, plural, shownProgress, stopsOf } from '../lib/legs';
+import { legProgress, plural, resolveStatuses, shownProgress, stopsOf } from '../lib/legs';
 
 export function Strategy() {
   const ws = useWorkspace();
@@ -23,10 +23,9 @@ export function Strategy() {
   const { data, error, reload } = useLoad(async () => {
     const [goals, projects, tasks, members, teams, offers] = await Promise.all([
       listGoals(ws.workspace_id), listProjectsFull(ws.workspace_id), listTasks(ws.workspace_id), listMembers(ws.workspace_id), listTeams(ws.workspace_id), listHelpOffers(ws.workspace_id)]);
-    return { goals, projects, tasks, members, teams, offers };
+    return { goals: resolveStatuses(goals, tasks, projects), projects, tasks, members, teams, offers };
   }, [ws.workspace_id, ui.version]);
   const [period, setPeriod] = useLocalPref<string>('goalPeriod', 'all');
-  const [critOpen, setCritOpen] = useState(false);
   const [view, setView] = useLocalPref<'goals' | 'journey'>('strategyView', 'goals');
   const [showLog, setShowLog] = useLocalPref('showFlightLog', true);
   const { solo } = useSolo();
@@ -52,19 +51,6 @@ export function Strategy() {
         <button className={`tab ${per === 'all' ? 'on' : ''}`} onClick={() => setPeriod('all')}>All goals</button>
         {periods.map(p => <button key={p} className={`tab ${per === p ? 'on' : ''}`} onClick={() => setPeriod(p)}>{p}</button>)}</div>
       <p className="intro">Goals are the long-term outcomes your projects serve. Ongoing projects can support a goal without ever finishing; progress comes from linked project tasks, from tasks linked directly, from sub-goals, or from a value you set.</p>
-      <details className="criteria" open={critOpen} onToggle={e => setCritOpen((e.target as HTMLDetailsElement).open)}>
-        <summary>How goal status and progress work</summary>
-        <div className="cgrid">
-          <div><h4>Status: set by you</h4><ul>
-            {GOAL_STATUSES.map(st => <li key={st.id}><span className={`tonedot tone-${st.tone}`}>{st.label}</span><span>{st.desc}</span></li>)}</ul></div>
-          <div><h4>Progress: calculated</h4><ul>
-            <li><span>1.</span><span>Share of done tasks across the linked projects and the tasks linked directly to the goal.</span></li>
-            <li><span>2.</span><span>If there are no such tasks: the average progress of its sub-goals.</span></li>
-            <li><span>3.</span><span>Otherwise: the manual progress you set in the goal.</span></li>
-            <li><span>4.</span><span>Goals with no end date are measured per quarter instead: this quarter's finished tasks against last quarter's, so the bar shows your pace. The first quarter sets the pace.</span></li></ul>
-            <p className="muted" style={{ margin: '8px 0 0' }}>Status is your judgement and progress is arithmetic, so a goal can be at risk with high progress, or on track with low progress early in its period.</p></div>
-        </div>
-      </details>
       <div className="statusbar"><span><b>{tops.length}</b> goal{tops.length === 1 ? '' : 's'}:</span>
         {tally(tops).map(({ st, n }) => <span key={st.id} className={`tonedot tone-${st.tone}`}><b>{n}</b> {st.label.toLowerCase()}</span>)}
         {tops.length === 0 && <span>none yet</span>}
@@ -123,7 +109,7 @@ function GoalCard({ g, goals, projects, tasks, members, teams, canEdit, onEdit, 
     <article className={`goal tone-${st.tone}`} style={{ ['--gc' as string]: colorOf(g, goals) }}>
       <div className="gstrip"><Scene scene={sceneOf(g, goals)} weather={weatherOf(g.status)} /></div>
       <div className="gmain">
-        <div className="gh"><span className="glevel">Goal</span><span className="pill" style={{ ['--c' as string]: st.color }}>{st.label}</span><span className="tag">{goalRange(g)}</span>
+        <div className="gh"><span className="glevel">Goal</span><span className="pill" style={{ ['--c' as string]: st.color }} title={g.status_auto === false ? 'Status set by hand' : `Status set automatically: ${g.auto_why ?? 'from progress against the calendar'}`}>{st.label}</span><span className="tag">{goalRange(g)}</span>
           <span style={{ flex: 1 }} />{owner && !solo && <span className="who"><Avatar m={owner} size="sm" />{firstName(owner.display_name)}<span className="muted">owner</span></span>}</div>
         <div className="gtitle"><GoalIcon g={g} goals={goals} size="lg" /><h3>{title(g)}</h3></div>
         {g.notes && <div className="hint">{g.notes}</div>}
@@ -146,7 +132,7 @@ function GoalCard({ g, goals, projects, tasks, members, teams, canEdit, onEdit, 
         <div className="h3 gsect">Sub-goals</div>
         {kids.map(k => { const ks = goalStatus(k.status), kp = shownProgress(k, goals, tasks, projects), kd = tasks.filter(t => t.goal_id === k.id).length; return (
           <div key={k.id} className={`child tone-${ks.tone}`}>
-            <div className="ct"><i className="dot" style={{ ['--c' as string]: ks.color }} title={ks.label} />{title(k)}<span className="mono muted" style={{ fontSize: 12 }}>{kp}%</span></div>
+            <div className="ct"><i className="dot" style={{ ['--c' as string]: ks.color }} title={`${ks.label}${k.status_auto === false ? ' (set by hand)' : k.auto_why ? `: ${k.auto_why}` : ''}`} />{title(k)}<span className="mono muted" style={{ fontSize: 12 }}>{kp}%</span></div>
             <div className="prog sub"><div className="bar2" style={{ ['--c' as string]: colorOf(k, goals), height: 5 }}><i style={{ width: `${kp}%` }} /></div><GoalFlag color={colorOf(k, goals)} reached={kp >= 100} small /></div>
             <div className="cmeta"><span className="tag">{goalRange(k)}</span>{chips(k)}
               {kd > 0 && <span className="muted" style={{ fontSize: 12 }}>{kd} direct task{kd > 1 ? 's' : ''}</span>}
