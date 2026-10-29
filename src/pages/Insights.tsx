@@ -7,6 +7,7 @@ import { useLocalPref, useUI } from '../lib/ui';
 import { buckets, byWeek, inRange, periodName, range, rangeLabel, taskDay, type Period } from '../lib/period';
 import { PeriodPicker } from '../components/PeriodPicker';
 import { useLens } from '../lib/lens';
+import { colorOf, tagOf, taskGoals } from '../lib/goaltag';
 import { diffDays, hrs, parseISO } from '../lib/format';
 import { Icon } from '../components/Logo';
 import { NO_PROJECT_COLOR } from '../components/ProjectChip';
@@ -16,7 +17,7 @@ type ChartType = 'doughnut' | 'pie' | 'bar' | 'hbar';
 interface Cfg { id?: string; by: By; filter: 'all' | 'open' | 'done'; measure: 'count' | 'hours'; scope: string; type: ChartType }
 interface Datum { label: string; color: string; value: number; order?: string }
 
-const GROUPS: [By, string][] = [['project', 'Project'], ['status', 'Status'], ['month', 'Due month']];
+const GROUPS: [By, string][] = [['goal', 'Goal'], ['project', 'Project'], ['status', 'Status'], ['month', 'Due month']];
 const DEFAULT: Cfg = { by: 'project', filter: 'all', measure: 'hours', scope: 'all', type: 'doughnut' };
 
 function aggregate(cfg: Cfg, tasks: Task[], projects: Project[], lens: ReturnType<typeof useLens>): Datum[] {
@@ -27,6 +28,8 @@ function aggregate(cfg: Cfg, tasks: Task[], projects: Project[], lens: ReturnTyp
   const add = (k: string, label: string, color: string, t: Task, order?: string) => { if (!m.has(k)) m.set(k, { label, color, value: 0, order }); m.get(k)!.value += val(t); };
   ts.forEach(t => {
     if (cfg.by === 'project') { const p = projects.find(x => x.id === t.project_id); add(p ? p.id : '_', p ? p.name : 'No project', p ? p.color : NO_PROJECT_COLOR, t); }
+    // each task counts once: under its own goal, or else the first goal of its project (as in the task list)
+    else if (cfg.by === 'goal') { const g = taskGoals(t, lens.goals)[0]?.goal; add(g ? g.id : '_', g ? `${tagOf(g)} · ${g.title}` : 'No goal', g ? colorOf(g, lens.goals) : NO_PROJECT_COLOR, t); }
     else if (cfg.by === 'status') { const s = STATUSES.find(x => x.id === t.status)!; add(s.id, s.label, s.color, t); }
     else if (cfg.by !== 'month') { const d = lens.dims.find(x => x.id === cfg.by); if (!d) return; const o = d.options.find(x => x.id === lens.eff(t, d.id).option); add(o ? o.id : '_', o ? o.label : 'Not set', o ? o.color : NO_PROJECT_COLOR, t); }
     else if (!t.due_date) add('_', 'No date', NO_PROJECT_COLOR, t, '9999');
