@@ -541,7 +541,7 @@ export async function restoreBackup(b: Backup, name: string, me_: { uid: string;
   const goals = rows('goals');
   const goalRow = (g: Row) => ({ id: fresh(g.id), workspace_id: ws, title: g.title, start_date: g.start_date, end_date: g.end_date, status: g.status, manual_progress: g.manual_progress,
     notes: g.notes ?? '', owner_member_id: person(g.owner_member_id) ?? me, created_at: g.created_at,
-    short_name: g.short_name ?? '', color: g.color ?? null });
+    short_name: g.short_name ?? '', color: g.color ?? null, ...(g.icon ? { icon: g.icon } : {}), ...(g.scene ? { scene: g.scene } : {}) });
   await insert('goals', goals.filter(g => !g.parent_id).map(goalRow));
   await insert('goals', goals.filter(g => g.parent_id && map(g.parent_id)).map(g => ({ ...goalRow(g), parent_id: map(g.parent_id) })));
   await insert('goal_projects', rows('goal_projects').filter(x => map(x.goal_id) && map(x.project_id)).map(x => ({ goal_id: map(x.goal_id), project_id: map(x.project_id) })));

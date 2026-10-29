@@ -84,6 +84,8 @@ export interface GoalRef {
   parent_id: string | null;
   short_name?: string;
   color?: string | null;
+  icon?: string | null;
+  scene?: string | null;
 }
 
 export const STATUSES: { id: Task['status']; label: string; color: string }[] = [
@@ -170,6 +172,9 @@ export interface Goal {
   short_name: string;
   /** The goal's colour; sub-goals use their parent's. Null: picked from the palette by position. */
   color: string | null;
+  /** The goal's symbol (an icon name) and the landscape it flies over in the Journey (null: chosen for it). */
+  icon?: string | null;
+  scene?: string | null;
   /** Linked projects, filled in from goal_projects. */
   project_ids: string[];
 }

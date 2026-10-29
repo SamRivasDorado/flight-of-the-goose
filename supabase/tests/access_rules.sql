@@ -424,4 +424,12 @@ update tasks set status = 'done', completed_at = current_date where title = 'Wee
 select pg_temp.check((select count(*) from tasks where title = 'Weekly report') = 2, 'reopening and completing again does not create a second copy');
 reset role;
 
+-- goal symbols and landscapes
+update goals set icon = 'globe', scene = 'dunes' where title = 'Goal linked to P2';
+select pg_temp.check((select scene = 'dunes' and icon = 'globe' from goals where title = 'Goal linked to P2'), 'a goal keeps its symbol and landscape');
+do $$ begin
+  begin update goals set scene = 'moon' where title = 'Goal linked to P2'; raise exception 'FAILED: saved an unknown landscape';
+  exception when check_violation then raise notice 'ok  only known landscapes are saved'; end;
+end $$;
+
 select 'ALL ACCESS TESTS PASSED' as result;

@@ -10,7 +10,9 @@ import { Avatar, Icon } from '../components/Logo';
 import { ProjectChip } from '../components/ProjectChip';
 import { GoalDialog } from '../components/GoalDialog';
 import { AvStack, projectHref } from './Projects';
-import { GoalFlag, Journey, Stops } from '../components/Geese';
+import { GoalFlag, GoalIcon, Journey, Stops } from '../components/Geese';
+import { Scene, sceneOf, weatherOf } from '../components/Scene';
+import { colorOf } from '../lib/goaltag';
 import { GoalTag } from '../components/GoalTag';
 import { legProgress, plural, shownProgress, stopsOf } from '../lib/legs';
 
@@ -118,11 +120,12 @@ function GoalCard({ g, goals, projects, tasks, members, teams, canEdit, onEdit, 
   const title = (x: Goal) => <>{canEdit ? <button onClick={() => onEdit(x)}>{x.title}</button> : <span>{x.title}</span>}<GoalTag g={x} goals={goals} /></>;
 
   return (
-    <article className={`goal tone-${st.tone}`}>
+    <article className={`goal tone-${st.tone}`} style={{ ['--gc' as string]: colorOf(g, goals) }}>
+      <div className="gstrip"><Scene scene={sceneOf(g, goals)} weather={weatherOf(g.status)} /></div>
       <div className="gmain">
         <div className="gh"><span className="glevel">Goal</span><span className="pill" style={{ ['--c' as string]: st.color }}>{st.label}</span><span className="tag">{goalRange(g)}</span>
           <span style={{ flex: 1 }} />{owner && !solo && <span className="who"><Avatar m={owner} size="sm" />{firstName(owner.display_name)}<span className="muted">owner</span></span>}</div>
-        <h3>{title(g)}</h3>
+        <div className="gtitle"><GoalIcon g={g} goals={goals} size="lg" /><h3>{title(g)}</h3></div>
         {g.notes && <div className="hint">{g.notes}</div>}
         <div><div className="prog"><div className="bar2" style={{ ['--c' as string]: st.color }}><i style={{ width: `${pg}%` }} /></div><GoalFlag color={st.color} reached={pg >= 100} /><span className="mono muted">{lp && lp.target == null ? '–' : `${pg}%`}</span></div>
           <div className="muted" style={{ fontSize: 12, marginTop: 3 }}>{lp

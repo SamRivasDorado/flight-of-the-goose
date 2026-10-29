@@ -624,16 +624,14 @@ button.brand:hover{background:var(--bar-hi)}
 .sview button.on{background:var(--accent-soft);color:var(--fg);font-weight:600}
 .sview button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 .journeys{display:flex;flex-direction:column;gap:16px}
-.jlane{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px 12px;min-width:0}
+.jlane{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--gc,var(--line));border-radius:12px;padding:14px 16px 12px;min-width:0}
 .jhead{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
 .jhead h3{margin:0;font-size:16px}.jhead h3 button{all:unset;cursor:pointer}.jhead h3 button:hover{text-decoration:underline}
 .jhead h3 button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.jmap{position:relative;height:190px;margin:10px 0 6px;border-radius:10px;overflow:hidden;background:linear-gradient(180deg,color-mix(in srgb,var(--surface-2) 55%,var(--surface)) 0%,var(--surface-2) 100%)}
+.jmap{position:relative;height:190px;margin:10px 0 6px;border-radius:10px;overflow:hidden}
 .jmap .land{position:absolute;inset:0;width:100%;height:100%}
-.jmap .land .h1{fill:color-mix(in srgb,var(--accent) 9%,transparent)}
-.jmap .land .h2{fill:color-mix(in srgb,var(--accent) 15%,transparent)}
 .jmap .land .route{fill:none;stroke:var(--faint);stroke-width:2;stroke-dasharray:2 7;stroke-linecap:round;vector-effect:non-scaling-stroke}
-.jmap .land .flown{fill:none;stroke:var(--accent);stroke-width:2.5;stroke-linecap:round;vector-effect:non-scaling-stroke;opacity:.7}
+.jmap .land .flown{fill:none;stroke:var(--gc,var(--accent));stroke-width:3;stroke-linecap:round;vector-effect:non-scaling-stroke;opacity:.7}
 .jpin{position:absolute;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:2px;font-size:12px;color:var(--muted);white-space:nowrap}
 .jstart{left:6%;top:112px}.jdest{left:94%;top:72px}
 .jtoday{position:absolute;top:10px;bottom:36px;border-left:2px dashed color-mix(in srgb,var(--fg) 30%,transparent)}
@@ -818,3 +816,30 @@ button.brand:hover{background:var(--bar-hi)}
 .chip.ghost{background:transparent;border:1px dashed color-mix(in srgb,var(--c) 70%,var(--line));color:var(--muted);cursor:pointer}
 .chip.ghost .ic{width:11px;height:11px;flex:none;margin-top:2px}
 .repends{display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+
+/* goal scenes: landscape (destination) and weather (status) — components/Scene.tsx */
+.scene{position:absolute;inset:0;overflow:hidden}
+.scene svg{position:absolute;inset:0;width:100%;height:100%}
+.scene.sky-clear{background:linear-gradient(180deg,color-mix(in srgb,#7FB2E0 10%,var(--surface-2)) 0%,var(--surface-2) 100%)}
+.scene.sky-clouds{background:linear-gradient(180deg,color-mix(in srgb,#9AA3B2 16%,var(--surface-2)) 0%,var(--surface-2) 100%)}
+.scene.sky-storm{background:linear-gradient(180deg,color-mix(in srgb,#3E4658 38%,var(--surface-2)) 0%,color-mix(in srgb,#3E4658 12%,var(--surface-2)) 100%)}
+.scene.sky-sunset{background:linear-gradient(180deg,color-mix(in srgb,#8E6BBF 14%,var(--surface-2)) 0%,color-mix(in srgb,#F28C28 18%,var(--surface-2)) 100%)}
+.scene .wcloud{animation:drift 46s ease-in-out infinite alternate}
+.scene .wrain{animation:rain .9s linear infinite}
+@keyframes drift{from{transform:translateX(-26px)}to{transform:translateX(26px)}}
+@keyframes rain{from{transform:translate(0,-6px)}to{transform:translate(-3px,6px)}}
+@media (prefers-reduced-motion:reduce){.scene .wcloud,.scene .wrain{animation:none}}
+.scene.thumb{position:relative;display:block;height:44px;border-radius:6px}
+.gicon{--c:#999;display:inline-grid;place-items:center;width:24px;height:24px;border-radius:7px;background:var(--c);color:#fff;flex:none}
+.gicon .ic{width:14px;height:14px}
+.gicon.lg{width:30px;height:30px;border-radius:8px}.gicon.lg .ic{width:17px;height:17px}
+.jhead .gtagw{margin-right:2px}
+/* goal cards: the landscape as a strip across the top */
+.goal .gstrip{grid-column:1/-1;position:relative;height:54px;border-bottom:3px solid var(--gc,var(--line))}
+.goal .gtitle{display:flex;gap:10px;align-items:flex-start}
+.goal .gtitle .gicon{margin-top:2px}
+/* goal form: landscape choice */
+.scenepick{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}
+.scenepick button{all:unset;cursor:pointer;display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);border-radius:8px;padding:3px;border:2px solid transparent}
+.scenepick button.on{border-color:var(--accent);color:var(--fg)}
+.scenepick button:focus-visible{outline:2px solid var(--accent)}
