@@ -1,12 +1,14 @@
+import { health } from '../lib/projects';
+import { STATUS, type Verdict } from '../lib/status';
 import { useEffect, useState } from 'react';
 import { useSolo } from '../lib/solo';
 import { useWorkspace } from '../auth/session';
-import { deleteProject, listGoalRefs, listMembers, listTeamRefs, saveProject, setProjectDefault, setProjectImage, todayISO, useLoad, type ProjectInput } from '../lib/data';
+import { deleteProject, listGoalRefs, listMembers, listTasks, listTeamRefs, saveProject, setProjectDefault, setProjectImage, todayISO, useLoad, type ProjectInput } from '../lib/data';
 import { useLens } from '../lib/lens';
 import { removeImage, uploadImage } from '../lib/images';
 import { ImagePicker, NO_PICK, useRevoke, type PickedImage } from './ImagePicker';
 import { ProjectIcon } from './ProjectChip';
-import { canManage, type ProjectFull } from '../lib/types';
+import { canManage, type ProjectFull, type Task } from '../lib/types';
 import { PROJECT_COLORS } from '../config';
 import { Avatar, Icon, PROJECT_ICONS } from './Logo';
 
@@ -22,16 +24,17 @@ export function ProjectDialog({ project, kind, count, onClose, onSaved, onDelete
 }) {
   const ws = useWorkspace();
   const { data: lists } = useLoad(async () => {
-    const [members, goals, teams] = await Promise.all([listMembers(ws.workspace_id), listGoalRefs(ws.workspace_id), listTeamRefs(ws.workspace_id)]);
-    return { members, goals, teams };
+    const [members, goals, teams, tasks] = await Promise.all([listMembers(ws.workspace_id), listGoalRefs(ws.workspace_id), listTeamRefs(ws.workspace_id),
+      project ? listTasks(ws.workspace_id).then(ts => ts.filter(t => t.project_id === project.id)) : Promise.resolve([] as Task[])]);
+    return { members, goals, teams, tasks };
   }, [ws.workspace_id]);
   const [d, setD] = useState<ProjectInput>(() => project ? {
-    name: project.name, color: project.color, icon: project.icon, kind: project.kind, status: project.status,
+    name: project.name, color: project.color, icon: project.icon, kind: project.kind, status: project.status, health_manual: project.health_manual ?? null,
     start_date: project.start_date, end_date: project.end_date, owner_member_id: project.owner_member_id,
     member_ids: project.member_ids, team_ids: project.team_ids, goal_ids: project.goal_ids,
   } : (() => {
     const k = kind ?? 'ongoing', end = new Date(); end.setDate(end.getDate() + 90);
-    return { name: '', color: PROJECT_COLORS[count % PROJECT_COLORS.length], icon: 'folder', kind: k, status: 'active' as const,
+    return { name: '', color: PROJECT_COLORS[count % PROJECT_COLORS.length], icon: 'folder', kind: k, status: 'active' as const, health_manual: null,
       start_date: todayISO(), end_date: k === 'fixed' ? todayISO(end) : null, owner_member_id: ws.member_id, member_ids: [], team_ids: [], goal_ids: [] };
   })());
   const [busy, setBusy] = useState(false);
@@ -84,9 +87,21 @@ export function ProjectDialog({ project, kind, count, onClose, onSaved, onDelete
     catch (e) { setErr(e instanceof Error ? e.message : String(e)); setBusy(false); }
   }
 
-  const statusSel = (
-    <select id="pm-status" className="field-in" style={{ width: '100%' }} value={d.status} onChange={e => set({ status: e.target.value as ProjectInput['status'] })}>
-      <option value="active">Active</option><option value="paused">Paused</option><option value="closed">Done</option></select>);
+  // one choice, like a goal's: worked out automatically, set by hand, paused or done
+  const now = project && project.status === 'active' && !project.health_manual ? health(project, lists?.tasks ?? []) : null;
+  const statusVal = d.status === 'paused' ? 'paused' : d.status === 'closed' ? 'closed' : d.health_manual ?? 'auto';
+  const statusSel = (<>
+    <select id="pm-status" className="field-in" style={{ width: '100%' }} value={statusVal} onChange={e => {
+      const v = e.target.value;
+      if (v === 'paused' || v === 'closed') set({ status: v, health_manual: null });
+      else set({ status: 'active', health_manual: v === 'auto' ? null : v as Verdict });
+    }}>
+      <option value="auto">Automatic{now ? ` (now ${now.label.toLowerCase()})` : ''}</option>
+      {(['on_track', 'at_risk', 'off_track'] as const).map(k => <option key={k} value={k}>{STATUS[k].label} (set by hand)</option>)}
+      <option value="paused">Paused</option><option value="closed">Done</option></select>
+    <div className="hint" style={{ marginTop: 4 }}>{statusVal === 'auto' ? (now ? `From progress against the calendar: ${now.why}.` : 'Worked out from progress against the calendar. See Help.')
+      : statusVal === 'paused' ? 'Paused: left out of the status counts until you resume it.' : statusVal === 'closed' ? 'Done: the project is finished.'
+      : 'Set by hand: it stays as you choose until you switch back to Automatic.'}</div></>);
   const hint = (t: string) => <div className="hint" style={{ margin: '-2px 0 8px' }}>{t}</div>;
 
   return (

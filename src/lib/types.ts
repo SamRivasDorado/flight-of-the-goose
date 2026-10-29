@@ -39,6 +39,8 @@ export interface Project {
   start_date: string | null;
   end_date: string | null;
   owner_member_id: string | null;
+  /** On track / At risk / Off track set by hand; null (the default) when worked out automatically. */
+  health_manual?: 'on_track' | 'at_risk' | 'off_track' | null;
 }
 
 export interface Task {
@@ -153,7 +155,7 @@ export const GOAL_STATUSES: { id: GoalStatus; label: string; color: string; tone
   { id: 'on_track', label: 'On track', color: '#6B9160', tone: 'good', desc: 'You expect to reach the goal in its period.' },
   { id: 'at_risk', label: 'At risk', color: '#E39A3E', tone: 'warn', desc: 'Reachable, but something needs attention.' },
   { id: 'off_track', label: 'Off track', color: '#C8634A', tone: 'bad', desc: 'Unlikely to be reached without a change of plan.' },
-  { id: 'achieved', label: 'Achieved', color: '#5B83B5', tone: 'done', desc: 'Done. Progress shows 100%.' },
+  { id: 'achieved', label: 'Done', color: '#5B83B5', tone: 'done', desc: 'Reached. Progress shows 100%.' },
 ];
 
 export interface Goal {

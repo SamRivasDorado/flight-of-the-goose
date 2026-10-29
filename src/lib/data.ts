@@ -63,7 +63,7 @@ export async function listProjectsFull(ws: string): Promise<ProjectFull[]> {
     goal_ids: g.filter(x => x.project_id === p.id).map(x => x.goal_id) }));
 }
 
-export type ProjectInput = Pick<ProjectFull, 'name' | 'color' | 'icon' | 'kind' | 'status' | 'start_date' | 'end_date' | 'owner_member_id' | 'member_ids' | 'team_ids' | 'goal_ids'>;
+export type ProjectInput = Pick<ProjectFull, 'name' | 'color' | 'icon' | 'kind' | 'status' | 'health_manual' | 'start_date' | 'end_date' | 'owner_member_id' | 'member_ids' | 'team_ids' | 'goal_ids'>;
 
 /** Adds and removes link rows so the table matches the wanted list. */
 async function syncLinks(table: string, key: string, projectId: string, col: string, before: string[], after: string[]) {

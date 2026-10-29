@@ -9,7 +9,8 @@ import { GoalTag } from '../components/GoalTag';
 import { goalTree } from '../lib/goaltag';
 import { OptPill } from '../components/Lens';
 import { byDue, diffDays, dueLabel, firstName, hrs } from '../lib/format';
-import { elapsed, fmtDate, health, lastActivity, type Health } from '../lib/projects';
+import { elapsed, fmtDate, health, lastActivity, quietDays, type Health } from '../lib/projects';
+import { STATUS } from '../lib/status';
 import { Avatar, Icon } from '../components/Logo';
 import { ProjectIcon } from '../components/ProjectChip';
 import { ProjectRoute } from '../components/Geese';
@@ -35,8 +36,8 @@ export function Projects() {
   const hp = (p: ProjectFull) => health(p, data!.tasks, data!.noteDates);
   const live = ps.filter(p => p.status !== 'closed'), closed = ps.filter(p => p.status === 'closed');
   const fixed = live.filter(p => p.kind === 'fixed'), ongoing = live.filter(p => p.kind !== 'fixed');
-  const tally = { good: 0, warn: 0, quiet: 0, bad: 0, idle: 0 };
-  if (data) ps.forEach(p => tally[hp(p).tone]++);
+  const tally = { on_track: 0, at_risk: 0, off_track: 0, paused: 0, done: 0 };
+  if (data) ps.forEach(p => tally[hp(p).id]++);
   const card = (p: ProjectFull) => <ProjectCard key={p.id} p={p} h={hp(p)} tasks={data!.tasks} members={data!.members} noteDates={data!.noteDates} />;
 
   return (
@@ -47,11 +48,8 @@ export function Projects() {
       {data && (
         <>
           <div className="statusbar">
-            <span className="tonedot tone-good"><b>{tally.good}</b> on track or active</span>
-            <span className="tonedot tone-warn"><b>{tally.warn}</b> need attention</span>
-            <span className="tonedot tone-quiet"><b>{tally.quiet}</b> quiet</span>
-            <span className="tonedot tone-bad"><b>{tally.bad}</b> off track</span>
-            <span className="tonedot tone-idle"><b>{tally.idle}</b> paused or done</span>
+            {(['on_track', 'at_risk', 'off_track', 'paused', 'done'] as const).map(k =>
+              <span key={k} className={`tonedot tone-${STATUS[k].tone}`}><b>{tally[k]}</b> {STATUS[k].label.toLowerCase()}</span>)}
             <label className="chk" style={{ marginLeft: 'auto' }}><input type="checkbox" checked={showDone} onChange={e => setShowDone(e.target.checked)} />Show completed</label>
           </div>
           {ps.length === 0 && !manager && <div className="empty">You are not part of any project yet.</div>}
@@ -88,7 +86,7 @@ function ProjectCard({ p, h, tasks, members, noteDates }: { p: ProjectFull; h: H
   const { solo } = useSolo();
   const open = tasks.filter(t => t.project_id === p.id && t.status !== 'done');
   const next = open.filter(t => t.due_date).sort(byDue)[0];
-  const last = lastActivity(p, tasks, noteDates);
+  const last = lastActivity(p, tasks, noteDates), quiet = quietDays(p, tasks, noteDates);
   const owner = members.find(m => m.id === p.owner_member_id);
   const nextDue = next ? dueLabel(next.due_date) : null;
   return (
@@ -97,10 +95,12 @@ function ProjectCard({ p, h, tasks, members, noteDates }: { p: ProjectFull; h: H
       {!solo && <div className="ppl-row"><span className="who">{owner && <Avatar m={owner} size="sm" />}<span>{owner ? firstName(owner.display_name) : 'No owner'}</span><span className="muted">owner</span></span>
         <AvStack list={projectPeople(p, members)} /></div>}
       <div className="body">
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}><span className="pill" style={{ ['--c' as string]: h.color }}>{h.label}</span><ProjectDims id={p.id} /></div>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}><span className="pill" style={{ ['--c' as string]: h.color }} title={`${h.label}: ${h.why}`}>{h.label}</span><ProjectDims id={p.id} /></div>
         <ProjectProgress p={p} tasks={tasks} members={members} />
         <div className="next">{next ? <>Next: <b>{next.title || 'Untitled task'}</b> · <span className={nextDue!.cls}>{nextDue!.text}</span></> : 'No upcoming dated tasks'}</div>
-        <div className="next">{last ? `Last activity: ${dueLabel(last, true).text}` : 'No activity yet'}</div>
+        {/* an ongoing project can be quiet and still fine: a note, not a status */}
+        <div className={`next ${quiet ? 'quietnote' : ''}`} title={quiet ? 'Nothing has happened for more than 30 days' : undefined}>
+          {quiet ? `Quiet: nothing for ${quiet} days` : last ? `Last activity: ${dueLabel(last, true).text}` : 'No activity yet'}</div>
       </div>
     </a>);
 }

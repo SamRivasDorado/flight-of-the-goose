@@ -13,3 +13,10 @@ exception when duplicate_object then null; end $$;
 do $$ begin
   alter table public.goals add constraint goals_icon_short check (icon is null or char_length(icon) <= 24);
 exception when duplicate_object then null; end $$;
+
+-- Projects: On track / At risk / Off track set by hand (null, the default: worked out automatically with
+-- the same rule as goals). Paused and Done stay in projects.status as before.
+alter table public.projects add column if not exists health_manual text;
+do $$ begin
+  alter table public.projects add constraint projects_health_manual_known check (health_manual is null or health_manual in ('on_track', 'at_risk', 'off_track'));
+exception when duplicate_object then null; end $$;

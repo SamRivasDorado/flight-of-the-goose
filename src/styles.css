@@ -334,7 +334,7 @@ textarea.notes{width:100%;min-height:90px;border:1px solid var(--line);border-ra
 .kindpick label{border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;gap:10px;align-items:flex-start;cursor:pointer;font-size:13px}
 .kindpick label.on{border-color:var(--accent);background:var(--accent-soft)}
 .kindpick b{display:block;font-size:14px}
-.tone-good{--tone:var(--ok)}.tone-warn{--tone:var(--warn)}.tone-bad{--tone:var(--danger)}.tone-idle{--tone:var(--faint)}.tone-quiet{--tone:var(--quiet)}.tone-done{--tone:var(--accent)}
+.tone-good{--tone:var(--ok)}.tone-warn{--tone:var(--warn)}.tone-bad{--tone:var(--danger)}.tone-idle{--tone:var(--faint)}.tone-quiet{--tone:var(--quiet)}.tone-done{--tone:#5B83B5}
 .panel[class*="tone-"],.pcard[class*="tone-"],.goal[class*="tone-"]{border:1.5px solid color-mix(in srgb,var(--tone) 70%,var(--line))}
 .panel[class*="tone-"]{background:color-mix(in srgb,var(--tone) 5%,var(--surface))}
 .panel[class*="tone-"] h2::before,.tonedot::before{content:"";width:10px;height:10px;border-radius:50%;background:var(--tone);display:inline-block;align-self:center;flex:none}
@@ -848,3 +848,4 @@ button.brand:hover{background:var(--bar-hi)}
 .hdots{list-style:none;margin:6px 0 8px;padding:0;display:flex;flex-direction:column;gap:4px}
 .hdots li{display:flex;gap:8px;align-items:baseline;margin:0}
 .hdots .tonedot{flex:none;min-width:104px;font-weight:600}
+.pcard .next.quietnote{color:var(--quiet,#8A6440);font-weight:500}

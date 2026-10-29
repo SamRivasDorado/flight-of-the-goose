@@ -432,4 +432,13 @@ do $$ begin
   exception when check_violation then raise notice 'ok  only known landscapes are saved'; end;
 end $$;
 
+-- status set by hand on a project
+update projects set health_manual = 'at_risk' where name = 'P2 private';
+select pg_temp.check((select health_manual = 'at_risk' from projects where name = 'P2 private'), 'a project keeps a status set by hand');
+do $$ begin
+  begin update projects set health_manual = 'quiet' where name = 'P2 private'; raise exception 'FAILED: saved an unknown project status';
+  exception when check_violation then raise notice 'ok  only known project statuses are saved'; end;
+end $$;
+select pg_temp.check((select bool_and(status_auto) from goals), 'goals work out their status automatically by default');
+
 select 'ALL ACCESS TESTS PASSED' as result;

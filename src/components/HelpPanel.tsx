@@ -34,19 +34,11 @@ const TOPICS: Topic[] = [
     <p className="lead">Your goals and how far along they are.</p>
     <ul>
       <li><b>Progress</b> is calculated, in this order: the share of done tasks in the linked projects and the tasks linked directly to the goal; if there are none, the average progress of its sub-goals; otherwise the manual progress set in the goal.</li>
-      <li><b>Status</b> is <b>automatic</b>: Goose compares two percentages, how much of the goal is done (its progress) and how much of its time has gone (by the calendar, from its start date to its end date). The difference between them is how far <b>behind or ahead of the calendar</b> the goal is, in points.
-        <br />Example: a goal from 1 January to 31 December is 50% through its time on 1 July. If it is 40% done, it is 10 points behind the calendar; if it is 60% done, it is 10 points ahead.
-        <Dots items={[['good', 'On track', 'Ahead of the calendar, or up to 10 points behind.'], ['warn', 'At risk', '11 to 25 points behind.'],
-          ['bad', 'Off track', 'More than 25 points behind, or past its end date without being reached.'], ['done', 'Achieved', '100% done.']]} />
-        Hover the status to see the two numbers, for example “40% done with 62% of the time gone” (22 points behind: At risk).
-        <br />Goals with no end date use the current quarter instead: this quarter's finished tasks, as a share of last quarter's, against how much of the quarter has gone.</li>
-      <li>Know something the numbers do not, such as a client delay? In the goal's form, set <b>Status</b> by hand instead of Automatic. It then stays as you set it until you switch back to Automatic.
-        <Dots items={[['good', 'On track', 'You expect to reach it in its period.'], ['warn', 'At risk', 'Reachable, but something needs attention.'],
-          ['bad', 'Off track', 'Unlikely to be reached without a change of plan.'], ['done', 'Achieved', 'Done. Progress shows 100%.']]} /></li>
+      <li><b>Status</b> (On track, At risk, Off track, Done) is worked out from progress against the calendar, with the same rule as projects; or set it by hand in the goal's form. See <i>Status: on track or not</i>.</li>
       <li>Link projects to a goal in the goal itself or in Project settings. <b>Add task to this goal</b> creates a task linked straight to it.</li>
       <li>Every goal has a <b>tag</b>: a short name of up to 8 characters and a colour, set in the goal's form (Goose suggests one from the title). The tag stands for the goal where its name does not fit: the Goal column of the task list, project cards and pages, and the Lens. Sub-goals share their goal's colour, so a family reads as one. A <b>dashed</b> tag means the task counts towards the goal through its project.</li>
       <li><b>Journey</b> (top right) shows each goal as a route from a nest to a flag, with the people on it flying as a flock at the goal's progress. The dashed line is where the flock should be by now, going by the goal's dates. Whoever finished most this week leads; people with overdue tasks trail at the back. Hover a goose to see why.</li>
-      <li>Each goal flies over its own <b>landscape</b> (green hills, desert, mountains, coast, forest, lake, farmland or city) and carries a <b>symbol</b>; choose both in the goal's form, along with its colour. The <b>weather</b> shows the status: clear skies when on track, clouds when at risk, a storm when off track, and sunset once achieved.</li>
+      <li>Each goal flies over its own <b>landscape</b> (green hills, desert, mountains, coast, forest, lake, farmland or city) and carries a <b>symbol</b>; choose both in the goal's form, along with its colour. The <b>weather</b> shows the status: clear skies when on track, clouds when at risk, a storm when off track, and sunset once done.</li>
       <li>A goose that trails behind has overdue tasks; click it to <b>offer help</b> (see <i>No goose flies alone</i>).</li>
       <li><b>Goals with no end date fly in quarterly legs.</b> The route is the current quarter and the flag is last quarter's pace: finishing as many of the goal's tasks as last quarter. Ahead of the dashed line means faster than last quarter. The first quarter sets the pace, and its automatic status is On track. Their bar shows this quarter's pace, not the whole goal.</li>
       <li>The <b>flight log</b> under each goal has a column per quarter: its height is the tasks finished, and a small flag marks each project completed. The current quarter shows a dashed outline at last quarter's height, the pace to match.</li>
@@ -60,15 +52,25 @@ const TOPICS: Topic[] = [
       <li>The project page also has a <b>flight log</b>: a column per quarter for the tasks finished, once the project has run for more than one quarter. Untick <b>Show flight log</b> (above the progress) to hide it.</li>
       <li><b>Mark complete</b> (on the project's page) finishes a project: it moves to Done, the geese fly, and the day is recorded for the flight log on Strategy. If tasks are still open, you choose whether to complete them too. <b>Reopen</b> undoes it.</li>
       <li><b>Project settings</b> holds the dates, status, colour, symbol or image, linked goals and default values (for example Priority) that its tasks inherit.</li>
-      <li><b>How project status is decided.</b> Fixed-term projects:
-        <Dots items={[['good', 'On track', 'No overdue tasks, and the share of tasks done keeps pace with the time elapsed.'],
-          ['warn', 'At risk', 'At least one task is overdue, or the time elapsed is more than 25 percentage points ahead of the tasks done (for example 70% of the time gone, under 45% of tasks done).'],
-          ['bad', 'Past end date', 'The end date has passed and tasks are still open.']]} />
-        Ongoing projects:
-        <Dots items={[['good', 'Active', 'Something happened in the last 30 days (a task created or completed, or a notebook entry) and nothing is overdue.'],
-          ['warn', 'Overdue', 'At least one open task is past its due date.'], ['quiet', 'Quiet', 'Nothing has happened for more than 30 days.']]} />
-        Any project:
-        <Dots items={[['idle', 'Paused, Done', 'Set by you: Mark complete on the project, or its settings.']]} /></li>
+      <li><b>Status</b> (On track, At risk, Off track) is worked out with the same rule as goals; see <i>Status: on track or not</i>. <b>Paused</b> and <b>Done</b> you set yourself: Paused in Project settings, Done with <b>Mark complete</b>. You can also set On track, At risk or Off track by hand in Project settings.</li>
+      <li>An ongoing project where nothing has happened for more than 30 days says <b>Quiet</b> on its card. That is a note, not a status: a quiet support project can be perfectly fine.</li>
+    </ul></> },
+  { id: 'status', title: 'Status: on track or not', icon: 'flag', body: <>
+    <p className="lead">Goals and projects use the same words, the same colours and the same rule.</p>
+    <Dots items={[['good', 'On track', 'Keeping up with the calendar.'], ['warn', 'At risk', 'Falling behind, or with overdue tasks: something needs attention.'],
+      ['bad', 'Off track', 'Well behind, or past its end date without being finished.'], ['done', 'Done', 'Finished (100%, or a project marked complete).'],
+      ['idle', 'Paused', 'Projects only: set aside for now, left out of the counts.']]} />
+    <ul>
+      <li><b>With an end date</b> (goals with one, fixed-term projects), Goose compares two percentages: how much is done, and how much of the time has gone by the calendar, from the start date to the end date. The difference is how many <b>points behind or ahead of the calendar</b> it is.
+        <br />Example: from 1 January to 31 December, the time is 50% gone on 1 July. At 40% done that is 10 points behind the calendar; at 60% done, 10 points ahead.</li>
+      <li><b>Without an end date</b> (open-ended goals, ongoing projects), it compares this quarter's finished tasks, as a share of last quarter's (its own pace), with how much of the quarter has gone. The first quarter sets the pace and counts as on track.</li>
+      <li>Then the same thresholds for everything:
+        <Dots items={[['good', 'On track', 'Ahead of the calendar, or up to 10 points behind, and nothing overdue.'],
+          ['warn', 'At risk', '11 to 25 points behind, or on pace but with at least one overdue task.'],
+          ['bad', 'Off track', 'More than 25 points behind, or past the end date and not finished.']]} /></li>
+      <li><b>Hover a status</b> to see why, for example “40% done with 62% of the time gone: 22 points behind the calendar, 1 overdue task”.</li>
+      <li><b>Set by hand</b> when you know something the numbers do not, such as a client delay: in the goal's form or in Project settings, choose a status instead of Automatic. It stays as you set it until you switch back to Automatic.</li>
+      <li>On Strategy, the <b>weather</b> over each goal follows its status: clear skies, clouds, a storm, or sunset when done.</li>
     </ul></> },
   { id: 'tasks', title: 'Tasks', icon: 'tasks', page: 'tasks', go: '#/tasks', body: <>
     <p className="lead">All your tasks in three views.</p>

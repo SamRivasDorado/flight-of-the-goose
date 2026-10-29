@@ -8,6 +8,7 @@
  */
 import { goalProgress, goalTasks } from './goals';
 import type { Goal, Project, Task } from './types';
+import { judge, overdueText, pointsText } from './status';
 
 export const LEG_MONTHS = 3;
 
@@ -115,27 +116,24 @@ export function projectStops(p: Project, tasks: Task[], today = iso(new Date()))
   return out;
 }
 
-/**
- * Automatic status: progress against the calendar. Behind by up to 10 points is On track, by up to 25 At risk,
- * more Off track; a fixed-term goal at 100% is Achieved, and one past its end date without reaching it is Off track.
- * Open-ended goals compare this quarter's pace with last quarter's; their first quarter is On track.
- * `why` says it in words, for the status pill's tooltip and the goal form.
- */
-export const AUTO_ON = 10, AUTO_RISK = 25;
+/** Automatic goal status, with the rule shared with projects (lib/status.ts). `why` says it in words for the tooltip and form. */
 export function autoStatus(g: Goal, goals: Goal[], tasks: Task[], projects: Project[], today = iso(new Date())): { status: Goal['status']; why: string } {
   const base = { ...g, status: 'on_track' as const };
-  const judge = (behind: number) => behind <= AUTO_ON ? 'on_track' : behind <= AUTO_RISK ? 'at_risk' : 'off_track';
+  const fam = [g, ...goals.filter(k => k.parent_id === g.id)];
+  const ids = new Set(fam.flatMap(x => goalTasks(x, tasks).map(t => t.id)));
+  const overdue = tasks.filter(t => ids.has(t.id) && t.status !== 'done' && t.due_date && t.due_date < today).length;
   if (!g.end_date) {
     const lp = legProgress(base, goals, tasks, projects, today);
-    if (lp.target == null) return { status: 'on_track', why: `${lp.leg.label} is the first leg: it sets the pace` };
-    return { status: judge(Math.round(lp.elapsed) - lp.pg), why: `${lp.done} of ${lp.target} tasks (last quarter's pace) with ${Math.round(lp.elapsed)}% of the quarter gone` };
+    if (lp.target == null) return { status: judge(0, overdue), why: `${lp.leg.label} is the first leg: it sets the pace${overdueText(overdue)}` };
+    const behind = Math.round(lp.elapsed) - lp.pg;
+    return { status: judge(behind, overdue), why: `${lp.done} of ${lp.target} tasks (last quarter's pace) with ${Math.round(lp.elapsed)}% of the quarter gone: ${pointsText(behind)}${overdueText(overdue)}` };
   }
   const pg = goalProgress(base, goals, tasks);
   if (pg >= 100) return { status: 'achieved', why: 'all done' };
   if (today > g.end_date) return { status: 'off_track', why: `${pg}% done and the end date has passed` };
   const span = parse(g.end_date).getTime() - parse(g.start_date).getTime();
   const el = span > 0 ? Math.max(0, Math.min(100, Math.round((parse(today).getTime() - parse(g.start_date).getTime()) / span * 100))) : 0;
-  return { status: judge(el - pg), why: `${pg}% done with ${el}% of the time gone` };
+  return { status: judge(el - pg, overdue), why: `${pg}% done with ${el}% of the time gone: ${pointsText(el - pg)}${overdueText(overdue)}` };
 }
 
 /** Goals with their automatic status worked out (goals set by hand keep theirs). */
