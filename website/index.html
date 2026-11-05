@@ -396,16 +396,21 @@ dialog.zoom button{font:inherit;font-size:14px;border:0;border-radius:9px;paddin
 
     <article class="feature" id="f-strategy">
       <div class="feature-text">
-        <span class="eyebrow">Strategy</span><h3>Goals that measure themselves</h3>
-        <p class="what">Set goals and sub-goals with an owner and a time span, and link the projects that serve them.</p>
+        <span class="eyebrow">Strategy</span><h3>Goals you can watch fly</h3>
+        <p class="what">Set goals and sub-goals with an owner and a time span, and link the projects that serve them. In the Journey view, the team flies each goal as a flock, from the nest to the flag.</p>
         <ul class="ticks">
           <li>Progress comes from linked projects, tasks and sub-goals, or a value you set</li>
-          <li>On track, at risk or off track at a glance, for goals and sub-goals</li>
-          <li>See who is involved in each goal</li>
+          <li>Status is worked out against the calendar, and the weather over each goal shows it; set it by hand when you know better</li>
+          <li>A flight log of work done per quarter, and who is leading or trailing this week</li>
+          <li>Each goal gets a colour, a symbol and a short tag that follows it into tasks, projects and the Lens</li>
         </ul>
+        <div class="switch" role="group" aria-label="Strategy view">
+          <button type="button" aria-pressed="true" data-shot="strategy-journey">Journey</button>
+          <button type="button" aria-pressed="false" data-shot="strategy">Goals</button>
+        </div>
       </div>
       <figure class="shot"><button class="frame" type="button" data-zoom aria-label="Enlarge"><span class="chrome" aria-hidden="true"><i></i><i></i><i></i></span>
-        <picture><source srcset="img/app/strategy-dark.webp" media="(prefers-color-scheme: dark)"><img src="img/app/strategy.webp" alt="Strategy page with a goal, its progress and sub-goals" width="1600" height="965" loading="lazy"></picture></button></figure>
+        <picture><source srcset="img/app/strategy-journey-dark.webp" media="(prefers-color-scheme: dark)"><img src="img/app/strategy-journey.webp" alt="Strategy Journey: each goal as a landscape, with the team's flock flying from the nest towards the flag" width="1600" height="965" loading="lazy"></picture></button></figure>
     </article>
 
     <article class="feature" id="f-projects">
@@ -435,6 +440,7 @@ dialog.zoom button{font:inherit;font-size:14px;border:0;border-radius:9px;paddin
           <li>Board: drag between To do, In progress and Done</li>
           <li>Calendar: drop a task on another day to move it, or copy it there</li>
           <li>Task panel with assignee, collaborators, subtasks, goal and time spent</li>
+          <li>Repeating tasks, and comments where @ brings a colleague in</li>
         </ul>
         <div class="switch" role="group" aria-label="Task view">
           <button type="button" aria-pressed="true" data-shot="tasks-list">List</button>
@@ -516,7 +522,6 @@ dialog.zoom button{font:inherit;font-size:14px;border:0;border-radius:9px;paddin
         <li>A person's tasks and review, one click from their Team card</li>
         <li>Your colour palette and view choices following you to every device</li>
         <li>Live updates when a colleague changes something</li>
-        <li>Import and export with Excel and CSV</li>
         <li>Email notifications, for example when a task is assigned to you</li>
       </ul>
     </div>
@@ -647,7 +652,7 @@ dialog.zoom button{font:inherit;font-size:14px;border:0;border-radius:9px;paddin
       <details><summary>How is goal progress calculated?</summary>
         <div><p>From what is linked to the goal: the tasks of its projects, tasks linked to it directly, and its sub-goals. If nothing is linked yet, you set the progress yourself.</p></div></details>
       <details><summary>Where is my data stored?</summary>
-        <div><p>In the European Union, in a data centre in Ireland. Who can see what is enforced by the database, not by the page in your browser.</p></div></details>
+        <div><p>In the European Union, in a data centre in Ireland. You can export everything to Excel or CSV, or download a full backup, whenever you like. Who can see what is enforced by the database, not by the page in your browser.</p></div></details>
       <details><summary>Why is it called Goose?</summary>
         <div><p>Geese travel thousands of kilometres by flying together: they share the effort, take turns leading and keep in touch the whole way. That is the kind of teamwork Goose is built for.</p></div></details>
       <details><summary>How is Goose developed?</summary>
