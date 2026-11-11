@@ -1,6 +1,6 @@
-import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { useWorkspace } from '../auth/session';
-import { listGoals, listMembers, listNoteDates, listProjectsFull, listTasks, todayISO, useLoad } from '../lib/data';
+import { getMySettings, listGoals, listMembers, listNoteDates, listProjectsFull, listTasks, saveMySettings, todayISO, useLoad } from '../lib/data';
 import { canManage, type Goal, type ProjectFull, type Task } from '../lib/types';
 import { useLocalPref, useUI } from '../lib/ui';
 import { useLens } from '../lib/lens';
@@ -13,6 +13,8 @@ import { NO_PROJECT_COLOR, ProjectIcon } from '../components/ProjectChip';
 import { GoalDialog } from '../components/GoalDialog';
 import { resolveStatuses } from '../lib/legs';
 import { projectHref } from './Projects';
+import { colorOf } from '../lib/goaltag';
+import { GoalIcon } from '../components/Geese';
 
 type Zoom = 'weeks' | 'months' | 'quarters';
 /** Pixels per day, and how many days to show before and after today (as in the prototype). */
@@ -37,6 +39,20 @@ export function Timeline() {
   const [showDone, setShowDone] = useLocalPref('showDone', false);
   const [goalDlg, setGoalDlg] = useState<Goal | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
+  // lanes each person has hidden (goals 'g:<id>', projects 'p:<id>', 'p:none'), kept with their settings so they follow them
+  const [hidden, setHidden] = useState<string[]>([]);
+  const [hidOpen, setHidOpen] = useState(false);
+  useEffect(() => { void getMySettings(ws.member_id).then(s => setHidden(Array.isArray(s.tlHidden) ? s.tlHidden as string[] : []), () => undefined); }, [ws.member_id]);
+  useEffect(() => {
+    if (!hidOpen) return;
+    const click = (e: MouseEvent) => { if (!(e.target as Element).closest?.('.hidwrap')) setHidOpen(false); };
+    const key = (e: KeyboardEvent) => { if (e.key === 'Escape') setHidOpen(false); };
+    addEventListener('mousedown', click); addEventListener('keydown', key);
+    return () => { removeEventListener('mousedown', click); removeEventListener('keydown', key); };
+  }, [hidOpen]);
+  const setHid = (next: string[]) => { setHidden(next); void saveMySettings(ws.member_id, { tlHidden: next }).catch(() => undefined); };
+  const hideBtn = (k: string, name: string) => <button className="iconbtn lhide" title={`Hide “${name}” from the Timeline`} aria-label={`Hide ${name}`}
+    onClick={() => setHid([...hidden, k])}><Icon name="eyeoff" /></button>;
 
   const z = ZOOM[zoom], ppd = z.ppd;
   const start = monday(addDays(new Date(), -z.back)), end = addDays(start, z.back + z.fwd);
@@ -66,32 +82,41 @@ export function Timeline() {
   }
 
   const lanes: ReactNode[] = [];
+  let hiddenNow: { k: string; name: string }[] = [];
   if (data) {
     const search = ui.q.trim().toLowerCase();
     const match = (t: Task) => (!search || t.title.toLowerCase().includes(search)) && lens.task(t);
-    // goals lane
-    const goals = data.goals.filter(g => !g.parent_id).map(g => ({ g, r: [g.start_date, g.end_date ?? endISO] as const })).filter(o => o.r[1] >= startISO && o.r[0] <= endISO);
-    if (goals.length && !lens.filt.project) {
-      const rows: number[] = [];
-      const items = goals.map(({ g, r }) => {
-        const l = Math.max(0, x(r[0])), w = Math.min(W, x(r[1]) + ppd) - l;
-        let row = rows.findIndex(e => e <= l); if (row < 0) { row = rows.length; rows.push(0); } rows[row] = l + w + 4;
-        return { g, l, w, row };
-      });
-      const h = 12 + rows.length * 28;
+    const away: { k: string; name: string }[] = [];   // lanes hidden by this person, for "n hidden"
+    // one lane per goal, like projects: a band across its period, filled to its progress;
+    // open-ended goals are solid up to today and hatched after, like ongoing projects
+    const goals = data.goals.filter(g => !g.parent_id && (g.end_date ?? endISO) >= startISO && g.start_date <= endISO);
+    if (!lens.filt.project) for (const g of goals) {
+      const k = `g:${g.id}`;
+      if (hidden.includes(k)) { away.push({ k, name: g.title }); continue; }
+      const st = goalStatus(g.status), col = colorOf(g, data.goals);
+      const lp = !g.end_date && g.status !== 'achieved' ? legProgress(g, data.goals, data.tasks, data.projects) : null;
+      const pg = lp ? lp.pg : goalProgress(g, data.goals, data.tasks);
+      const txt = lp ? (lp.target == null ? `${lp.leg.short} first leg` : `${lp.leg.short} leg ${pg}%`) : `${pg}%`;
+      const s = g.start_date > startISO ? x(g.start_date) : 0;
+      const open = () => (canManage(ws.access) ? setGoalDlg(g) : (location.hash = '#/strategy'));
+      let band: ReactNode;
+      if (g.end_date) {
+        const e = Math.min(W, x(g.end_date) + ppd);
+        band = <div className="band fixed gband" style={{ ['--c' as string]: col, left: s, width: Math.max(0, e - s) }}>
+          <i className="gfill" style={{ width: `${pg}%` }} />
+          {g.end_date <= endISO && <span className="cap" style={{ right: 4 }}>ends {fmtDate(g.end_date)}</span>}</div>;
+      } else {
+        const solid = Math.max(0, Math.min(W, x(today)) - s);
+        band = <div className="band open gband" style={{ ['--c' as string]: col, left: s, width: W - s, ['--solid' as string]: `${solid}px` }} />;
+      }
       lanes.push(
-        <div key="gl" className="lname" style={{ height: h }}><a href="#/strategy"><span className="picon" style={{ ['--c' as string]: 'var(--sun)' }}><Icon name="target" /></span><span>Goals</span></a>
-          <span className="lm">{goals.length} in view</span></div>,
-        <div key="gt" className="track" style={{ height: h, width: W }}>{shading}{items.map(({ g, l, w, row }) => {
-          const st = goalStatus(g.status);
-          // open-ended goals are measured per quarter (legs), so their bar is not filled
-          const lp = !g.end_date && g.status !== 'achieved' ? legProgress(g, data.goals, data.tasks, data.projects) : null;
-          const pg = lp ? lp.pg : goalProgress(g, data.goals, data.tasks);
-          const txt = lp ? (lp.target == null ? `${lp.leg.short} first leg` : `${lp.leg.short} leg ${pg}%`) : `${pg}%`;
-          return <button key={g.id} className={`gbar ${g.end_date ? '' : 'open'}`} style={{ ['--c' as string]: st.color, left: l, width: w, top: 8 + row * 28 }}
-            title={`${g.title} · ${goalRange(g)} · ${txt}`} onClick={() => canManage(ws.access) ? setGoalDlg(g) : (location.hash = '#/strategy')}>
-            {!lp && <i style={{ width: `${pg}%` }} />}<span style={{ paddingLeft: Math.max(8, x(today) - 150 - l) }}>{g.title} · {txt}</span></button>;
-        })}</div>);
+        <div key={`n${k}`} className="lname" style={{ height: 56 }}>
+          <a href="#/strategy"><GoalIcon g={g} goals={data.goals} /><span>{g.title}</span></a>
+          <span className="lm">Goal · {g.end_date ? goalRange(g) : 'no end date'} · <span style={{ color: st.color }}>{st.label}</span></span>
+          {hideBtn(k, g.title)}</div>,
+        <div key={`t${k}`} className="track" style={{ height: 56, width: W }}>{shading}{band}
+          <button className="glab" style={{ left: Math.max(s + 6, Math.min(x(today) + 10, W - 220)) }} onClick={open} title={`${g.title} · ${goalRange(g)} · ${txt}`}>
+            <span className="gdot" style={{ ["--c" as string]: st.color }} />{txt}</button></div>);
     }
     // project lanes: fixed term first, then ongoing, paused, closed
     const order = (p: ProjectFull) => p.status === 'closed' ? 3 : p.status === 'paused' ? 2 : p.kind === 'fixed' ? 0 : 1;
@@ -123,12 +148,13 @@ export function Timeline() {
       }
       const open = ts.filter(t => t.status !== 'done').length;
       const meta = `${p ? (p.kind === 'fixed' && p.start_date && p.end_date ? `${fmtDate(p.start_date)} – ${fmtDate(p.end_date, { day: 'numeric', month: 'short', year: '2-digit' })}` : p.status === 'active' ? 'Ongoing' : p.status === 'paused' ? 'Paused' : 'Closed') + ' · ' : ''}${open} open${undated ? ` · ${undated} undated` : ''}`;
-      const k = p ? p.id : 'none';
+      const k = p ? p.id : 'none', name = p ? p.name : 'No project';
+      if (hidden.includes(`p:${k}`)) { away.push({ k: `p:${k}`, name }); return []; }
       return [
         <div key={`n${k}`} className="lname" style={{ height: h }}>
           <a href={p ? projectHref(p.id) : '#/tasks'}>
             {p ? <ProjectIcon p={p} /> : <span className="picon" style={{ ['--c' as string]: NO_PROJECT_COLOR }}><Icon name="folder" /></span>}<span>{p ? p.name : 'No project'}</span></a>
-          <span className="lm">{meta}</span></div>,
+          <span className="lm">{meta}</span>{hideBtn(`p:${k}`, name)}</div>,
         <div key={`t${k}`} className="track" style={{ height: h, width: W }}>{shading}{band}
           {marks.map(({ t, l, lw, row }) => {
             const done = t.status === 'done';
@@ -140,19 +166,27 @@ export function Timeline() {
     ps.forEach(p => lanes.push(...lane(p, data.tasks.filter(t => t.project_id === p.id && match(t)))));
     const loose = data.tasks.filter(t => !data.projects.some(p => p.id === t.project_id) && match(t));
     if (loose.length && (!lens.filt.project || lens.filt.project === 'none')) lanes.push(...lane(null, loose));
+    hiddenNow = away;
   }
 
   return (
     <>
-      <div className="ph"><h1>Timeline</h1><span className="sub">Every project as a lane. Solid bands are fixed-term projects; hatched bands run on with no end date.</span><span className="grow" />
+      <div className="ph"><h1>Timeline</h1><span className="sub">Every goal and project as a lane. Solid bands have an end date; hatched bands run on with no end date.</span><span className="grow" />
         <span className="seg" role="group" aria-label="Zoom">{(Object.keys(ZOOM) as Zoom[]).map(k =>
           <button key={k} className={zoom === k ? 'on' : ''} onClick={() => setZoom(k)}>{ZOOM[k].label}</button>)}</span>
         <button className="btn sm" onClick={toToday}>Today</button>
+        {hiddenNow.length > 0 && <span className="hidwrap">
+          <button className="btn sm ghost" aria-expanded={hidOpen} onClick={() => setHidOpen(o => !o)}><Icon name="eyeoff" />{hiddenNow.length} hidden</button>
+          {hidOpen && <div className="hidpop" role="dialog" aria-label="Hidden lanes">
+            {hiddenNow.map(h => <div key={h.k} className="hidrow"><span>{h.name}</span>
+              <button className="btn sm ghost" onClick={() => setHid(hidden.filter(x => x !== h.k))}><Icon name="eye" />Show</button></div>)}
+            <div className="hidrow"><span className="grow" /><button className="btn sm" onClick={() => { setHid(hidden.filter(x => !hiddenNow.some(h => h.k === x))); setHidOpen(false); }}>Show all</button></div>
+          </div>}</span>}
         <label className="chk"><input type="checkbox" checked={showDone} onChange={e => setShowDone(e.target.checked)} />Show completed</label></div>
       {error && <div className="err">{error}</div>}
       <div className="tl-scroll" ref={scroller}>
         <div className="tl" style={{ gridTemplateColumns: `200px ${W}px`, ['--wkpx' as string]: q ? '100000px' : `${7 * ppd}px` }}>
-          <div className="corner"><span>Project{!q && <small>dates: Mondays and Fridays</small>}</span></div>
+          <div className="corner"><span>Goals and projects</span></div>
           <div className="thead" style={{ width: W }}>{head}</div>
           {data && lanes.length === 0 && <><div className="lname">Nothing here yet</div>
             <div className="track" style={{ width: W, height: 60 }}><span className="hint" style={{ position: 'absolute', left: Math.max(12, x(today) - 140), top: 20 }}>

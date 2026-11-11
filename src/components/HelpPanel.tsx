@@ -21,7 +21,7 @@ function EmailsHelp() {
       <li><b>Tasks due tomorrow</b> come in the morning email{solo ? ', so nothing slips past its date' : ''}.</li>
       <li><b>As it happens or once a day.</b> As it happens, emails go out within a few minutes and several things at once arrive as one email. Once a day, you get one email each morning with everything since the last one.</li>
       <li>You are never emailed about what you did yourself{solo ? '' : ', nor about tasks you cannot see'}.</li>
-      <li>Choose in <b>Your profile</b> (your picture, top right) under <b>Emails</b>: switch each kind on or off, or all emails at once. It applies to all your workspaces. <b>See an example</b> shows what an email looks like; <b>Send me a test email</b> checks that emails reach you. Every email has a link back to these settings.</li>
+      <li><b>Emails are off until you switch them on</b> in <b>Your profile</b> (your picture, top right), under <b>Emails</b>. There you can also switch each kind on or off. It applies to all your workspaces. <b>See an example</b> shows what an email looks like; <b>Send me a test email</b> checks that emails reach you. Every email has a link back to these settings.</li>
       {!solo && <li>Links in an email open the task or notebook entry, in the right workspace.</li>}
     </ul></>;
 }
@@ -40,8 +40,10 @@ const TOPICS: Topic[] = [
   { id: 'timeline', title: 'Timeline', icon: 'timeline', page: 'timeline', go: '#/timeline', body: <>
     <p className="lead">The home screen: everything on one time line, so you see at a glance what is running, what is coming and what has slipped.</p>
     <ul>
-      <li><b>Goals</b> sit in the top lane as bands across their period, filled to their progress.</li>
+      <li><b>Each goal is a lane</b> at the top, with its symbol: a band across its period, filled to its progress. A goal with no end date is solid up to today and hatched after, and shows its quarterly leg. Click the label on the band to open the goal.</li>
       <li><b>Each project is a lane.</b> A solid band is a fixed-term project, ending on its end date. An ongoing project is solid up to today and hatched after, because it runs on.</li>
+      <li><b>Hide a lane</b> you do not need to see: point at its name and click the crossed-out eye. <b>“n hidden”</b> at the top right lists them, to show them again. Goose remembers this for you, on any computer.</li>
+      <li>The dates along the top are Mondays and Fridays (months and quarters when zoomed out).</li>
       <li><b>Tasks are dots</b> on their due date. A red ring means overdue; tick “Show completed” to see finished ones.</li>
       <li>Zoom with <b>Weeks / Months / Quarters</b>; <b>Today</b> brings you back. Click a project name to open it, a dot to open the task.</li>
     </ul></> },
@@ -93,7 +95,7 @@ const TOPICS: Topic[] = [
   { id: 'tasks', title: 'Tasks', icon: 'tasks', page: 'tasks', go: '#/tasks', body: <>
     <p className="lead">All your tasks in three views.</p>
     <ul>
-      <li><b>List</b>, grouped by due date, project or Priority; <b>Board</b> by status (drag a card between To do, In progress and Done); <b>Calendar</b> by day.</li>
+      <li><b>List</b>, grouped by due date, project or Priority; <b>Board</b> by status (drag a card between To do, In progress and Done); <b>Calendar</b> by day. A busy day shows its first tasks (open ones first) and <b>+n more</b>, which opens the whole day; drag a task from there to move it.</li>
       <li>In the List, click a task’s <b>Project</b>, <b>Priority</b> or other dimension to change it from a drop-down, without opening the task. Pick the first choice, “(from project)”, to go back to the project’s default.</li>
       <li><b>Repeating tasks</b>: in the task panel, <b>Repeat</b> offers every day, every weekday, every week or two, every month or year, or <b>Custom…</b> (every few days, weeks, months or years; which weekdays; counted from the due date or from the day it is done; and when it stops). When you complete a repeating task, the next one is created with the next due date, the same project, goal, people, dimensions and subtasks (unticked). Finished late? Dates already past are skipped. The calendar shows the coming ones faintly. To stop, set Repeat to “Doesn’t repeat” on the open one.</li>
       <li>In the calendar, drag a task to another day and choose <b>Move here</b> or <b>Copy here</b> (hold Alt while dropping to copy at once). Untick “Ask to move or copy” to always move.</li>

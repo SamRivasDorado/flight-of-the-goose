@@ -311,6 +311,10 @@ select pg_temp.check((select completed_at = date '2026-01-15' from projects wher
 update projects set status = 'active' where name = 'P3 client';
 select pg_temp.check((select completed_at is null from projects where name = 'P3 client'), 'reopening clears the day');
 
+-- Emails are off until switched on: Sam, Omar and Karim switch them on now (tested at the end)
+insert into email_prefs (user_id, enabled) values
+  ('00000000-0000-0000-0000-00000000000a', true), ('00000000-0000-0000-0000-00000000000b', true), ('00000000-0000-0000-0000-00000000000d', true);
+
 -- ---------------------------------------------------------------------
 -- Comments: visible with the task, written by everyone but guests, edited only by their author
 set role authenticated;
@@ -473,18 +477,24 @@ do $$ begin
   exception when insufficient_privilege then raise notice 'ok  only the schedule runs the sender'; end;
 end $$;
 select pg_temp.login('00000000-0000-0000-0000-00000000000b');
-insert into email_prefs (user_id, mentions) values ('00000000-0000-0000-0000-00000000000b', false);
+update email_prefs set mentions = false where user_id = '00000000-0000-0000-0000-00000000000b';
 do $$ begin
   begin insert into email_prefs (user_id, mentions) values ('00000000-0000-0000-0000-00000000000a', false); raise exception 'FAILED: changed someone else''s email settings';
   exception when insufficient_privilege then raise notice 'ok  you change only your own email settings'; end;
 end $$;
 select pg_temp.check((select count(*) from email_prefs) = 1, 'you read only your own email settings');
 select pg_temp.login('00000000-0000-0000-0000-00000000000d');
-insert into email_prefs (user_id, timing) values ('00000000-0000-0000-0000-00000000000d', 'daily');
+update email_prefs set timing = 'daily' where user_id = '00000000-0000-0000-0000-00000000000d';
 select pg_temp.check(send_test_email() = 'not_ready', 'the test email says when emails cannot go out yet');
 reset role;
 
 select pg_temp.check(not exists (select 1 from email_outbox where member_id = (select julia from em)), 'someone mentioned on a task they cannot see is not emailed');
+set role authenticated;
+select pg_temp.login('00000000-0000-0000-0000-00000000000a');
+insert into comments (workspace_id, task_id, author_member_id, body, mentions)
+  select t.workspace_id, t.id, my_member_id(t.workspace_id), '@Julia for you', array[(select julia from em)] from tasks t where t.title = 't4 in P3';
+reset role;
+select pg_temp.check(not exists (select 1 from email_outbox where member_id = (select julia from em)), 'emails are off for people who never switched them on');
 select pg_temp.check((select count(*) from email_outbox where kind = 'assigned') = 2, 'giving a task to someone else queues an email for them');
 
 delete from net.calls; delete from vault.decrypted_secrets;

@@ -7,6 +7,7 @@
 --   * tasks assigned to you by someone else
 --   * offers of help on your tasks, and answers to your own offers
 --   * your tasks due tomorrow (in the morning email)
+-- Emails are OFF until a person switches them on (Your profile → Emails).
 -- and when: "as it happens" (grouped: at most one email every few minutes) or
 -- "once a day" (one email in the morning).
 --
@@ -30,7 +31,7 @@ exception when others then raise notice 'pg_net not available here: emails are n
 -- ---------- what each person wants (one row per person, all workspaces) ----------
 create table if not exists email_prefs (
   user_id       uuid primary key references auth.users on delete cascade,
-  enabled       boolean not null default true,
+  enabled       boolean not null default false,  -- off until the person switches emails on
   mentions      boolean not null default true,
   comments      boolean not null default true,
   assigned      boolean not null default true,
@@ -107,6 +108,8 @@ begin
   if p_member is null or p_member is not distinct from p_actor then return; end if;
   select workspace_id into v_ws from workspace_members where id = p_member and status = 'active' and user_id is not null;
   if v_ws is null then return; end if;
+  if not exists (select 1 from email_prefs p join workspace_members m on m.user_id = p.user_id
+                 where m.id = p_member and p.enabled) then return; end if;   -- emails are off for this person
   if p_task is not null and not member_sees_task(p_member, p_task) then return; end if;
   if p_note is not null and not member_sees_note(p_member, p_note) then return; end if;
   insert into email_outbox (member_id, workspace_id, kind, actor_member_id, task_id, note_id, excerpt)
@@ -281,6 +284,7 @@ begin
   insert into email_outbox (member_id, workspace_id, kind, task_id)
   select t.assignee_member_id, t.workspace_id, 'due', t.id
   from tasks t join workspace_members m on m.id = t.assignee_member_id and m.status = 'active' and m.user_id is not null
+  join email_prefs p on p.user_id = m.user_id and p.enabled and p.due
   where t.due_date = current_date + 1 and t.status <> 'done'
     and not exists (select 1 from email_outbox o where o.kind = 'due' and o.task_id = t.id and o.member_id = t.assignee_member_id
                     and o.created_at > now() - interval '20 hours');
@@ -313,7 +317,7 @@ begin
   from workspace_members m left join email_prefs p on p.user_id = m.user_id
   where o.sent_at is null and m.id = o.member_id and (
     m.status <> 'active' or m.user_id is null
-    or not coalesce(p.enabled, true)
+    or not coalesce(p.enabled, false)
     or (o.kind = 'mention' and not coalesce(p.mentions, true))
     or (o.kind in ('comment', 'reply') and not coalesce(p.comments, true))
     or (o.kind = 'assigned' and not coalesce(p.assigned, true))

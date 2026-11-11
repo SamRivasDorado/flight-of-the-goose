@@ -704,7 +704,7 @@ button.brand:hover{background:var(--bar-hi)}
 .cmain{min-width:0;display:flex;flex-direction:column;gap:2px}
 .chead{display:flex;align-items:baseline;gap:8px;font-size:13px;flex-wrap:wrap}.chead .grow{flex:1}
 .chead .muted{font-size:12px}
-.cbody{font-size:14px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}
+.cmtbody{font-size:14px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}
 .mention{color:var(--accent);font-weight:600;background:var(--accent-soft);border-radius:4px;padding:0 3px}
 .ccompose{position:relative;display:flex;flex-direction:column;gap:6px}
 .ccompose textarea{min-height:58px;resize:vertical}
@@ -870,3 +870,25 @@ button.brand:hover{background:var(--bar-hi)}
 .emailsubj .muted{margin-right:6px}
 .emailshot{border:1px solid var(--line);border-radius:12px;overflow:hidden}
 .emailshot a{pointer-events:none}
+
+/* Calendar: a busy day keeps its size; "+N more" opens the whole day */
+.daymore{align-self:flex-start;font-size:12px;font-weight:600;color:var(--muted);padding:2px 7px;border-radius:6px}
+.daymore:hover,.daymore:focus-visible{color:var(--fg);background:var(--surface-2)}
+.daypop{position:fixed;z-index:60;background:var(--raise,var(--surface));border:1px solid var(--raise-line,var(--line));border-radius:12px;box-shadow:var(--shadow);padding:8px 10px 10px;display:flex;flex-direction:column;gap:6px;max-height:min(70vh,520px)}
+.daypop .dph{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px;padding:2px 2px 0}
+.daypop .dpl{display:flex;flex-direction:column;gap:4px;overflow-y:auto}
+
+/* Timeline: goal lanes and hiding lanes */
+.lname .lhide{position:absolute;top:6px;right:6px;opacity:0;width:26px;height:26px;background:var(--surface);box-shadow:-6px 0 6px var(--surface)}
+.lname:hover .lhide,.lname .lhide:focus-visible{opacity:1}
+.lname .lhide .ic{width:15px;height:15px}
+.gband.fixed{border-radius:0}
+.gband .gfill{position:absolute;inset:0 auto 0 0;background:color-mix(in srgb,var(--c) 26%,transparent)}
+.glab{position:absolute;top:17px;height:22px;display:flex;align-items:center;gap:6px;padding:0 8px;border-radius:6px;font-size:12px;font-weight:600;white-space:nowrap;
+  background:color-mix(in srgb,var(--surface) 88%,transparent);box-shadow:var(--shadow-s);z-index:1}
+.glab:hover{background:var(--surface)}
+.glab .gdot{width:8px;height:8px;border-radius:50%;background:var(--c);flex:none}
+.hidwrap{position:relative}
+.hidpop{position:absolute;right:0;top:calc(100% + 6px);z-index:30;min-width:260px;max-width:360px;background:var(--raise,var(--surface));border:1px solid var(--raise-line,var(--line));border-radius:10px;box-shadow:var(--shadow);padding:6px;display:flex;flex-direction:column;gap:2px}
+.hidrow{display:flex;align-items:center;gap:8px;font-size:13px;padding:2px 2px 2px 8px}
+.hidrow span:first-child{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

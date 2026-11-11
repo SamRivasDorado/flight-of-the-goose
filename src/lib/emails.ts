@@ -12,7 +12,8 @@ export interface EmailPrefs {
   enabled: boolean; mentions: boolean; comments: boolean; assigned: boolean; help: boolean; due: boolean;
   timing: 'soon' | 'daily';
 }
-export const EMAIL_DEFAULTS: EmailPrefs = { enabled: true, mentions: true, comments: true, assigned: true, help: true, due: true, timing: 'soon' };
+/** Emails are off until the person switches them on; then every kind is on. */
+export const EMAIL_DEFAULTS: EmailPrefs = { enabled: false, mentions: true, comments: true, assigned: true, help: true, due: true, timing: 'soon' };
 
 const missing = (m: string) => /email_prefs|send_test_email/.test(m) && /(does not exist|schema cache|not find)/i.test(m);
 export const EMAILS_NEED_UPDATE = 'Emails need a one-time database update first.';

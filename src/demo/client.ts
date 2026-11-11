@@ -42,7 +42,7 @@ const DEFAULTS: Record<string, () => Row> = {
   subtasks: () => ({ done: false, position: 0 }),
   task_values: () => ({ option_id: null, value: null }),
   member_settings: () => ({ settings: {} }),
-  email_prefs: () => ({ enabled: true, mentions: true, comments: true, assigned: true, help: true, due: true, timing: 'soon', test_sent_at: null, updated_at: now() }),
+  email_prefs: () => ({ enabled: false, mentions: true, comments: true, assigned: true, help: true, due: true, timing: 'soon', test_sent_at: null, updated_at: now() }),
   help_offers: () => ({ status: 'offered', message: '', created_at: now(), answered_at: null }),
   mention_events: () => ({ author_member_id: null, task_id: null, note_id: null, excerpt: '', created_at: now() }),
   comments: () => ({ task_id: null, note_id: null, author_member_id: null, mentions: [], created_at: now(), edited_at: null }),

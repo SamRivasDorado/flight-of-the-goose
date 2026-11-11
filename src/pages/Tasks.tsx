@@ -281,6 +281,7 @@ function CalendarView({ c, tools }: { c: Ctx; tools: React.ReactNode }) {
   const [askOn, setAskOn] = useLocalPref('dropAsk', true);
   const [ask, setAsk] = useState<{ t: TaskFull; date: string; x: number; y: number } | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  const [more, setMore] = useState<{ k: string; el: HTMLElement } | null>(null);
   const ws = useWorkspace(), ui = useUI();
   const dayName = (k: string) => parseISO(k).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
   async function copyTo(t: TaskFull, k: string) {
@@ -315,6 +316,22 @@ function CalendarView({ c, tools }: { c: Ctx; tools: React.ReactNode }) {
       d = n; if (r.left != null) r = { ...r, left: r.left - 1 };
     }
   }
+  /** A task on a day; `done` closes the day's full list after a click or a drag. */
+  const chipOf = (t: TaskFull, done?: () => void) => {
+    const p = c.projects.find(x => x.id === t.project_id), who = c.members.find(m => m.id === t.assignee_member_id);
+    const drag = dragProps(t.id, c.editable);
+    return (
+      <button key={t.id} className={`chip ${t.status === 'done' ? 'done' : ''}`} style={{ ['--c' as string]: p ? p.color : NO_PROJECT_COLOR }}
+        title={p ? p.name : 'No project'} onClick={() => { done?.(); c.open(t.id); }} {...drag}
+        {...(done && 'onDragEnd' in drag ? { onDragEnd: (e: DragEvent) => { drag.onDragEnd?.(e); done(); } } : {})}>
+        <span className="t">{t.title || 'Untitled task'}</span>
+        {who && who.id !== c.me && <Avatar m={who} size="xs" />}
+      </button>);
+  };
+  const ghostOf = (t: TaskFull, done?: () => void) => { const p = c.projects.find(x => x.id === t.project_id); return (
+    <button key={`g${t.id}`} className="chip ghost" style={{ ['--c' as string]: p ? p.color : NO_PROJECT_COLOR }}
+      title={`${describe(t.repeat!, t.due_date)}. This one is created when the one before it is done.`} onClick={() => { done?.(); c.open(t.id); }}>
+      <Icon name="repeat" /><span className="t">{t.title || 'Untitled task'}</span></button>); };
   const shift = (n: number) => setMonth(n === 0 ? (() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); })() : new Date(month.getFullYear(), month.getMonth() + n, 1));
 
   return (
@@ -338,29 +355,55 @@ function CalendarView({ c, tools }: { c: Ctx; tools: React.ReactNode }) {
         {Array.from({ length: 7 }, (_, i) => <div key={`h${i}`} className="dow">{names[(i + weekStart) % 7]}</div>)}
         {days.map(d => {
           const k = todayISO(d);
-          const items = c.tasks.filter(t => t.due_date === k && (c.showDone || t.status !== 'done'));
+          // open tasks first, then done ones, then the coming repeats; a full day keeps its size and offers "+N more"
+          const items = c.tasks.filter(t => t.due_date === k && (c.showDone || t.status !== 'done'))
+            .sort((a, b) => Number(a.status === 'done') - Number(b.status === 'done'));
+          const all = [...items.map(t => chipOf(t)), ...(ghosts.get(k) ?? []).map(t => ghostOf(t))];
+          const shown = all.length > DAY_MAX ? all.slice(0, DAY_MAX - 1) : all;
           return (
             <div key={k} className={`day ${d.getMonth() !== month.getMonth() ? 'out' : ''} ${k === today ? 'today' : ''} ${drop.over === k ? 'over' : ''}`} {...(c.editable ? drop.props(k) : {})}>
               <div className="dn"><b>{d.getDate() === 1 ? `${d.toLocaleDateString('en-GB', { month: 'short' })} ` : ''}{d.getDate()}</b>
                 {c.editable && <button className="add" aria-label={`Add task on ${parseISO(k).toLocaleDateString('en-GB')}`} onClick={() => void c.add({ due_date: k })}><Icon name="plus" /></button>}</div>
-              {items.map(t => {
-                const p = c.projects.find(x => x.id === t.project_id), who = c.members.find(m => m.id === t.assignee_member_id);
-                return (
-                  <button key={t.id} className={`chip ${t.status === 'done' ? 'done' : ''}`} style={{ ['--c' as string]: p ? p.color : NO_PROJECT_COLOR }}
-                    title={p ? p.name : 'No project'} onClick={() => c.open(t.id)} {...dragProps(t.id, c.editable)}>
-                    <span className="t">{t.title || 'Untitled task'}</span>
-                    {who && who.id !== c.me && <Avatar m={who} size="xs" />}
-                  </button>);
-              })}
-              {(ghosts.get(k) ?? []).map(t => { const p = c.projects.find(x => x.id === t.project_id); return (
-                <button key={`g${t.id}`} className="chip ghost" style={{ ['--c' as string]: p ? p.color : NO_PROJECT_COLOR }}
-                  title={`${describe(t.repeat!, t.due_date)}. This one is created when the one before it is done.`} onClick={() => c.open(t.id)}>
-                  <Icon name="repeat" /><span className="t">{t.title || 'Untitled task'}</span></button>); })}
+              {shown}
+              {shown.length < all.length && <button className="daymore" aria-haspopup="dialog"
+                onClick={e => setMore({ k, el: e.currentTarget.closest('.day') as HTMLElement })}>+{all.length - shown.length} more</button>}
             </div>);
         })}
       </div></div>
+      {more && <DayMore el={more.el} title={parseISO(more.k).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })} onClose={() => setMore(null)}>
+        {[...c.tasks.filter(t => t.due_date === more.k && (c.showDone || t.status !== 'done')).sort((a, b) => Number(a.status === 'done') - Number(b.status === 'done')).map(t => chipOf(t, () => setMore(null))),
+          ...(ghosts.get(more.k) ?? []).map(t => ghostOf(t, () => setMore(null)))]}
+      </DayMore>}
     </>
   );
+}
+
+/** Most tasks a calendar day shows before "+N more". */
+const DAY_MAX = 4;
+
+/** All the tasks of a busy day, over its box in the calendar. Tasks open with a click or can be dragged to another day. */
+function DayMore({ el, title, onClose, children }: { el: HTMLElement; title: string; onClose: () => void; children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ left: number; top: number; width: number } | null>(null);
+  useLayoutEffect(() => {
+    const place = () => {
+      const r = el.getBoundingClientRect(), width = Math.max(r.width + 24, 260), h = ref.current?.offsetHeight ?? 200;
+      setPos({ width, left: Math.max(8, Math.min(r.left - 12, innerWidth - width - 8)), top: Math.max(8, Math.min(r.top - 8, innerHeight - h - 8)) });
+    };
+    place(); addEventListener('resize', place); addEventListener('scroll', place, true);
+    return () => { removeEventListener('resize', place); removeEventListener('scroll', place, true); };
+  }, [el]);
+  useEffect(() => {
+    const key = (e: globalThis.KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    const click = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) onClose(); };
+    addEventListener('keydown', key); addEventListener('mousedown', click);
+    return () => { removeEventListener('keydown', key); removeEventListener('mousedown', click); };
+  }, [onClose]);
+  return createPortal(
+    <div ref={ref} className="daypop" role="dialog" aria-label={title} style={pos ?? { visibility: 'hidden', left: 0, top: 0 }}>
+      <div className="dph"><b>{title}</b><button className="iconbtn" onClick={onClose} aria-label="Close"><Icon name="x" /></button></div>
+      <div className="dpl">{children}</div>
+    </div>, document.body);
 }
 
 /** "Move here / Copy here" after dropping a task on another day (as in the prototype). */
