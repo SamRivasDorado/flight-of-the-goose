@@ -32,6 +32,11 @@ export function WorkspaceMenu() {
     return () => { removeEventListener('resize', place); removeEventListener('scroll', place, true); };
   }, [open]);
 
+  // the link at the bottom of Goose's emails opens Your profile at its Emails section
+  useEffect(() => {
+    const f = () => { setOpen(false); setDialog('profile'); };
+    addEventListener('goose:open-profile', f); return () => removeEventListener('goose:open-profile', f);
+  }, []);
   useEffect(() => {
     if (!open) return;
     const click = (e: MouseEvent) => { const t = e.target as Node; if (!box.current?.contains(t) && !pop.current?.contains(t)) setOpen(false); };

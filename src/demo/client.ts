@@ -15,12 +15,12 @@ type Store = { tables: Record<string, Row[]>; files: Record<string, string> };
 
 export const DEMO_UID = '00000000-0000-4000-8000-000000000001';
 export const DEMO_EMAIL = 'sam@example.com';
-const KEY = 'goose.demo.v10';
+const KEY = 'goose.demo.v12';
 
 const PK: Record<string, string[]> = {
   team_members: ['team_id', 'member_id'], project_members: ['project_id', 'member_id'], project_teams: ['project_id', 'team_id'],
   goal_projects: ['goal_id', 'project_id'], project_defaults: ['project_id', 'field_id'], project_fields: ['project_id', 'field_id'],
-  task_collaborators: ['task_id', 'member_id'], task_values: ['task_id', 'field_id'], member_settings: ['member_id'],
+  task_collaborators: ['task_id', 'member_id'], task_values: ['task_id', 'field_id'], member_settings: ['member_id'], email_prefs: ['user_id'],
 };
 const pkOf = (t: string) => PK[t] ?? ['id'];
 
@@ -42,19 +42,25 @@ const DEFAULTS: Record<string, () => Row> = {
   subtasks: () => ({ done: false, position: 0 }),
   task_values: () => ({ option_id: null, value: null }),
   member_settings: () => ({ settings: {} }),
+  email_prefs: () => ({ enabled: false, mentions: true, comments: true, assigned: true, help: true, due: true, timing: 'soon', test_sent_at: null, updated_at: now() }),
   help_offers: () => ({ status: 'offered', message: '', created_at: now(), answered_at: null }),
   mention_events: () => ({ author_member_id: null, task_id: null, note_id: null, excerpt: '', created_at: now() }),
   comments: () => ({ task_id: null, note_id: null, author_member_id: null, mentions: [], created_at: now(), edited_at: null }),
+  holiday_calendars: () => ({ color: '#D0453A', created_at: now() }),
+  holidays: () => ({ end_day: null, name: '' }),
+  days_off: () => ({ note: '', created_at: now() }),
   profiles: () => ({ full_name: '', title: '', color: null, avatar_url: null, setup_done: false, created_at: now() }),
 };
 
 /** What happens to other rows when a row is deleted (foreign keys). */
 const ON_DELETE: Record<string, [string, string, 'cascade' | 'null'][]> = {
   workspaces: [['workspace_members', 'workspace_id', 'cascade'], ['teams', 'workspace_id', 'cascade'], ['fields', 'workspace_id', 'cascade'], ['goals', 'workspace_id', 'cascade'],
-    ['projects', 'workspace_id', 'cascade'], ['notes', 'workspace_id', 'cascade'], ['tasks', 'workspace_id', 'cascade'], ['comments', 'workspace_id', 'cascade'], ['mention_events', 'workspace_id', 'cascade'], ['help_offers', 'workspace_id', 'cascade']],
+    ['projects', 'workspace_id', 'cascade'], ['notes', 'workspace_id', 'cascade'], ['tasks', 'workspace_id', 'cascade'], ['comments', 'workspace_id', 'cascade'], ['mention_events', 'workspace_id', 'cascade'], ['help_offers', 'workspace_id', 'cascade'],
+    ['holiday_calendars', 'workspace_id', 'cascade'], ['holidays', 'workspace_id', 'cascade'], ['days_off', 'workspace_id', 'cascade']],
   workspace_members: [['team_members', 'member_id', 'cascade'], ['project_members', 'member_id', 'cascade'], ['task_collaborators', 'member_id', 'cascade'],
     ['member_settings', 'member_id', 'cascade'], ['teams', 'lead_member_id', 'null'], ['goals', 'owner_member_id', 'null'], ['projects', 'owner_member_id', 'null'],
-    ['notes', 'created_by_member', 'null'], ['comments', 'author_member_id', 'null'], ['mention_events', 'member_id', 'cascade'], ['mention_events', 'author_member_id', 'null'], ['help_offers', 'helper_member_id', 'cascade'], ['help_offers', 'helped_member_id', 'cascade'], ['tasks', 'assignee_member_id', 'null'], ['tasks', 'created_by_member', 'null'], ['workspace_members', 'invited_by', 'null']],
+    ['notes', 'created_by_member', 'null'], ['comments', 'author_member_id', 'null'], ['mention_events', 'member_id', 'cascade'], ['mention_events', 'author_member_id', 'null'], ['help_offers', 'helper_member_id', 'cascade'], ['help_offers', 'helped_member_id', 'cascade'], ['tasks', 'assignee_member_id', 'null'], ['tasks', 'created_by_member', 'null'], ['workspace_members', 'invited_by', 'null'], ['days_off', 'member_id', 'cascade']],
+  holiday_calendars: [['holidays', 'calendar_id', 'cascade']],
   teams: [['team_members', 'team_id', 'cascade'], ['project_teams', 'team_id', 'cascade']],
   fields: [['field_options', 'field_id', 'cascade'], ['project_defaults', 'field_id', 'cascade'], ['project_fields', 'field_id', 'cascade'], ['task_values', 'field_id', 'cascade']],
   field_options: [['project_defaults', 'option_id', 'cascade'], ['task_values', 'option_id', 'cascade']],
@@ -279,6 +285,7 @@ function rpc(fn: string, a: Row = {}): Res {
       return { data: null, error: null };
     }
     case 'resend_invitation': return { data: null, error: null };
+    case 'send_test_email': return { data: 'demo', error: null };   // the prototype sends no email
     default: return fail(`function ${fn} does not exist in the prototype`);
   }
 }

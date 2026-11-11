@@ -169,7 +169,7 @@ export function CommentThread({ target, autoFocus, onCount }: { target: { task_i
               {confirmDel === c.id && <div className="confirm" style={{ margin: '4px 0' }}>Delete this comment?<span className="grow" />
                 <button className="btn sm" onClick={() => setConfirmDel(null)}>Keep</button>
                 <button className="btn sm danger" onClick={() => void run(async () => { await deleteComment(c.id); setConfirmDel(null); })}>Delete</button></div>}
-              <div className="cbody"><CommentBody c={c} members={members} /></div>
+              <div className="cmtbody"><CommentBody c={c} members={members} /></div>
             </div>
           </div>);
       })}

@@ -11,6 +11,35 @@ function Dots({ items }: { items: [string, string, string][] }) {
   return <ul className="hdots">{items.map(([tone, label, desc]) => <li key={label}><span className={`tonedot tone-${tone}`}>{label}</span><span>{desc}</span></li>)}</ul>;
 }
 
+/** Help → Holidays and days off; in solo mode without the parts about other people. */
+function HolidaysHelp() {
+  const { solo } = useSolo();
+  return <>
+    <p className="lead">See at a glance which days to keep free of work and meetings, in every place the company works.</p>
+    <ul>
+      <li><b>Holidays</b> belong to the whole workspace, in one calendar per place, each with its colour (for example <i>Comunidad de Madrid</i>, <i>Germany</i>, <i>Egypt</i>). {solo ? <>Open them with <b>Holidays</b> in the Calendar.</> : <>They are on the <b>Team</b> page, tab <b>Holidays</b>: the next 30 days (holidays and people away) and every calendar for the year you choose.</>}</li>
+      <li>Admins keep them with <b>Edit holidays</b>: <b>Fill in official holidays</b> adds a whole year in one click (Comunidad de Madrid and Madrid city; the national holidays of Germany, France, Italy, Greece, the United Kingdom, the United States, Venezuela, Türkiye, Egypt, Algeria, Tunisia, Libya and Morocco). Islamic holidays follow the moon, so their dates are the expected ones and may move by a day. You can also add your own days or periods, such as an office closure.</li>
+      <li>Holidays are <b>tinted in the Calendar</b> with their name. A day that is a holiday in two or more calendars is simply <b>red</b>; point at its name to see which. Untick <b>In my Calendar</b> on a calendar to hide it just for you.</li>
+      {!solo && <li><b>Days off</b> are personal: holidays, conferences, any time away. Add yours from your card on the Team page (<b>Your days off</b>); admins can add them for anyone. Everyone sees them: the card says who is away, and the Calendar shows their pictures on those days.</li>}
+      <li>Dragging a task in the Calendar onto a holiday{solo ? '' : ', or a day its assignee is away,'} asks before moving it and says why.</li>
+    </ul></>;
+}
+
+/** Help → Emails; in solo mode without the parts about other people. */
+function EmailsHelp() {
+  const { solo } = useSolo();
+  return <>
+    <p className="lead">{APP_NAME} can email you, so you do not have to keep it open to know what needs you.</p>
+    <ul>
+      {!solo && <li><b>What you are told about:</b> someone mentions you with @ (in a comment, a task description or a notebook entry), comments on your tasks, replies where you commented, gives you a task, or offers to help (and answers to your own offers).</li>}
+      <li><b>Tasks due tomorrow</b> come in the morning email{solo ? ', so nothing slips past its date' : ''}.</li>
+      <li><b>As it happens or once a day.</b> As it happens, emails go out within a few minutes and several things at once arrive as one email. Once a day, you get one email each morning with everything since the last one.</li>
+      <li>You are never emailed about what you did yourself{solo ? '' : ', nor about tasks you cannot see'}.</li>
+      <li><b>Emails are off until you switch them on</b> in <b>Your profile</b> (your picture, top right), under <b>Emails</b>. There you can also switch each kind on or off. It applies to all your workspaces. <b>See an example</b> shows what an email looks like; <b>Send me a test email</b> checks that emails reach you. Every email has a link back to these settings.</li>
+      {!solo && <li>Links in an email open the task or notebook entry, in the right workspace.</li>}
+    </ul></>;
+}
+
 const TOPICS: Topic[] = [
   { id: 'start', title: `How ${APP_NAME} is organised`, icon: 'book', body: <>
     <p className="lead">{APP_NAME} works on three levels, from the long term to today:</p>
@@ -25,8 +54,11 @@ const TOPICS: Topic[] = [
   { id: 'timeline', title: 'Timeline', icon: 'timeline', page: 'timeline', go: '#/timeline', body: <>
     <p className="lead">The home screen: everything on one time line, so you see at a glance what is running, what is coming and what has slipped.</p>
     <ul>
-      <li><b>Goals</b> sit in the top lane as bands across their period, filled to their progress.</li>
+      <li><b>Grouped by goal.</b> Each goal is a thin stripe with its status and end date (a flag marks the end). Its projects sit underneath, then a lane <i>Without a project</i> for the goal's tasks that are not in a project. After the goals come <b>projects without a goal</b>, and <b>loose tasks</b> (no project, no goal) at the bottom. A project linked to several goals shows under the first. Untick <b>Group by goal</b> (top right) to see projects only.</li>
+      <li><b>Fold a goal</b> with the arrow on its stripe to tuck its projects away; the stripe says what is folded. Click the status on the stripe to open the goal.</li>
       <li><b>Each project is a lane.</b> A solid band is a fixed-term project, ending on its end date. An ongoing project is solid up to today and hatched after, because it runs on.</li>
+      <li><b>Hide a lane</b> you do not need to see: point at its name and click the crossed-out eye. <b>“n hidden”</b> at the top right lists them, to show them again. Goose remembers this for you, on any computer.</li>
+      <li>The dates along the top are Mondays and Fridays (months and quarters when zoomed out).</li>
       <li><b>Tasks are dots</b> on their due date. A red ring means overdue; tick “Show completed” to see finished ones.</li>
       <li>Zoom with <b>Weeks / Months / Quarters</b>; <b>Today</b> brings you back. Click a project name to open it, a dot to open the task.</li>
     </ul></> },
@@ -78,7 +110,7 @@ const TOPICS: Topic[] = [
   { id: 'tasks', title: 'Tasks', icon: 'tasks', page: 'tasks', go: '#/tasks', body: <>
     <p className="lead">All your tasks in three views.</p>
     <ul>
-      <li><b>List</b>, grouped by due date, project or Priority; <b>Board</b> by status (drag a card between To do, In progress and Done); <b>Calendar</b> by day.</li>
+      <li><b>List</b>, grouped by due date, project or Priority; <b>Board</b> by status (drag a card between To do, In progress and Done); <b>Calendar</b> by day. A busy day shows its first tasks (open ones first) and <b>+n more</b>, which opens the whole day; drag a task from there to move it.</li>
       <li>In the List, click a task’s <b>Project</b>, <b>Priority</b> or other dimension to change it from a drop-down, without opening the task. Pick the first choice, “(from project)”, to go back to the project’s default.</li>
       <li><b>Repeating tasks</b>: in the task panel, <b>Repeat</b> offers every day, every weekday, every week or two, every month or year, or <b>Custom…</b> (every few days, weeks, months or years; which weekdays; counted from the due date or from the day it is done; and when it stops). When you complete a repeating task, the next one is created with the next due date, the same project, goal, people, dimensions and subtasks (unticked). Finished late? Dates already past are skipped. The calendar shows the coming ones faintly. To stop, set Repeat to “Doesn’t repeat” on the open one.</li>
       <li>In the calendar, drag a task to another day and choose <b>Move here</b> or <b>Copy here</b> (hold Alt while dropping to copy at once). Untick “Ask to move or copy” to always move.</li>
@@ -86,7 +118,7 @@ const TOPICS: Topic[] = [
       <li>A task in a project <b>counts towards that project's goals</b> by itself: the task panel shows them as <b>Goal: … (from project)</b>, and the Goal column of the list shows a dashed tag. Pick a goal in the panel only to link the task to a goal of its own.</li>
       <li>Log <b>Time spent</b> on each task: Review and Insights use it to show where your time went.</li>
       <li>An overdue task assigned to someone else shows <b>Offer help</b> at the top of its panel (see <i>No goose flies alone</i>).</li>
-      <li><b>Comments</b> sit at the bottom of the task panel, and under each notebook entry. Type <b>@</b> to mention someone, there and also in task descriptions and notebook entries. The <b>bell</b> in the top bar collects what is for you: mentions, comments on your tasks, and replies where you commented. Everyone who can see the task reads its comments; guests read but do not write.</li>
+      <li><b>Comments</b> sit at the bottom of the task panel, and under each notebook entry. Type <b>@</b> to mention someone, there and also in task descriptions and notebook entries. The <b>bell</b> in the top bar collects what is for you: mentions, comments on your tasks, and replies where you commented; they can also come by email (see <i>Emails</i>). Everyone who can see the task reads its comments; guests read but do not write.</li>
       <li>Finishing a task sends a goose across the screen; finishing a project or reaching a goal sends a whole V. Switch them off in Your profile (your picture, top right).</li>
       <li>Coloured labels such as <b>Priority</b> are dimensions. A dashed label comes from the project’s default; a filled one is set on the task itself.</li>
     </ul></> },
@@ -148,6 +180,8 @@ const TOPICS: Topic[] = [
       <li>When the overdue tasks are done, the goose catches up with the flock and the companions return to their places.</li>
     </ul>
     <p className="hint">Not shown in solo mode, where there is nobody else to help.</p></> },
+  { id: 'holidays', title: 'Holidays and days off', icon: 'calendar', body: <HolidaysHelp /> },
+  { id: 'emails', title: 'Emails', icon: 'mail', body: <EmailsHelp /> },
   { id: 'lens', title: 'The Lens and dimensions', icon: 'filter', body: <>
     <p className="lead">The Lens is the filter bar under the top bar. Whatever you pick there filters every screen at once.</p>
     <ul>
