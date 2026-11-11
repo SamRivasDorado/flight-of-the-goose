@@ -14,8 +14,6 @@ import { resolveStatuses } from '../lib/legs';
 import { projectHref } from './Projects';
 import { colorOf } from '../lib/goaltag';
 import { GoalFlag, GoalIcon } from '../components/Geese';
-import { holidayMap, loadDaysOff, type DaysOffData } from '../lib/holidays';
-import { useHiddenCalendars } from '../components/Holidays';
 
 type Zoom = 'weeks' | 'months' | 'quarters';
 /** Pixels per day, and how many days to show before and after today (as in the prototype). */
@@ -33,9 +31,8 @@ export function Timeline() {
   const lens = useLens();
   const { data, error, reload } = useLoad(async () => {
     const [goals, projects, tasks, members] = await Promise.all([listGoals(ws.workspace_id), listProjectsFull(ws.workspace_id), listTasks(ws.workspace_id), listMembers(ws.workspace_id)]);
-    const [noteDates, away] = await Promise.all([listNoteDates(ws.workspace_id).catch(() => []),
-      loadDaysOff(ws.workspace_id).catch((): DaysOffData => ({ ready: false, calendars: [], holidays: [], off: [] }))]);
-    return { goals: resolveStatuses(goals, tasks, projects, noteDates), projects, tasks, members, away };
+    const noteDates = await listNoteDates(ws.workspace_id).catch(() => []);
+    return { goals: resolveStatuses(goals, tasks, projects, noteDates), projects, tasks, members };
   }, [ws.workspace_id, ui.version]);
   const [zoom, setZoom] = useLocalPref<Zoom>('tlZoom', 'months');
   const [showDone, setShowDone] = useLocalPref('showDone', false);
@@ -47,7 +44,6 @@ export function Timeline() {
   // goals folded away (their projects hidden), kept the same way
   const [folded, setFolded] = useState<string[]>([]);
   const [group, setGroup] = useLocalPref('tlGroup', true);
-  const [hiddenCals] = useHiddenCalendars();
   useEffect(() => { void getMySettings(ws.member_id).then(s => {
     setHidden(Array.isArray(s.tlHidden) ? s.tlHidden as string[] : []); setFolded(Array.isArray(s.tlFolded) ? s.tlFolded as string[] : []); }, () => undefined); }, [ws.member_id]);
   useEffect(() => {
@@ -89,14 +85,6 @@ export function Timeline() {
     if (wk) shading.push(<i key={`s${d.getTime()}`} className="wkend" style={{ left: x(todayISO(addDays(d, 5))), width: 2 * ppd }} />);
   }
 
-  // holidays: a soft stripe down every lane, and a mark in the header to hover for the name
-  if (data && !q) for (const [d, hs] of holidayMap(data.away, hiddenCals)) {
-    if (d < startISO || d > endISO) continue;
-    shading.push(<i key={`h${d}`} className="holsh" style={{ left: x(d), width: ppd, ['--hc' as string]: hs[0].color }} />);
-    head.push(<span key={`hh${d}`} className="holhd" style={{ left: x(d), width: Math.max(ppd, 4), ['--hc' as string]: hs[0].color }}
-      title={`${fmtDate(d, { weekday: 'short', day: 'numeric', month: 'short' })}: ${hs.map(h => h.name).join(', ')}`} />);
-  }
-
   const lanes: ReactNode[] = [];
   let hiddenNow: { k: string; name: string }[] = [];
   if (data) {
@@ -129,7 +117,7 @@ export function Timeline() {
         } else {
           const solid = Math.max(0, Math.min(W, x(today)) - s);
           band = <div className={`band open ${p.status !== 'active' ? 'closed' : ''}`} style={{ ['--c' as string]: p.color, left: s, width: W - s, ['--solid' as string]: `${solid}px` }}>
-            <span className="cap" style={{ left: solid + 8 }}>{p.status === 'paused' ? 'paused' : 'ongoing, no end date'}</span></div>;
+            {p.status === 'paused' && <span className="cap" style={{ left: solid + 8 }}>paused</span>}</div>;
         }
       }
       const open = ts.filter(t => t.status !== 'done').length;
@@ -183,7 +171,7 @@ export function Timeline() {
           <div key={`t${k}`} className="track gstripe" style={{ height: 36, width: W, ['--c' as string]: col }}>{shading}
             <button className="gsum" style={{ left: Math.max(8, Math.min(x(today) - 150, W - 560)) }} title={`${g.title} · ${goalRange(g)}`}
               onClick={() => (canManage(ws.access) ? setGoalDlg(g) : (location.hash = '#/strategy'))}>
-              <b>{g.title}</b><span className="gdot" style={{ ['--c' as string]: st.color }} />{st.label} · {g.end_date ? `ends ${fmtDate(g.end_date)}` : 'no end date'}
+              {!shut && <b>{g.title}</b>}<span className="gdot" style={{ ['--c' as string]: st.color }} />{st.label} · {g.end_date ? `ends ${fmtDate(g.end_date)}` : 'no end date'}
               {shut && what ? <span className="muted"> · {what} folded</span> : null}</button>
             {endIn && <span className="gend" style={{ left: x(g.end_date!) + ppd / 2 - 5 }} title={`${g.title} ends ${fmtDate(g.end_date!)}`}><GoalFlag color={col} reached={g.status === 'achieved'} small /></span>}
           </div>);

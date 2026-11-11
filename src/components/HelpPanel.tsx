@@ -15,10 +15,11 @@ function Dots({ items }: { items: [string, string, string][] }) {
 function HolidaysHelp() {
   const { solo } = useSolo();
   return <>
-    <p className="lead">See at a glance which days to keep free of work and meetings.</p>
+    <p className="lead">See at a glance which days to keep free of work and meetings, in every place the company works.</p>
     <ul>
-      <li><b>Holidays</b> belong to the workspace, in one or more calendars, each with its colour: for example <i>Comunidad de Madrid</i> and <i>Madrid city</i>, or a client's country. Open them with <b>Holidays</b> {solo ? 'in the Calendar' : 'on the Team page or in the Calendar'}. Admins keep them: <b>Fill in official holidays</b> adds a whole year in one click (Comunidad de Madrid and Madrid city for 2026 and 2027), and you can add your own days or periods, such as an office closure.</li>
-      <li>Holidays are <b>tinted in the Calendar</b> with their name, and show as a soft stripe on the <b>Timeline</b> (hover the mark along the top for the name). Untick <b>Show in my Calendar and Timeline</b> to hide a calendar just for you.</li>
+      <li><b>Holidays</b> belong to the whole workspace, in one calendar per place, each with its colour (for example <i>Comunidad de Madrid</i>, <i>Germany</i>, <i>Egypt</i>). {solo ? <>Open them with <b>Holidays</b> in the Calendar.</> : <>They are on the <b>Team</b> page, tab <b>Holidays</b>: the next 30 days (holidays and people away) and every calendar for the year you choose.</>}</li>
+      <li>Admins keep them with <b>Edit holidays</b>: <b>Fill in official holidays</b> adds a whole year in one click (Comunidad de Madrid and Madrid city; the national holidays of Germany, France, Italy, Greece, the United Kingdom, the United States, Venezuela, Türkiye, Egypt, Algeria, Tunisia, Libya and Morocco). Islamic holidays follow the moon, so their dates are the expected ones and may move by a day. You can also add your own days or periods, such as an office closure.</li>
+      <li>Holidays are <b>tinted in the Calendar</b> with their name. A day that is a holiday in two or more calendars is simply <b>red</b>; point at its name to see which. Untick <b>In my Calendar</b> on a calendar to hide it just for you.</li>
       {!solo && <li><b>Days off</b> are personal: holidays, conferences, any time away. Add yours from your card on the Team page (<b>Your days off</b>); admins can add them for anyone. Everyone sees them: the card says who is away, and the Calendar shows their pictures on those days.</li>}
       <li>Dragging a task in the Calendar onto a holiday{solo ? '' : ', or a day its assignee is away,'} asks before moving it and says why.</li>
     </ul></>;

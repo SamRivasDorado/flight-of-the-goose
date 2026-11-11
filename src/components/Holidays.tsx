@@ -3,11 +3,18 @@ import { createPortal } from 'react-dom';
 import { useWorkspace } from '../auth/session';
 import { useLocalPref } from '../lib/ui';
 import type { Member } from '../lib/types';
-import { CAL_COLORS, HOLIDAYS_NEED_UPDATE, PRESETS, saveCalendars, saveDaysOff, type CalendarDraft, type DayOff, type DaysOffData, type Holiday } from '../lib/holidays';
+import { CAL_COLORS, HOLIDAYS_NEED_UPDATE, PRESETS, presetName, saveCalendars, saveDaysOff, type CalendarDraft, type DayOff, type DaysOffData, type Holiday } from '../lib/holidays';
 import { Icon } from './Logo';
 
-const fmt = (d: string, year = true) => new Date(`${d}T12:00:00`).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', ...(year ? { year: 'numeric' } : {}) });
-const span = (a: string, b: string | null) => (b && b !== a ? `${fmt(a, a.slice(0, 4) !== b.slice(0, 4))} – ${fmt(b)}` : fmt(a));
+const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], MO = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const parts = (d: string) => { const x = new Date(`${d}T12:00:00`); return { wd: WD[x.getDay()], d: x.getDate(), m: MO[x.getMonth()], y: x.getFullYear() }; };
+/** "Fri 25 Dec 2026", or a period: "Mon 21 – Thu 24 Dec 2026", "Mon 28 Dec 2026 – Fri 1 Jan 2027". */
+function span(a: string, b: string | null, year = true) {
+  const p = parts(a), q = b && b !== a ? parts(b) : null, y = (x: { y: number }) => (year ? ` ${x.y}` : '');
+  if (!q) return `${p.wd} ${p.d} ${p.m}${y(p)}`;
+  if (p.y !== q.y) return `${p.wd} ${p.d} ${p.m} ${p.y} – ${q.wd} ${q.d} ${q.m} ${q.y}`;
+  return p.m === q.m ? `${p.wd} ${p.d} – ${q.wd} ${q.d} ${q.m}${y(q)}` : `${p.wd} ${p.d} ${p.m} – ${q.wd} ${q.d} ${q.m}${y(q)}`;
+}
 
 /** Calendars this person has switched off in their own Calendar and Timeline (shared by both). */
 export const useHiddenCalendars = () => useLocalPref<string[]>('hiddenCals', []);
@@ -37,7 +44,9 @@ export function HolidaysDialog({ data, onClose, onSaved }: { data: DaysOffData; 
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [preset, setPreset] = useState(PRESETS[0].id);
-  const [year, setYear] = useState(() => String(Math.min(2027, Math.max(2026, new Date().getFullYear()))));
+  const [year, setYear] = useState(() => String(Math.max(2026, new Date().getFullYear())));
+  const pre = PRESETS.find(p => p.id === preset)!;
+  const yearOk = pre.years.includes(Number(year)) ? year : String(pre.years[0]);
   const [add, setAdd] = useState({ day: '', end: '', name: '' });
   const cal = cals.find(c => c.id === sel) ?? null;
   const setCal = (p: Partial<CalendarDraft>) => setCals(cs => cs.map(c => (c.id === sel ? { ...c, ...p } : c)));
@@ -49,9 +58,10 @@ export function HolidaysDialog({ data, onClose, onSaved }: { data: DaysOffData; 
   }
   function fill() {
     if (!cal) return;
-    const list = PRESETS.find(p => p.id === preset)?.years[Number(year)] ?? [];
-    const fresh = list.filter(([d]) => !cal.days.some(x => x.day === d)).map(([d, n]) => dayRow(d, n));
-    setCal({ days: [...cal.days, ...fresh] });
+    const fresh = pre.days(Number(yearOk)).filter(r => !cal.days.some(x => x.day === r.day && x.name === r.name)).map(r => dayRow(r.day, r.name, r.end ?? null));
+    // an empty calendar that still has its starting name takes the place's name
+    const rename = !cal.days.length && ['New calendar', 'Holidays', ''].includes(cal.name.trim());
+    setCal({ days: [...cal.days, ...fresh], ...(rename ? { name: presetName(pre) } : {}) });
     setErr(fresh.length ? null : 'Those days are already in this calendar.');
   }
   function addDay() {
@@ -93,9 +103,9 @@ export function HolidaysDialog({ data, onClose, onSaved }: { data: DaysOffData; 
             <span className="lbl">Fill in official holidays</span>
             <div className="row">
               <select className="field-in" value={preset} onChange={e => setPreset(e.target.value)}>{PRESETS.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}</select>
-              <select className="field-in" value={year} onChange={e => setYear(e.target.value)}>{Object.keys(PRESETS.find(p => p.id === preset)!.years).map(y => <option key={y}>{y}</option>)}</select>
+              <select className="field-in" value={yearOk} onChange={e => setYear(e.target.value)}>{pre.years.map(y => <option key={y}>{y}</option>)}</select>
               <button className="btn sm" onClick={fill}><Icon name="plus" />Fill in</button></div>
-            <span className="hint">Official lists for 2026 and 2027. For other places and years, add the days below.</span>
+            <span className="hint">National public holidays (regional ones are not included). Islamic holidays follow the moon: their dates are the expected ones and may move by a day once announced. For other places and years, add the days below.</span>
           </div>}
           <div className="hollist">
             {years.map(y => <div key={y}><div className="holyear">{y}</div>
@@ -168,4 +178,51 @@ export function DaysOffDialog({ member, data, canEdit, onClose, onSaved }: { mem
         </div>}
       </>}
     </Modal>);
+}
+
+/** Team → Holidays: every calendar of the workspace for a year, and what is coming up (holidays and people away). */
+export function HolidaysOverview({ data, people, admin, onEdit, onDaysOff }: {
+  data: DaysOffData; people: Member[]; admin: boolean; onEdit: () => void; onDaysOff: (m: Member) => void;
+}) {
+  const [hiddenCals, setHiddenCals] = useHiddenCalendars();
+  const now = new Date(), today = now.toISOString().slice(0, 10);
+  const soon = new Date(now); soon.setDate(soon.getDate() + 30); const until = soon.toISOString().slice(0, 10);
+  const years = [...new Set([now.getFullYear(), ...data.holidays.map(h => Number(h.day.slice(0, 4)))])].sort();
+  const [year, setYear] = useState(now.getFullYear());
+  if (!data.ready) return <div className="empty">{HOLIDAYS_NEED_UPDATE}</div>;
+  const calOf = (id: string) => data.calendars.find(c => c.id === id);
+  const coming = data.holidays.filter(h => (h.end_day ?? h.day) >= today && h.day <= until).sort((a, b) => a.day.localeCompare(b.day));
+  const away = data.off.filter(o => o.end_day >= today && o.start_day <= until && people.some(m => m.id === o.member_id)).sort((a, b) => a.start_day.localeCompare(b.start_day));
+  return (
+    <div className="holview">
+      <div className="holbar">
+        <select className="field-in" aria-label="Year" value={year} onChange={e => setYear(Number(e.target.value))}>{years.map(y => <option key={y}>{y}</option>)}</select>
+        <span className="grow" />
+        {admin && <button className="btn" onClick={onEdit}><Icon name="edit" />Edit holidays</button>}
+      </div>
+      <section className="holsoon">
+        <div className="h3 gsect">Next 30 days</div>
+        {[...coming.map(h => ({ k: h.id, d: h.day, node: (() => { const c = calOf(h.calendar_id); return (
+            <div key={h.id} className="holrow"><span className="hd">{span(h.day, h.end_day)}</span><span className="hn">{h.name}</span>
+              {c && <span className="calsel sm"><i style={{ background: c.color }} />{c.name}</span>}</div>); })() })),
+          ...away.map(o => ({ k: o.id, d: o.start_day < today ? today : o.start_day, node: (() => { const m = people.find(x => x.id === o.member_id)!; return (
+            <div key={o.id} className="holrow"><span className="hd">{span(o.start_day, o.end_day)}</span>
+              <span className="hn"><b>{m.display_name}</b> away{o.note ? ` · ${o.note}` : ''}</span>
+              <button className="linkbtn" onClick={() => onDaysOff(m)}>Days off</button></div>); })() }))]
+          .sort((a, b) => a.d.localeCompare(b.d)).map(x => x.node)}
+        {!coming.length && !away.length && <span className="hint">No holidays and nobody away in the next 30 days.</span>}
+      </section>
+      <div className="holcards">
+        {data.calendars.map(c => { const days = data.holidays.filter(h => h.calendar_id === c.id && h.day.startsWith(String(year))).sort((a, b) => a.day.localeCompare(b.day)); return (
+          <article key={c.id} className="holcard" style={{ ['--c' as string]: c.color }}>
+            <header><i /><b>{c.name}</b><span className="muted">{days.length}</span><span className="grow" />
+              <label className="chk" title="Show this calendar's holidays in my Calendar"><input type="checkbox" checked={!hiddenCals.includes(c.id)}
+                onChange={e => setHiddenCals(e.target.checked ? hiddenCals.filter(x => x !== c.id) : [...hiddenCals, c.id])} />In my Calendar</label></header>
+            <div className="hcl">{days.map(d => <div key={d.id} className={`holrow ${(d.end_day ?? d.day) < today ? 'past' : ''}`}>
+              <span className="hd">{span(d.day, d.end_day, false)}</span><span className="hn">{d.name}</span></div>)}
+              {!days.length && <span className="hint">No days in {year}.</span>}</div>
+          </article>); })}
+      </div>
+      {!data.calendars.length && <div className="empty">{admin ? 'No holidays yet. Edit holidays to add a calendar for each place the company works in.' : 'No holidays yet.'}</div>}
+    </div>);
 }

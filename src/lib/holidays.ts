@@ -4,6 +4,7 @@
  * everything here quietly returns nothing (ready: false).
  */
 import { db } from './supabase';
+import { COUNTRIES, type RuleDay } from './holidayRules';
 
 export interface HolidayCalendar { id: string; workspace_id: string; name: string; color: string }
 export interface Holiday { id: string; workspace_id: string; calendar_id: string; day: string; end_day: string | null; name: string }
@@ -85,10 +86,14 @@ export async function saveDaysOff(ws: string, member: string, before: DayOff[], 
 
 // ---------------------------------------------------------------- official lists to fill in
 
-/** Official lists, so a calendar can be filled in with one click. Sources: Comunidad de Madrid decrees
-    75/2025 (BOCM 25 Sep 2025) and 82/2026 (BOCM 1 Oct 2026); Ayuntamiento de Madrid for the city's two local days. */
-export const PRESETS: { id: string; label: string; years: Record<number, [string, string][]> }[] = [
-  { id: 'es-md', label: 'Comunidad de Madrid (Spain)', years: {
+export interface Preset { id: string; label: string; years: number[]; days: (y: number) => RuleDay[] }
+const list = (byYear: Record<number, [string, string][]>) => (y: number): RuleDay[] => (byYear[y] ?? []).map(([day, name]) => ({ day, name }));
+
+/** What a calendar can be filled in with. Madrid: official lists from the Comunidad de Madrid decrees 75/2025
+    (BOCM 25 Sep 2025) and 82/2026 (BOCM 1 Oct 2026) and the Ayuntamiento's two local days. Countries: national
+    holidays worked out in holidayRules.ts. */
+export const PRESETS: Preset[] = [
+  { id: 'es-md', label: 'Comunidad de Madrid (Spain)', years: [2026, 2027], days: list({
     2026: [['2026-01-01', 'Año Nuevo'], ['2026-01-06', 'Epifanía del Señor'], ['2026-04-02', 'Jueves Santo'], ['2026-04-03', 'Viernes Santo'],
       ['2026-05-01', 'Fiesta del Trabajo'], ['2026-05-02', 'Fiesta de la Comunidad de Madrid'], ['2026-08-15', 'Asunción de la Virgen'],
       ['2026-10-12', 'Fiesta Nacional de España'], ['2026-11-02', 'Todos los Santos (traslado)'], ['2026-12-07', 'Día de la Constitución (traslado)'],
@@ -97,11 +102,14 @@ export const PRESETS: { id: string; label: string; years: Record<number, [string
       ['2027-03-26', 'Viernes Santo'], ['2027-05-01', 'Fiesta del Trabajo'], ['2027-08-16', 'Asunción de la Virgen (traslado)'],
       ['2027-10-12', 'Fiesta Nacional de España'], ['2027-11-01', 'Todos los Santos'], ['2027-12-06', 'Día de la Constitución'],
       ['2027-12-08', 'Inmaculada Concepción'], ['2027-12-25', 'Natividad del Señor']],
-  } },
-  { id: 'madrid-city', label: 'Madrid city (two local days)', years: {
+  }) },
+  { id: 'madrid-city', label: 'Madrid city (two local days)', years: [2026, 2027], days: list({
     2026: [['2026-05-15', 'San Isidro Labrador'], ['2026-11-09', 'Nuestra Señora de la Almudena']],
     2027: [['2027-05-15', 'San Isidro Labrador'], ['2027-11-09', 'Nuestra Señora de la Almudena']],
-  } },
+  }) },
+  ...COUNTRIES,
 ];
+/** The calendar name a preset suggests: "Germany (nationwide)" → "Germany". */
+export const presetName = (p: Preset) => p.label.replace(/ \(.*\)$/, '');
 
 export const CAL_COLORS = ['#D0453A', '#E08A2E', '#C9A227', '#5D8C4A', '#2F8F83', '#4A7FC1', '#8E5CC2', '#B5527A'];

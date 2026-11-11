@@ -10,7 +10,7 @@ import { ProjectChip, ProjectIcon } from '../components/ProjectChip';
 import { PersonDialog, TeamAvatar, TeamDialog } from '../components/TeamDialogs';
 import { AvStack, projectHref } from './Projects';
 import { loadDaysOff, type DayOff, type DaysOffData } from '../lib/holidays';
-import { DaysOffDialog, HolidaysDialog } from '../components/Holidays';
+import { DaysOffDialog, HolidaysDialog, HolidaysOverview } from '../components/Holidays';
 
 type Role = 'owner' | 'member' | 'team';
 const ROLE_LABEL: Record<Role, string> = { owner: 'Owner', member: 'Member', team: 'Through team' };
@@ -25,7 +25,7 @@ export function Team() {
     return { members, teams, projects, tasks, away };
   }, [ws.workspace_id, ui.version]);
   const [sel, setSel] = useState<string>('all');
-  const [view, setView] = useLocalPref<'people' | 'matrix'>('teamView', 'people');
+  const [view, setView] = useLocalPref<'people' | 'matrix' | 'holidays'>('teamView', 'people');
   const [teamDlg, setTeamDlg] = useState<Team | 'new' | null>(null);
   const [personDlg, setPersonDlg] = useState<Member | 'new' | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
@@ -52,7 +52,6 @@ export function Team() {
   return (
     <>
       <div className="ph"><h1>Team</h1><span className="sub">{members.length} {members.length === 1 ? 'person' : 'people'} · {teams.length} {teams.length === 1 ? 'team' : 'teams'}</span><span className="grow" />
-        <button className="btn" onClick={() => setHolOpen(true)} title="Holidays of this workspace"><Icon name="calendar" />Holidays</button>
         {isAdmin && <button className="btn" onClick={() => setPersonDlg('new')}><Icon name="plus" />Invite a person</button>}
         {canManage(ws.access) && <button className="btn primary" onClick={() => setTeamDlg('new')}><Icon name="plus" />New team</button>}</div>
       {msg && <div className="note">{msg}</div>}
@@ -67,8 +66,10 @@ export function Team() {
           {team && <TeamHero t={team} members={members} projects={projects} canEdit={canEditTeam(team)} onEdit={() => setTeamDlg(team)} />}
           <div className="tabs">
             <button className={`tab ${view === 'people' ? 'on' : ''}`} onClick={() => setView('people')}><Icon name="users" />People</button>
-            <button className={`tab ${view === 'matrix' ? 'on' : ''}`} onClick={() => setView('matrix')}><Icon name="wall" />Who works on what</button></div>
-          {view === 'matrix'
+            <button className={`tab ${view === 'matrix' ? 'on' : ''}`} onClick={() => setView('matrix')}><Icon name="wall" />Who works on what</button>
+            <button className={`tab ${view === 'holidays' ? 'on' : ''}`} onClick={() => setView('holidays')}><Icon name="calendar" />Holidays</button></div>
+          {view === 'holidays' ? <HolidaysOverview data={away} people={people} admin={isAdmin} onEdit={() => setHolOpen(true)} onDaysOff={setOffFor} />
+            : view === 'matrix'
             ? <Matrix people={people} projects={projects} tasks={tasks} roleIn={roleIn} />
             : <div className="pcgrid">{people.map(m => (
                 <PersonCard key={m.id} m={m} me={m.id === ws.member_id} teams={teams} tasks={tasks} roleIn={roleIn}

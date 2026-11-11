@@ -199,11 +199,13 @@ export function makeSeed(myUid: string, myEmail: string): Record<string, Row[]> 
   // holidays (the official Madrid lists) and a few days off around the team
   const hcal = (name: string, color: string, preset: string) => {
     const id = uid(); t.holiday_calendars.push({ id, workspace_id: ws, name, color, created_at: new Date().toISOString() });
-    for (const [d, n] of Object.values(PRESETS.find(p => p.id === preset)!.years).flat()) t.holidays.push({ id: uid(), workspace_id: ws, calendar_id: id, day: d, end_day: null, name: n });
+    const pr = PRESETS.find(p => p.id === preset)!;
+    for (const y of pr.years.filter(y => y <= 2027)) for (const r of pr.days(y)) t.holidays.push({ id: uid(), workspace_id: ws, calendar_id: id, day: r.day, end_day: r.end ?? null, name: r.name });
   };
   t.holiday_calendars = []; t.holidays = []; t.days_off = [];
   hcal('Comunidad de Madrid', '#D0453A', 'es-md');
   hcal('Madrid city', '#E08A2E', 'madrid-city');
+  hcal('Egypt', '#2F8F83', 'eg');
   const off = (who: string, a: number, b: number, note: string) => t.days_off.push({ id: uid(), workspace_id: ws, member_id: who, start_day: day(a), end_day: day(b), note, created_at: new Date().toISOString() });
   off(omar, 3, 7, 'EAGE workshop in Paris'); off(lucia, 12, 16, 'Holiday'); off(karim, 1, 1, 'Medical appointment');
   void tTrain; void julia;

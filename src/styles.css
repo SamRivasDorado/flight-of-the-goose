@@ -925,5 +925,18 @@ button.brand:hover{background:var(--bar-hi)}
 .pcoff{display:flex;align-items:center;gap:8px;font-size:12.5px;padding:6px 10px;border-radius:8px;background:var(--surface-2)}
 .pcoff .ic{width:14px;height:14px;flex:none;color:var(--muted)}
 .pcoff span{flex:1;min-width:0}
-.holsh{position:absolute;top:0;bottom:0;background:color-mix(in srgb,var(--hc) 16%,transparent);pointer-events:none}
-.holhd{position:absolute;bottom:0;height:5px;background:var(--hc);border-radius:2px 2px 0 0;opacity:.8}
+.holview{display:flex;flex-direction:column;gap:14px}
+.holbar{display:flex;align-items:center;gap:8px}
+.holsoon{display:flex;flex-direction:column;gap:2px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.holsoon .holrow{grid-template-columns:minmax(190px,auto) 1fr auto}
+.calsel.sm{padding:2px 8px;font-size:12px}
+.holcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
+.holcard{background:var(--surface);border:1px solid var(--line);border-top:3px solid var(--c);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.holcard header{display:flex;align-items:center;gap:8px;font-size:14px}
+.holcard header i{width:10px;height:10px;border-radius:3px;background:var(--c);flex:none}
+.holcard header .chk{font-size:12px}
+.holcard .hcl{display:grid;grid-template-columns:auto 1fr;column-gap:14px;row-gap:3px;font-size:13px}
+.holcard .hcl .holrow{display:contents}
+.holcard .hcl .holrow.past>span{opacity:.55}
+.holcard .hcl .hint{grid-column:1/-1}
+.holcard header b{min-width:0}

@@ -278,6 +278,7 @@ function BoardView({ c, tools }: { c: Ctx; tools: React.ReactNode }) {
 /* ---------- calendar ---------- */
 
 function CalendarView({ c, tools }: { c: Ctx; tools: React.ReactNode }) {
+  const { solo } = useSolo();   // holidays live on the Team page; without it, they open from here
   const [weekStart, setWeekStart] = useLocalPref<0 | 1>('weekStart', 1);
   const [month, setMonth] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
   const [askOn, setAskOn] = useLocalPref('dropAsk', true);
@@ -353,7 +354,7 @@ function CalendarView({ c, tools }: { c: Ctx; tools: React.ReactNode }) {
         <button className="btn sm" onClick={() => shift(0)}>Today</button>
         <button className="iconbtn" onClick={() => shift(1)} aria-label="Next month"><Icon name="right" /></button>
         <span className="month">{month.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}</span><span className="grow" />
-        <button className="btn sm ghost" onClick={() => setHolOpen(true)} title="Holidays shown in the calendar"><Icon name="calendar" />Holidays</button>
+        {solo && <button className="btn sm ghost" onClick={() => setHolOpen(true)} title="Holidays shown in the calendar"><Icon name="calendar" />Holidays</button>}
         <label className="chk" title="When you drag a task to another day"><input type="checkbox" checked={askOn} onChange={e => setAskOn(e.target.checked)} />Ask to move or copy</label>
         <span className="seg" role="group" aria-label="Week starts on">
           <button className={weekStart === 0 ? 'on' : ''} onClick={() => setWeekStart(0)}>Sun</button>
@@ -377,7 +378,7 @@ function CalendarView({ c, tools }: { c: Ctx; tools: React.ReactNode }) {
           const shown = all.length > max ? all.slice(0, max - 1) : all;
           return (
             <div key={k} className={`day ${d.getMonth() !== month.getMonth() ? 'out' : ''} ${k === today ? 'today' : ''} ${drop.over === k ? 'over' : ''} ${hd ? 'hol' : ''}`}
-              style={hd ? { ['--hc' as string]: hd[0].color } : undefined} {...(c.editable ? drop.props(k) : {})}>
+              style={hd ? { ['--hc' as string]: new Set(hd.map(h => h.calendar)).size > 1 ? HOL_CLASH : hd[0].color } : undefined} {...(c.editable ? drop.props(k) : {})}>
               <div className="dn"><b>{d.getDate() === 1 ? `${d.toLocaleDateString('en-GB', { month: 'short' })} ` : ''}{d.getDate()}</b>
                 {od.length > 0 && <span className="offav" title={`Away: ${od.map(m => m.display_name).join(', ')}`}>{od.slice(0, 3).map(m => <Avatar key={m.id} m={m} size="xs" />)}{od.length > 3 && <i>+{od.length - 3}</i>}</span>}
                 {c.editable && <button className="add" aria-label={`Add task on ${parseISO(k).toLocaleDateString('en-GB')}`} onClick={() => void c.add({ due_date: k })}><Icon name="plus" /></button>}</div>
@@ -396,6 +397,9 @@ function CalendarView({ c, tools }: { c: Ctx; tools: React.ReactNode }) {
     </>
   );
 }
+
+/** A day that is a holiday in more than one calendar is simply red. */
+const HOL_CLASH = '#D32F2F';
 
 /** Most tasks a calendar day shows before "+N more". */
 const DAY_MAX = 4;
