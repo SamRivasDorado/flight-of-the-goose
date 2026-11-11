@@ -13,7 +13,7 @@ import { Login, SetNewPassword } from '../auth/Login';
 import { isConfigured } from '../lib/supabase';
 import { canEdit, canManage } from '../lib/types';
 import { DataDialog } from '../components/DataDialog';
-import { Inbox } from '../components/Inbox';
+import { Inbox, openNoteComments } from '../components/Inbox';
 import { APP_NAME, DEFAULT_PALETTE, PALETTES } from '../config';
 import { Icon, Logo } from '../components/Logo';
 import { Projects } from '../pages/Projects';
@@ -57,10 +57,31 @@ function SignedInGate() {
 function Shell() {
   const { solo } = useSolo();
   const [help, setHelp] = useState(false);
-  const { signOut, current } = useSession();
+  const { signOut, current, workspaces, switchWorkspace } = useSession();
+  const ui = useUI();
   const [page, setPage] = useState(pageFromHash);
   const [projectId, setProjectId] = useState(projectIdFromHash);
   useEffect(() => { const f = () => { setPage(pageFromHash()); setProjectId(projectIdFromHash()); }; addEventListener('hashchange', f); return () => removeEventListener('hashchange', f); }, []);
+  // Links in Goose's emails: #/go/<workspace>/task/<id>, #/go/<workspace>/note/<project>/<entry>, #/emails
+  useEffect(() => {
+    const follow = () => {
+      const h = location.hash;
+      if (h === '#/emails') {
+        history.replaceState(null, '', '#/timeline'); setPage('timeline');
+        (window as unknown as { __gooseEmails?: boolean }).__gooseEmails = true;
+        window.dispatchEvent(new Event('goose:open-profile'));
+        return;
+      }
+      const m = h.match(/^#\/go\/([\w-]+)\/(?:task\/([\w-]+)|note\/([\w-]+)\/([\w-]+))/);
+      if (!m) return;
+      const [, ws, taskId, pid, nid] = m;
+      if (ws !== current!.workspace_id && workspaces.some(w => w.workspace_id === ws)) { ui.openTask(null); switchWorkspace(ws); return; } // comes back here once switched
+      if (taskId) { history.replaceState(null, '', '#/tasks'); setPage('tasks'); ui.openTask(taskId); }
+      else if (pid && nid) openNoteComments(pid, nid);
+    };
+    follow(); addEventListener('hashchange', follow);
+    return () => removeEventListener('hashchange', follow);
+  }, [current, workspaces, switchWorkspace, ui]);
   const navl = (p: Page, label: string, ic: Parameters<typeof Icon>[0]['name']) =>
     <a key={p} href={`#/${p}`} className={`navl ${page === p || (p === 'projects' && page === 'project') ? 'on' : ''}`}><Icon name={ic} />{label}</a>;
 

@@ -11,6 +11,21 @@ function Dots({ items }: { items: [string, string, string][] }) {
   return <ul className="hdots">{items.map(([tone, label, desc]) => <li key={label}><span className={`tonedot tone-${tone}`}>{label}</span><span>{desc}</span></li>)}</ul>;
 }
 
+/** Help → Emails; in solo mode without the parts about other people. */
+function EmailsHelp() {
+  const { solo } = useSolo();
+  return <>
+    <p className="lead">{APP_NAME} can email you, so you do not have to keep it open to know what needs you.</p>
+    <ul>
+      {!solo && <li><b>What you are told about:</b> someone mentions you with @ (in a comment, a task description or a notebook entry), comments on your tasks, replies where you commented, gives you a task, or offers to help (and answers to your own offers).</li>}
+      <li><b>Tasks due tomorrow</b> come in the morning email{solo ? ', so nothing slips past its date' : ''}.</li>
+      <li><b>As it happens or once a day.</b> As it happens, emails go out within a few minutes and several things at once arrive as one email. Once a day, you get one email each morning with everything since the last one.</li>
+      <li>You are never emailed about what you did yourself{solo ? '' : ', nor about tasks you cannot see'}.</li>
+      <li>Choose in <b>Your profile</b> (your picture, top right) under <b>Emails</b>: switch each kind on or off, or all emails at once. It applies to all your workspaces. <b>See an example</b> shows what an email looks like; <b>Send me a test email</b> checks that emails reach you. Every email has a link back to these settings.</li>
+      {!solo && <li>Links in an email open the task or notebook entry, in the right workspace.</li>}
+    </ul></>;
+}
+
 const TOPICS: Topic[] = [
   { id: 'start', title: `How ${APP_NAME} is organised`, icon: 'book', body: <>
     <p className="lead">{APP_NAME} works on three levels, from the long term to today:</p>
@@ -86,7 +101,7 @@ const TOPICS: Topic[] = [
       <li>A task in a project <b>counts towards that project's goals</b> by itself: the task panel shows them as <b>Goal: … (from project)</b>, and the Goal column of the list shows a dashed tag. Pick a goal in the panel only to link the task to a goal of its own.</li>
       <li>Log <b>Time spent</b> on each task: Review and Insights use it to show where your time went.</li>
       <li>An overdue task assigned to someone else shows <b>Offer help</b> at the top of its panel (see <i>No goose flies alone</i>).</li>
-      <li><b>Comments</b> sit at the bottom of the task panel, and under each notebook entry. Type <b>@</b> to mention someone, there and also in task descriptions and notebook entries. The <b>bell</b> in the top bar collects what is for you: mentions, comments on your tasks, and replies where you commented. Everyone who can see the task reads its comments; guests read but do not write.</li>
+      <li><b>Comments</b> sit at the bottom of the task panel, and under each notebook entry. Type <b>@</b> to mention someone, there and also in task descriptions and notebook entries. The <b>bell</b> in the top bar collects what is for you: mentions, comments on your tasks, and replies where you commented; they can also come by email (see <i>Emails</i>). Everyone who can see the task reads its comments; guests read but do not write.</li>
       <li>Finishing a task sends a goose across the screen; finishing a project or reaching a goal sends a whole V. Switch them off in Your profile (your picture, top right).</li>
       <li>Coloured labels such as <b>Priority</b> are dimensions. A dashed label comes from the project’s default; a filled one is set on the task itself.</li>
     </ul></> },
@@ -148,6 +163,7 @@ const TOPICS: Topic[] = [
       <li>When the overdue tasks are done, the goose catches up with the flock and the companions return to their places.</li>
     </ul>
     <p className="hint">Not shown in solo mode, where there is nobody else to help.</p></> },
+  { id: 'emails', title: 'Emails', icon: 'mail', body: <EmailsHelp /> },
   { id: 'lens', title: 'The Lens and dimensions', icon: 'filter', body: <>
     <p className="lead">The Lens is the filter bar under the top bar. Whatever you pick there filters every screen at once.</p>
     <ul>

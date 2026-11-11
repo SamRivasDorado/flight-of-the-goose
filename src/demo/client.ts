@@ -20,7 +20,7 @@ const KEY = 'goose.demo.v10';
 const PK: Record<string, string[]> = {
   team_members: ['team_id', 'member_id'], project_members: ['project_id', 'member_id'], project_teams: ['project_id', 'team_id'],
   goal_projects: ['goal_id', 'project_id'], project_defaults: ['project_id', 'field_id'], project_fields: ['project_id', 'field_id'],
-  task_collaborators: ['task_id', 'member_id'], task_values: ['task_id', 'field_id'], member_settings: ['member_id'],
+  task_collaborators: ['task_id', 'member_id'], task_values: ['task_id', 'field_id'], member_settings: ['member_id'], email_prefs: ['user_id'],
 };
 const pkOf = (t: string) => PK[t] ?? ['id'];
 
@@ -42,6 +42,7 @@ const DEFAULTS: Record<string, () => Row> = {
   subtasks: () => ({ done: false, position: 0 }),
   task_values: () => ({ option_id: null, value: null }),
   member_settings: () => ({ settings: {} }),
+  email_prefs: () => ({ enabled: true, mentions: true, comments: true, assigned: true, help: true, due: true, timing: 'soon', test_sent_at: null, updated_at: now() }),
   help_offers: () => ({ status: 'offered', message: '', created_at: now(), answered_at: null }),
   mention_events: () => ({ author_member_id: null, task_id: null, note_id: null, excerpt: '', created_at: now() }),
   comments: () => ({ task_id: null, note_id: null, author_member_id: null, mentions: [], created_at: now(), edited_at: null }),
@@ -279,6 +280,7 @@ function rpc(fn: string, a: Row = {}): Res {
       return { data: null, error: null };
     }
     case 'resend_invitation': return { data: null, error: null };
+    case 'send_test_email': return { data: 'demo', error: null };   // the prototype sends no email
     default: return fail(`function ${fn} does not exist in the prototype`);
   }
 }

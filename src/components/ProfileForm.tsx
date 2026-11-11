@@ -9,6 +9,7 @@ import { useLocalPref } from '../lib/ui';
 import { flyOne, GEESE_KEY } from '../lib/geese';
 import { PERSON_COLORS, APP_NAME } from '../config';
 import { Avatar, Icon, Logo } from './Logo';
+import { EmailSetting } from './EmailSettings';
 
 /** Turns any picture into a 256 × 256 square (centre crop), small enough to load fast. */
 async function squareWebp(file: File): Promise<ArrayBuffer> {
@@ -169,6 +170,7 @@ function ProfileDialogInner({ me, onClose, onSaved }: { me: Member; onClose: () 
           <div className="hint">Signed in as {session?.user.email}. Your role in {current?.workspace_name} is <b>{ACCESS_LABEL[current!.access]}</b>{current?.access === 'admin' ? '.' : '; the workspace’s admins set it.'}</div>
           <SoloSetting onError={setErr} />
           <GeeseSetting />
+          <EmailSetting onError={setErr} />
         </div>
         <div className="mfoot">{err && <span className="err">{err}</span>}<span className="grow" />
           <button className="btn" onClick={onClose}>Cancel</button>

@@ -862,3 +862,11 @@ button.brand:hover{background:var(--bar-hi)}
 .scene.strip .sc-sunset:not(.lowsun){height:42%}
 /* Journey: two goals side by side on wide screens */
 @media (min-width:1180px){.journeys{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}}
+
+/* Emails in Your profile, and the example email */
+.emailopts{display:flex;flex-direction:column;gap:4px;margin:6px 0 0 24px}
+.emailopts[aria-disabled=true]{opacity:.55}
+.emailsubj{font-size:13px;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2)}
+.emailsubj .muted{margin-right:6px}
+.emailshot{border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.emailshot a{pointer-events:none}

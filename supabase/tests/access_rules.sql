@@ -445,4 +445,87 @@ select pg_temp.check((select status = 'quiet' from goals where title = 'Goal lin
 update projects set health_manual = 'quiet' where name = 'P2 private';
 select pg_temp.check((select health_manual = 'quiet' from projects where name = 'P2 private'), 'a project can be set to Quiet by hand');
 
+-- ---------------------------------------------------------------------
+-- Email notifications: who is told what, and what is sent
+create temp table em as select
+  (select id from workspace_members where email = 'sam@example.com' and workspace_id = (select w from ids)) sam,
+  (select id from workspace_members where email = 'omar@example.com' and workspace_id = (select w from ids)) omar,
+  (select id from workspace_members where email = 'karim@example.com' and workspace_id = (select w from ids)) karim,
+  (select id from workspace_members where email = 'julia@example.com' and workspace_id = (select w from ids)) julia;
+grant select on em to authenticated;
+delete from vault.decrypted_secrets;   -- no Resend key yet
+select pg_temp.check((select string_agg(kind, ',' order by created_at) from email_outbox where member_id = (select omar from em)) = 'mention,mention,help',
+  'Omar is told about his two mentions and the offer of help');
+select pg_temp.check((select string_agg(kind, ',' order by created_at) from email_outbox where member_id = (select sam from em)) = 'comment,answer',
+  'Sam is told about the comment on his task and the answer to his offer');
+select pg_temp.check(not exists (select 1 from email_outbox o join em on o.member_id = o.actor_member_id), 'nobody is told about what they did themselves');
+
+set role authenticated;
+select pg_temp.login('00000000-0000-0000-0000-00000000000a');
+insert into comments (workspace_id, task_id, author_member_id, body, mentions)
+  select t.workspace_id, t.id, my_member_id(t.workspace_id), '@Julia have a look', array[(select julia from em)] from tasks t where t.title = 't1 in P1';
+-- Sam gives Omar's own task to Omar, then changes his mind and gives it to Karim
+update tasks set assignee_member_id = (select omar from em) where title = 'Omar new task';
+update tasks set assignee_member_id = (select karim from em) where title = 'Omar new task';
+select pg_temp.check((select count(*) from email_outbox) = 0, 'nobody reads the outbox from the app');
+do $$ begin
+  begin perform send_goose_emails(false); raise exception 'FAILED: a signed-in person ran the sender';
+  exception when insufficient_privilege then raise notice 'ok  only the schedule runs the sender'; end;
+end $$;
+select pg_temp.login('00000000-0000-0000-0000-00000000000b');
+insert into email_prefs (user_id, mentions) values ('00000000-0000-0000-0000-00000000000b', false);
+do $$ begin
+  begin insert into email_prefs (user_id, mentions) values ('00000000-0000-0000-0000-00000000000a', false); raise exception 'FAILED: changed someone else''s email settings';
+  exception when insufficient_privilege then raise notice 'ok  you change only your own email settings'; end;
+end $$;
+select pg_temp.check((select count(*) from email_prefs) = 1, 'you read only your own email settings');
+select pg_temp.login('00000000-0000-0000-0000-00000000000d');
+insert into email_prefs (user_id, timing) values ('00000000-0000-0000-0000-00000000000d', 'daily');
+select pg_temp.check(send_test_email() = 'not_ready', 'the test email says when emails cannot go out yet');
+reset role;
+
+select pg_temp.check(not exists (select 1 from email_outbox where member_id = (select julia from em)), 'someone mentioned on a task they cannot see is not emailed');
+select pg_temp.check((select count(*) from email_outbox where kind = 'assigned') = 2, 'giving a task to someone else queues an email for them');
+
+delete from net.calls; delete from vault.decrypted_secrets;
+insert into vault.decrypted_secrets values ('resend_api_key', 're_test');
+update email_outbox set created_at = created_at - interval '2 minutes';
+select pg_temp.check(send_goose_emails(false) = 2, 'one email each for Sam and Omar (Karim chose once a day)');
+select pg_temp.check((select count(*) from net.calls) = 1 and (select url from net.calls) = 'https://api.resend.com/emails/batch'
+  and (select jsonb_array_length(body) from net.calls) = 2, 'they go out together in one batch');
+create temp table mails as select e from net.calls, jsonb_array_elements(body) e;
+select pg_temp.check((select e->>'html' from mails where e->'to' = '["omar@example.com"]') like '%offered to help with%'
+  and (select e->>'html' from mails where e->'to' = '["omar@example.com"]') like '%replied on%'
+  and (select e->>'html' from mails where e->'to' = '["omar@example.com"]') not like '%mentioned you%',
+  'Omar switched mentions off: his email has the offer and the reply in his thread, no mentions');
+select pg_temp.check((select e->>'subject' from mails where e->'to' = '["sam@example.com"]') = '2 updates for you in Goose'
+  and (select e->>'html' from mails where e->'to' = '["sam@example.com"]') like '%commented on your task%'
+  and (select e->>'html' from mails where e->'to' = '["sam@example.com"]') like '%accepted your offer to help with%'
+  and (select e->>'html' from mails where e->'to' = '["sam@example.com"]') like '%#/go/%/task/%', 'Sam''s email lists both, with links to the tasks');
+select pg_temp.check(not exists (select 1 from email_outbox where member_id = (select omar from em) and kind = 'assigned' and not skipped),
+  'a task given and taken back again is not emailed');
+select pg_temp.check((select count(*) from email_outbox where sent_at is null) = 2, 'Karim''s lines wait for the morning');
+delete from net.calls;
+select pg_temp.check(send_goose_emails(false) = 0 and (select count(*) from net.calls) = 0, 'nothing is sent twice');
+
+set role authenticated;
+select pg_temp.login('00000000-0000-0000-0000-00000000000b');
+insert into tasks (workspace_id, title, due_date, assignee_member_id, created_by_member)
+  select workspace_id, 'Due tomorrow for Omar', current_date + 1, id, id from workspace_members where id = (select omar from em);
+reset role;
+select pg_temp.check(send_goose_emails(true) = 2, 'the morning run sends Karim''s day and Omar''s task due tomorrow');
+select pg_temp.check((select e->>'subject' from net.calls, jsonb_array_elements(body) e where e->'to' = '["omar@example.com"]') = 'Due tomorrow: Due tomorrow for Omar',
+  'Omar is reminded of his task due tomorrow');
+select pg_temp.check((select e->>'html' from net.calls, jsonb_array_elements(body) e where e->'to' = '["karim@example.com"]') like '%gave you the task%',
+  'Karim''s daily email has the task given to him');
+delete from net.calls;
+select pg_temp.check(send_goose_emails(true) = 0, 'the reminder for tomorrow is not repeated');
+
+set role authenticated;
+select pg_temp.login('00000000-0000-0000-0000-00000000000a');
+select pg_temp.check(send_test_email() = 'sent', 'the test email goes out');
+select pg_temp.check(send_test_email() = 'wait', 'the test email is sent at most once a minute');
+reset role;
+select pg_temp.check((select body->'to' from net.calls order by id desc limit 1) = '["sam@example.com"]', 'the test email goes to the person who asked');
+
 select 'ALL ACCESS TESTS PASSED' as result;
