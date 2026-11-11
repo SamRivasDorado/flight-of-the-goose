@@ -15,7 +15,7 @@ type Store = { tables: Record<string, Row[]>; files: Record<string, string> };
 
 export const DEMO_UID = '00000000-0000-4000-8000-000000000001';
 export const DEMO_EMAIL = 'sam@example.com';
-const KEY = 'goose.demo.v10';
+const KEY = 'goose.demo.v11';
 
 const PK: Record<string, string[]> = {
   team_members: ['team_id', 'member_id'], project_members: ['project_id', 'member_id'], project_teams: ['project_id', 'team_id'],
@@ -46,16 +46,21 @@ const DEFAULTS: Record<string, () => Row> = {
   help_offers: () => ({ status: 'offered', message: '', created_at: now(), answered_at: null }),
   mention_events: () => ({ author_member_id: null, task_id: null, note_id: null, excerpt: '', created_at: now() }),
   comments: () => ({ task_id: null, note_id: null, author_member_id: null, mentions: [], created_at: now(), edited_at: null }),
+  holiday_calendars: () => ({ color: '#D0453A', created_at: now() }),
+  holidays: () => ({ end_day: null, name: '' }),
+  days_off: () => ({ note: '', created_at: now() }),
   profiles: () => ({ full_name: '', title: '', color: null, avatar_url: null, setup_done: false, created_at: now() }),
 };
 
 /** What happens to other rows when a row is deleted (foreign keys). */
 const ON_DELETE: Record<string, [string, string, 'cascade' | 'null'][]> = {
   workspaces: [['workspace_members', 'workspace_id', 'cascade'], ['teams', 'workspace_id', 'cascade'], ['fields', 'workspace_id', 'cascade'], ['goals', 'workspace_id', 'cascade'],
-    ['projects', 'workspace_id', 'cascade'], ['notes', 'workspace_id', 'cascade'], ['tasks', 'workspace_id', 'cascade'], ['comments', 'workspace_id', 'cascade'], ['mention_events', 'workspace_id', 'cascade'], ['help_offers', 'workspace_id', 'cascade']],
+    ['projects', 'workspace_id', 'cascade'], ['notes', 'workspace_id', 'cascade'], ['tasks', 'workspace_id', 'cascade'], ['comments', 'workspace_id', 'cascade'], ['mention_events', 'workspace_id', 'cascade'], ['help_offers', 'workspace_id', 'cascade'],
+    ['holiday_calendars', 'workspace_id', 'cascade'], ['holidays', 'workspace_id', 'cascade'], ['days_off', 'workspace_id', 'cascade']],
   workspace_members: [['team_members', 'member_id', 'cascade'], ['project_members', 'member_id', 'cascade'], ['task_collaborators', 'member_id', 'cascade'],
     ['member_settings', 'member_id', 'cascade'], ['teams', 'lead_member_id', 'null'], ['goals', 'owner_member_id', 'null'], ['projects', 'owner_member_id', 'null'],
-    ['notes', 'created_by_member', 'null'], ['comments', 'author_member_id', 'null'], ['mention_events', 'member_id', 'cascade'], ['mention_events', 'author_member_id', 'null'], ['help_offers', 'helper_member_id', 'cascade'], ['help_offers', 'helped_member_id', 'cascade'], ['tasks', 'assignee_member_id', 'null'], ['tasks', 'created_by_member', 'null'], ['workspace_members', 'invited_by', 'null']],
+    ['notes', 'created_by_member', 'null'], ['comments', 'author_member_id', 'null'], ['mention_events', 'member_id', 'cascade'], ['mention_events', 'author_member_id', 'null'], ['help_offers', 'helper_member_id', 'cascade'], ['help_offers', 'helped_member_id', 'cascade'], ['tasks', 'assignee_member_id', 'null'], ['tasks', 'created_by_member', 'null'], ['workspace_members', 'invited_by', 'null'], ['days_off', 'member_id', 'cascade']],
+  holiday_calendars: [['holidays', 'calendar_id', 'cascade']],
   teams: [['team_members', 'team_id', 'cascade'], ['project_teams', 'team_id', 'cascade']],
   fields: [['field_options', 'field_id', 'cascade'], ['project_defaults', 'field_id', 'cascade'], ['project_fields', 'field_id', 'cascade'], ['task_values', 'field_id', 'cascade']],
   field_options: [['project_defaults', 'option_id', 'cascade'], ['task_values', 'option_id', 'cascade']],

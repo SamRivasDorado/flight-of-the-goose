@@ -9,6 +9,8 @@ import { Avatar, Icon } from '../components/Logo';
 import { ProjectChip, ProjectIcon } from '../components/ProjectChip';
 import { PersonDialog, TeamAvatar, TeamDialog } from '../components/TeamDialogs';
 import { AvStack, projectHref } from './Projects';
+import { loadDaysOff, type DayOff, type DaysOffData } from '../lib/holidays';
+import { DaysOffDialog, HolidaysDialog } from '../components/Holidays';
 
 type Role = 'owner' | 'member' | 'team';
 const ROLE_LABEL: Record<Role, string> = { owner: 'Owner', member: 'Member', team: 'Through team' };
@@ -18,8 +20,9 @@ export function Team() {
   const ui = useUI();
   const isAdmin = ws.access === 'admin';
   const { data, error, reload } = useLoad(async () => {
-    const [members, teams, projects, tasks] = await Promise.all([listMembers(ws.workspace_id), listTeams(ws.workspace_id), listProjectsFull(ws.workspace_id), listTasks(ws.workspace_id)]);
-    return { members, teams, projects, tasks };
+    const [members, teams, projects, tasks, away] = await Promise.all([listMembers(ws.workspace_id), listTeams(ws.workspace_id), listProjectsFull(ws.workspace_id), listTasks(ws.workspace_id),
+      loadDaysOff(ws.workspace_id).catch((): DaysOffData => ({ ready: false, calendars: [], holidays: [], off: [] }))]);
+    return { members, teams, projects, tasks, away };
   }, [ws.workspace_id, ui.version]);
   const [sel, setSel] = useState<string>('all');
   const [view, setView] = useLocalPref<'people' | 'matrix'>('teamView', 'people');
@@ -27,10 +30,12 @@ export function Team() {
   const [personDlg, setPersonDlg] = useState<Member | 'new' | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [resending, setResending] = useState<string | null>(null);
+  const [holOpen, setHolOpen] = useState(false);
+  const [offFor, setOffFor] = useState<Member | null>(null);
 
   if (error) return <div className="err">{error}</div>;
   if (!data) return <span className="muted">Loading…</span>;
-  const { members, teams, projects, tasks } = data;
+  const { members, teams, projects, tasks, away } = data;
   const team = sel === 'all' ? null : teams.find(t => t.id === sel) ?? null;
   const people = team ? members.filter(m => team.member_ids.includes(m.id)) : members;
   const canEditTeam = (t: Team) => isAdmin || t.lead_member_id === ws.member_id;
@@ -42,11 +47,12 @@ export function Team() {
     setResending(null);
     setMsg(error ? (error.message.includes('resend_invitation') ? 'Sending again is not available yet: the database update has not been applied.' : error.message) : `We sent the invitation to ${m.email} again.`);
   }
-  const done = () => { setTeamDlg(null); setPersonDlg(null); ui.changed(); void reload(); };
+  const done = () => { setTeamDlg(null); setPersonDlg(null); setHolOpen(false); setOffFor(null); ui.changed(); void reload(); };
 
   return (
     <>
       <div className="ph"><h1>Team</h1><span className="sub">{members.length} {members.length === 1 ? 'person' : 'people'} · {teams.length} {teams.length === 1 ? 'team' : 'teams'}</span><span className="grow" />
+        <button className="btn" onClick={() => setHolOpen(true)} title="Holidays of this workspace"><Icon name="calendar" />Holidays</button>
         {isAdmin && <button className="btn" onClick={() => setPersonDlg('new')}><Icon name="plus" />Invite a person</button>}
         {canManage(ws.access) && <button className="btn primary" onClick={() => setTeamDlg('new')}><Icon name="plus" />New team</button>}</div>
       {msg && <div className="note">{msg}</div>}
@@ -68,12 +74,15 @@ export function Team() {
                 <PersonCard key={m.id} m={m} me={m.id === ws.member_id} teams={teams} tasks={tasks} roleIn={roleIn}
                   projects={projects.filter(p => p.status !== 'closed' && roleIn(p, m.id))}
                   onTeam={setSel} onEdit={isAdmin ? () => setPersonDlg(m) : undefined}
+                  off={away.off.filter(o => o.member_id === m.id)} onDaysOff={away.ready ? () => setOffFor(m) : undefined}
                   onResend={isAdmin && m.status === 'invited' ? () => void resend(m) : undefined} resending={resending === m.id} />))}
                 {people.length === 0 && <div className="empty">No one in this team yet.</div>}</div>}
         </div>
       </div>
       {teamDlg && <TeamDialog team={teamDlg === 'new' ? null : teamDlg} members={members} count={teams.length} canDelete={isAdmin}
         onClose={() => setTeamDlg(null)} onSaved={id => { setSel(id ?? 'all'); setMsg(null); done(); }} />}
+      {holOpen && <HolidaysDialog data={away} onClose={() => setHolOpen(false)} onSaved={done} />}
+      {offFor && <DaysOffDialog member={offFor} data={away} canEdit={isAdmin || offFor.id === ws.member_id} onClose={() => setOffFor(null)} onSaved={done} />}
       {personDlg && <PersonDialog person={personDlg === 'new' ? null : personDlg} teams={teams} count={members.length}
         onClose={() => setPersonDlg(null)} onSaved={m => { setMsg(m ?? null); done(); }} />}
     </>
@@ -97,10 +106,14 @@ function TeamHero({ t, members, projects, canEdit, onEdit }: { t: Team; members:
     </header>);
 }
 
-function PersonCard({ m, me, teams, tasks, projects, roleIn, onTeam, onEdit, onResend, resending }: {
+function PersonCard({ m, me, teams, tasks, projects, roleIn, onTeam, onEdit, onResend, resending, off, onDaysOff }: {
   m: Member; me: boolean; teams: Team[]; tasks: Task[]; projects: ProjectFull[]; roleIn: (p: ProjectFull, id: string) => Role | null;
-  onTeam: (id: string) => void; onEdit?: () => void; onResend?: () => void; resending?: boolean;
+  onTeam: (id: string) => void; onEdit?: () => void; onResend?: () => void; resending?: boolean; off: DayOff[]; onDaysOff?: () => void;
 }) {
+  const todayK = new Date().toISOString().slice(0, 10);
+  const now = off.find(o => o.start_day <= todayK && o.end_day >= todayK), next = off.filter(o => o.start_day > todayK).sort((a, b) => a.start_day.localeCompare(b.start_day))[0];
+  const short = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  const range = (o: DayOff) => o.start_day === o.end_day ? short(o.start_day) : `${short(o.start_day)} – ${short(o.end_day)}`;
   const mine = tasks.filter(t => t.assignee_member_id === m.id), open = mine.filter(t => t.status !== 'done');
   const d30 = mine.filter(t => t.status === 'done' && t.completed_at && diffDays(t.completed_at) >= -30);
   const overdue = open.filter(t => t.due_date && diffDays(t.due_date) < 0).length;
@@ -118,6 +131,10 @@ function PersonCard({ m, me, teams, tasks, projects, roleIn, onTeam, onEdit, onR
         </div>
         {onEdit && <button className="iconbtn" onClick={onEdit} aria-label={`Edit ${m.display_name}`}><Icon name="edit" /></button>}
       </div>
+      {onDaysOff && <div className="pcoff">
+        <Icon name="calendar" />
+        <span>{now ? <><b>Away now</b> until {short(now.end_day)}{now.note ? ` · ${now.note}` : ''}</> : next ? <>Next days off: {range(next)}{next.note ? ` · ${next.note}` : ''}</> : <span className="muted">No days off planned</span>}</span>
+        <button className="linkbtn" onClick={onDaysOff}>{me ? 'Your days off' : 'Days off'}</button></div>}
       <div className="pcstats">
         <div><b>{open.length}</b><span>open tasks</span></div><div><b className={overdue ? 'od' : ''}>{overdue}</b><span>overdue</span></div>
         <div><b>{d30.length}</b><span>done, 30 days</span></div><div><b>{hrs(d30.reduce((s, t) => s + (Number(t.hours) || 0), 0))}</b><span>hours, 30 days</span></div></div>

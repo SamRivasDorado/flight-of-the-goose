@@ -538,4 +538,34 @@ select pg_temp.check(send_test_email() = 'wait', 'the test email is sent at most
 reset role;
 select pg_temp.check((select body->'to' from net.calls order by id desc limit 1) = '["sam@example.com"]', 'the test email goes to the person who asked');
 
+-- ---------------------------------------------------------------------
+-- Holidays (admins keep them, everyone sees them) and personal days off (your own, or anyone's if admin)
+set role authenticated;
+select pg_temp.login('00000000-0000-0000-0000-00000000000a');
+insert into holiday_calendars (workspace_id, name, color) select w, 'Comunidad de Madrid', '#D0453A' from ids;
+insert into holidays (workspace_id, calendar_id, day, name) select w, (select id from holiday_calendars where name = 'Comunidad de Madrid'), '2026-12-25', 'Natividad del Señor' from ids;
+insert into days_off (workspace_id, member_id, start_day, end_day, note) select w, (select omar from em), '2026-12-21', '2026-12-31', 'Christmas break' from ids;
+select pg_temp.login('00000000-0000-0000-0000-00000000000b');
+select pg_temp.check((select count(*) from holidays) = 1 and (select count(*) from days_off) = 1, 'everyone sees the holidays and the days off');
+do $$ begin
+  begin insert into holiday_calendars (workspace_id, name) select workspace_id, 'Mine' from workspace_members where user_id = auth.uid() and workspace_id = (select w from ids); raise exception 'FAILED: a member created a holiday calendar';
+  exception when insufficient_privilege then raise notice 'ok  only admins keep holiday calendars'; end;
+end $$;
+delete from holidays;
+select pg_temp.check((select count(*) from holidays) = 1, 'a member cannot remove a holiday');
+insert into days_off (workspace_id, member_id, start_day, end_day) select workspace_id, id, '2027-01-04', '2027-01-04' from workspace_members where user_id = auth.uid() and workspace_id = (select w from ids);
+select pg_temp.check((select count(*) from days_off) = 2, 'a person adds their own day off');
+do $$ begin
+  begin insert into days_off (workspace_id, member_id, start_day, end_day) select workspace_id, (select sam from em), '2027-01-05', '2027-01-05' from workspace_members where user_id = auth.uid() and workspace_id = (select w from ids);
+    raise exception 'FAILED: marked a day off for someone else';
+  exception when insufficient_privilege then raise notice 'ok  you mark only your own days off'; end;
+  begin insert into days_off (workspace_id, member_id, start_day, end_day) select workspace_id, id, '2027-01-09', '2027-01-08' from workspace_members where user_id = auth.uid() and workspace_id = (select w from ids);
+    raise exception 'FAILED: a day off that ends before it starts';
+  exception when check_violation then raise notice 'ok  a day off cannot end before it starts'; end;
+end $$;
+select pg_temp.login('00000000-0000-0000-0000-00000000000c');
+insert into days_off (workspace_id, member_id, start_day, end_day) select workspace_id, id, '2027-02-01', '2027-02-02' from workspace_members where user_id = auth.uid() and workspace_id = (select w from ids);
+select pg_temp.check((select count(*) from days_off) = 3, 'a guest marks her own days off too');
+reset role;
+
 select 'ALL ACCESS TESTS PASSED' as result;

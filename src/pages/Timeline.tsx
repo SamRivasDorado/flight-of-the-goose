@@ -6,15 +6,16 @@ import { useLocalPref, useUI } from '../lib/ui';
 import { useLens } from '../lib/lens';
 import { byDue, parseISO } from '../lib/format';
 import { fmtDate } from '../lib/projects';
-import { goalProgress, goalRange, goalStatus } from '../lib/goals';
-import { legProgress } from '../lib/legs';
+import { goalRange, goalStatus } from '../lib/goals';
 import { Icon } from '../components/Logo';
 import { NO_PROJECT_COLOR, ProjectIcon } from '../components/ProjectChip';
 import { GoalDialog } from '../components/GoalDialog';
 import { resolveStatuses } from '../lib/legs';
 import { projectHref } from './Projects';
 import { colorOf } from '../lib/goaltag';
-import { GoalIcon } from '../components/Geese';
+import { GoalFlag, GoalIcon } from '../components/Geese';
+import { holidayMap, loadDaysOff, type DaysOffData } from '../lib/holidays';
+import { useHiddenCalendars } from '../components/Holidays';
 
 type Zoom = 'weeks' | 'months' | 'quarters';
 /** Pixels per day, and how many days to show before and after today (as in the prototype). */
@@ -32,8 +33,9 @@ export function Timeline() {
   const lens = useLens();
   const { data, error, reload } = useLoad(async () => {
     const [goals, projects, tasks, members] = await Promise.all([listGoals(ws.workspace_id), listProjectsFull(ws.workspace_id), listTasks(ws.workspace_id), listMembers(ws.workspace_id)]);
-    const noteDates = await listNoteDates(ws.workspace_id).catch(() => []);
-    return { goals: resolveStatuses(goals, tasks, projects, noteDates), projects, tasks, members };
+    const [noteDates, away] = await Promise.all([listNoteDates(ws.workspace_id).catch(() => []),
+      loadDaysOff(ws.workspace_id).catch((): DaysOffData => ({ ready: false, calendars: [], holidays: [], off: [] }))]);
+    return { goals: resolveStatuses(goals, tasks, projects, noteDates), projects, tasks, members, away };
   }, [ws.workspace_id, ui.version]);
   const [zoom, setZoom] = useLocalPref<Zoom>('tlZoom', 'months');
   const [showDone, setShowDone] = useLocalPref('showDone', false);
@@ -42,7 +44,12 @@ export function Timeline() {
   // lanes each person has hidden (goals 'g:<id>', projects 'p:<id>', 'p:none'), kept with their settings so they follow them
   const [hidden, setHidden] = useState<string[]>([]);
   const [hidOpen, setHidOpen] = useState(false);
-  useEffect(() => { void getMySettings(ws.member_id).then(s => setHidden(Array.isArray(s.tlHidden) ? s.tlHidden as string[] : []), () => undefined); }, [ws.member_id]);
+  // goals folded away (their projects hidden), kept the same way
+  const [folded, setFolded] = useState<string[]>([]);
+  const [group, setGroup] = useLocalPref('tlGroup', true);
+  const [hiddenCals] = useHiddenCalendars();
+  useEffect(() => { void getMySettings(ws.member_id).then(s => {
+    setHidden(Array.isArray(s.tlHidden) ? s.tlHidden as string[] : []); setFolded(Array.isArray(s.tlFolded) ? s.tlFolded as string[] : []); }, () => undefined); }, [ws.member_id]);
   useEffect(() => {
     if (!hidOpen) return;
     const click = (e: MouseEvent) => { if (!(e.target as Element).closest?.('.hidwrap')) setHidOpen(false); };
@@ -51,6 +58,7 @@ export function Timeline() {
     return () => { removeEventListener('mousedown', click); removeEventListener('keydown', key); };
   }, [hidOpen]);
   const setHid = (next: string[]) => { setHidden(next); void saveMySettings(ws.member_id, { tlHidden: next }).catch(() => undefined); };
+  const toggleFold = (id: string) => { const next = folded.includes(id) ? folded.filter(x => x !== id) : [...folded, id]; setFolded(next); void saveMySettings(ws.member_id, { tlFolded: next }).catch(() => undefined); };
   const hideBtn = (k: string, name: string) => <button className="iconbtn lhide" title={`Hide “${name}” from the Timeline`} aria-label={`Hide ${name}`}
     onClick={() => setHid([...hidden, k])}><Icon name="eyeoff" /></button>;
 
@@ -81,48 +89,26 @@ export function Timeline() {
     if (wk) shading.push(<i key={`s${d.getTime()}`} className="wkend" style={{ left: x(todayISO(addDays(d, 5))), width: 2 * ppd }} />);
   }
 
+  // holidays: a soft stripe down every lane, and a mark in the header to hover for the name
+  if (data && !q) for (const [d, hs] of holidayMap(data.away, hiddenCals)) {
+    if (d < startISO || d > endISO) continue;
+    shading.push(<i key={`h${d}`} className="holsh" style={{ left: x(d), width: ppd, ['--hc' as string]: hs[0].color }} />);
+    head.push(<span key={`hh${d}`} className="holhd" style={{ left: x(d), width: Math.max(ppd, 4), ['--hc' as string]: hs[0].color }}
+      title={`${fmtDate(d, { weekday: 'short', day: 'numeric', month: 'short' })}: ${hs.map(h => h.name).join(', ')}`} />);
+  }
+
   const lanes: ReactNode[] = [];
   let hiddenNow: { k: string; name: string }[] = [];
   if (data) {
     const search = ui.q.trim().toLowerCase();
     const match = (t: Task) => (!search || t.title.toLowerCase().includes(search)) && lens.task(t);
     const away: { k: string; name: string }[] = [];   // lanes hidden by this person, for "n hidden"
-    // one lane per goal, like projects: a band across its period, filled to its progress;
-    // open-ended goals are solid up to today and hatched after, like ongoing projects
-    const goals = data.goals.filter(g => !g.parent_id && (g.end_date ?? endISO) >= startISO && g.start_date <= endISO);
-    if (!lens.filt.project) for (const g of goals) {
-      const k = `g:${g.id}`;
-      if (hidden.includes(k)) { away.push({ k, name: g.title }); continue; }
-      const st = goalStatus(g.status), col = colorOf(g, data.goals);
-      const lp = !g.end_date && g.status !== 'achieved' ? legProgress(g, data.goals, data.tasks, data.projects) : null;
-      const pg = lp ? lp.pg : goalProgress(g, data.goals, data.tasks);
-      const txt = lp ? (lp.target == null ? `${lp.leg.short} first leg` : `${lp.leg.short} leg ${pg}%`) : `${pg}%`;
-      const s = g.start_date > startISO ? x(g.start_date) : 0;
-      const open = () => (canManage(ws.access) ? setGoalDlg(g) : (location.hash = '#/strategy'));
-      let band: ReactNode;
-      if (g.end_date) {
-        const e = Math.min(W, x(g.end_date) + ppd);
-        band = <div className="band fixed gband" style={{ ['--c' as string]: col, left: s, width: Math.max(0, e - s) }}>
-          <i className="gfill" style={{ width: `${pg}%` }} />
-          {g.end_date <= endISO && <span className="cap" style={{ right: 4 }}>ends {fmtDate(g.end_date)}</span>}</div>;
-      } else {
-        const solid = Math.max(0, Math.min(W, x(today)) - s);
-        band = <div className="band open gband" style={{ ['--c' as string]: col, left: s, width: W - s, ['--solid' as string]: `${solid}px` }} />;
-      }
-      lanes.push(
-        <div key={`n${k}`} className="lname" style={{ height: 56 }}>
-          <a href="#/strategy"><GoalIcon g={g} goals={data.goals} /><span>{g.title}</span></a>
-          <span className="lm">Goal · {g.end_date ? goalRange(g) : 'no end date'} · <span style={{ color: st.color }}>{st.label}</span></span>
-          {hideBtn(k, g.title)}</div>,
-        <div key={`t${k}`} className="track" style={{ height: 56, width: W }}>{shading}{band}
-          <button className="glab" style={{ left: Math.max(s + 6, Math.min(x(today) + 10, W - 220)) }} onClick={open} title={`${g.title} · ${goalRange(g)} · ${txt}`}>
-            <span className="gdot" style={{ ["--c" as string]: st.color }} />{txt}</button></div>);
-    }
     // project lanes: fixed term first, then ongoing, paused, closed
     const order = (p: ProjectFull) => p.status === 'closed' ? 3 : p.status === 'paused' ? 2 : p.kind === 'fixed' ? 0 : 1;
     const ps = data.projects.filter(p => !(p.status === 'closed' && p.end_date && p.end_date < startISO) && lens.project(p, data.tasks)).sort((a, b) => order(a) - order(b));
-    const lane = (p: ProjectFull | null, ts: Task[]) => {
-      const color = p ? p.color : NO_PROJECT_COLOR;
+    /** A project's lane, or a lane of tasks without a project (loose, or `g`: linked only to that goal). */
+    const lane = (p: ProjectFull | null, ts: Task[], g?: Goal) => {
+      const color = p ? p.color : g ? colorOf(g, data.goals) : NO_PROJECT_COLOR;
       const dated = ts.filter(t => t.due_date && t.due_date >= startISO && t.due_date <= endISO && (showDone || t.status !== 'done')).sort(byDue);
       const undated = ts.filter(t => !t.due_date && t.status !== 'done').length;
       const rows: number[] = [];
@@ -148,13 +134,15 @@ export function Timeline() {
       }
       const open = ts.filter(t => t.status !== 'done').length;
       const meta = `${p ? (p.kind === 'fixed' && p.start_date && p.end_date ? `${fmtDate(p.start_date)} – ${fmtDate(p.end_date, { day: 'numeric', month: 'short', year: '2-digit' })}` : p.status === 'active' ? 'Ongoing' : p.status === 'paused' ? 'Paused' : 'Closed') + ' · ' : ''}${open} open${undated ? ` · ${undated} undated` : ''}`;
-      const k = p ? p.id : 'none', name = p ? p.name : 'No project';
-      if (hidden.includes(`p:${k}`)) { away.push({ k: `p:${k}`, name }); return []; }
+      const k = p ? `p:${p.id}` : g ? `go:${g.id}` : 'p:none';
+      const name = p ? p.name : g ? `${g.title}: tasks without a project` : 'Tasks without project or goal';
+      if (hidden.includes(k)) { away.push({ k, name }); return []; }
       return [
-        <div key={`n${k}`} className="lname" style={{ height: h }}>
-          <a href={p ? projectHref(p.id) : '#/tasks'}>
-            {p ? <ProjectIcon p={p} /> : <span className="picon" style={{ ['--c' as string]: NO_PROJECT_COLOR }}><Icon name="folder" /></span>}<span>{p ? p.name : 'No project'}</span></a>
-          <span className="lm">{meta}</span>{hideBtn(`p:${k}`, name)}</div>,
+        <div key={`n${k}`} className={`lname ${p ? '' : 'lnotp'}`} style={{ height: h }}>
+          <a href={p ? projectHref(p.id) : g ? '#/strategy' : '#/tasks'}>
+            {p ? <ProjectIcon p={p} /> : <span className="picon" style={{ ['--c' as string]: color }}><Icon name={g ? 'target' : 'tasks'} /></span>}
+            <span>{p ? p.name : g ? 'Without a project' : group ? 'Loose tasks' : 'No project'}</span></a>
+          <span className="lm">{meta}</span>{hideBtn(k, name)}</div>,
         <div key={`t${k}`} className="track" style={{ height: h, width: W }}>{shading}{band}
           {marks.map(({ t, l, lw, row }) => {
             const done = t.status === 'done';
@@ -163,9 +151,53 @@ export function Timeline() {
               <span className="dotm" />{zoom !== 'quarters' && <span className="lt">{t.title || 'Untitled task'}</span>}</button>;
           })}</div>];
     };
-    ps.forEach(p => lanes.push(...lane(p, data.tasks.filter(t => t.project_id === p.id && match(t)))));
+    const tasksOf = (p: ProjectFull) => data.tasks.filter(t => t.project_id === p.id && match(t));
     const loose = data.tasks.filter(t => !data.projects.some(p => p.id === t.project_id) && match(t));
-    if (loose.length && (!lens.filt.project || lens.filt.project === 'none')) lanes.push(...lane(null, loose));
+    const looseShown = !lens.filt.project || lens.filt.project === 'none';
+    if (group && !lens.filt.project) {
+      // Grouped by goal: a thin stripe per goal, its projects and its own tasks underneath; then projects
+      // without a goal; loose tasks at the bottom. A project with several goals shows under the first.
+      const tops = data.goals.filter(g => !g.parent_id);
+      const topOf = (id: string | null) => { const g = data.goals.find(x => x.id === id); const t = g?.parent_id ? data.goals.find(x => x.id === g.parent_id) : g; return t && !t.parent_id ? t.id : null; };
+      const under = new Map<string, ProjectFull[]>(), own = new Map<string, Task[]>(), noGoal: ProjectFull[] = [], free: Task[] = [];
+      for (const p of ps) { const gid = p.goal_ids.map(topOf).find(Boolean); if (gid) under.set(gid, [...(under.get(gid) ?? []), p]); else noGoal.push(p); }
+      for (const t of loose) { const gid = topOf(t.goal_id); if (gid) own.set(gid, [...(own.get(gid) ?? []), t]); else free.push(t); }
+      const filtering = !!search || Object.values(lens.filt).some(Boolean);
+      let stripes = 0;
+      for (const g of tops) {
+        const gp = under.get(g.id) ?? [], gt = own.get(g.id) ?? [];
+        const inView = (g.end_date ?? endISO) >= startISO && g.start_date <= endISO;
+        if (!gp.length && !gt.length && (filtering || !inView)) continue;
+        const k = `g:${g.id}`;
+        if (hidden.includes(k)) { away.push({ k, name: g.title }); continue; }
+        stripes++;
+        const shut = folded.includes(g.id), st = goalStatus(g.status), col = colorOf(g, data.goals);
+        const openTasks = gp.reduce((n, p) => n + tasksOf(p).filter(t => t.status !== 'done').length, 0) + gt.filter(t => t.status !== 'done').length;
+        const what = [gp.length ? `${gp.length} project${gp.length === 1 ? '' : 's'}` : '', openTasks ? `${openTasks} open task${openTasks === 1 ? '' : 's'}` : ''].filter(Boolean).join(', ');
+        const endIn = g.end_date && g.end_date >= startISO && g.end_date <= endISO;
+        lanes.push(
+          <div key={`n${k}`} className="lname gstripe" style={{ height: 36 }}>
+            <button className="iconbtn gfold" aria-expanded={!shut} aria-label={shut ? `Unfold ${g.title}` : `Fold ${g.title}`} title={shut ? 'Show its projects' : 'Fold its projects away'}
+              onClick={() => toggleFold(g.id)}><Icon name={shut ? 'right' : 'down'} /></button>
+            <a href="#/strategy"><GoalIcon g={g} goals={data.goals} /><span>{g.title}</span></a>{hideBtn(k, g.title)}</div>,
+          <div key={`t${k}`} className="track gstripe" style={{ height: 36, width: W, ['--c' as string]: col }}>{shading}
+            <button className="gsum" style={{ left: Math.max(8, Math.min(x(today) - 150, W - 560)) }} title={`${g.title} · ${goalRange(g)}`}
+              onClick={() => (canManage(ws.access) ? setGoalDlg(g) : (location.hash = '#/strategy'))}>
+              <b>{g.title}</b><span className="gdot" style={{ ['--c' as string]: st.color }} />{st.label} · {g.end_date ? `ends ${fmtDate(g.end_date)}` : 'no end date'}
+              {shut && what ? <span className="muted"> · {what} folded</span> : null}</button>
+            {endIn && <span className="gend" style={{ left: x(g.end_date!) + ppd / 2 - 5 }} title={`${g.title} ends ${fmtDate(g.end_date!)}`}><GoalFlag color={col} reached={g.status === 'achieved'} small /></span>}
+          </div>);
+        if (shut) continue;
+        gp.forEach(p => lanes.push(...lane(p, tasksOf(p))));
+        if (gt.length) lanes.push(...lane(null, gt, g));
+      }
+      const section = (key: string, label: string) => lanes.push(<div key={`sn${key}`} className="lname lsec">{label}</div>, <div key={`st${key}`} className="track lsec" style={{ width: W }}>{shading}</div>);
+      if (noGoal.length) { if (stripes) section('ng', 'Projects without a goal'); noGoal.forEach(p => lanes.push(...lane(p, tasksOf(p)))); }
+      if (free.length && looseShown) { if (stripes) section('free', 'Tasks without project or goal'); lanes.push(...lane(null, free)); }
+    } else {
+      ps.forEach(p => lanes.push(...lane(p, tasksOf(p))));
+      if (loose.length && looseShown) lanes.push(...lane(null, loose));
+    }
     hiddenNow = away;
   }
 
@@ -182,6 +214,7 @@ export function Timeline() {
               <button className="btn sm ghost" onClick={() => setHid(hidden.filter(x => x !== h.k))}><Icon name="eye" />Show</button></div>)}
             <div className="hidrow"><span className="grow" /><button className="btn sm" onClick={() => { setHid(hidden.filter(x => !hiddenNow.some(h => h.k === x))); setHidOpen(false); }}>Show all</button></div>
           </div>}</span>}
+        <label className="chk" title="Show projects under their goals"><input type="checkbox" checked={group} onChange={e => setGroup(e.target.checked)} />Group by goal</label>
         <label className="chk"><input type="checkbox" checked={showDone} onChange={e => setShowDone(e.target.checked)} />Show completed</label></div>
       {error && <div className="err">{error}</div>}
       <div className="tl-scroll" ref={scroller}>

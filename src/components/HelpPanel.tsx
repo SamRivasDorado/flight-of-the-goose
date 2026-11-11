@@ -11,6 +11,19 @@ function Dots({ items }: { items: [string, string, string][] }) {
   return <ul className="hdots">{items.map(([tone, label, desc]) => <li key={label}><span className={`tonedot tone-${tone}`}>{label}</span><span>{desc}</span></li>)}</ul>;
 }
 
+/** Help → Holidays and days off; in solo mode without the parts about other people. */
+function HolidaysHelp() {
+  const { solo } = useSolo();
+  return <>
+    <p className="lead">See at a glance which days to keep free of work and meetings.</p>
+    <ul>
+      <li><b>Holidays</b> belong to the workspace, in one or more calendars, each with its colour: for example <i>Comunidad de Madrid</i> and <i>Madrid city</i>, or a client's country. Open them with <b>Holidays</b> {solo ? 'in the Calendar' : 'on the Team page or in the Calendar'}. Admins keep them: <b>Fill in official holidays</b> adds a whole year in one click (Comunidad de Madrid and Madrid city for 2026 and 2027), and you can add your own days or periods, such as an office closure.</li>
+      <li>Holidays are <b>tinted in the Calendar</b> with their name, and show as a soft stripe on the <b>Timeline</b> (hover the mark along the top for the name). Untick <b>Show in my Calendar and Timeline</b> to hide a calendar just for you.</li>
+      {!solo && <li><b>Days off</b> are personal: holidays, conferences, any time away. Add yours from your card on the Team page (<b>Your days off</b>); admins can add them for anyone. Everyone sees them: the card says who is away, and the Calendar shows their pictures on those days.</li>}
+      <li>Dragging a task in the Calendar onto a holiday{solo ? '' : ', or a day its assignee is away,'} asks before moving it and says why.</li>
+    </ul></>;
+}
+
 /** Help → Emails; in solo mode without the parts about other people. */
 function EmailsHelp() {
   const { solo } = useSolo();
@@ -40,7 +53,8 @@ const TOPICS: Topic[] = [
   { id: 'timeline', title: 'Timeline', icon: 'timeline', page: 'timeline', go: '#/timeline', body: <>
     <p className="lead">The home screen: everything on one time line, so you see at a glance what is running, what is coming and what has slipped.</p>
     <ul>
-      <li><b>Each goal is a lane</b> at the top, with its symbol: a band across its period, filled to its progress. A goal with no end date is solid up to today and hatched after, and shows its quarterly leg. Click the label on the band to open the goal.</li>
+      <li><b>Grouped by goal.</b> Each goal is a thin stripe with its status and end date (a flag marks the end). Its projects sit underneath, then a lane <i>Without a project</i> for the goal's tasks that are not in a project. After the goals come <b>projects without a goal</b>, and <b>loose tasks</b> (no project, no goal) at the bottom. A project linked to several goals shows under the first. Untick <b>Group by goal</b> (top right) to see projects only.</li>
+      <li><b>Fold a goal</b> with the arrow on its stripe to tuck its projects away; the stripe says what is folded. Click the status on the stripe to open the goal.</li>
       <li><b>Each project is a lane.</b> A solid band is a fixed-term project, ending on its end date. An ongoing project is solid up to today and hatched after, because it runs on.</li>
       <li><b>Hide a lane</b> you do not need to see: point at its name and click the crossed-out eye. <b>“n hidden”</b> at the top right lists them, to show them again. Goose remembers this for you, on any computer.</li>
       <li>The dates along the top are Mondays and Fridays (months and quarters when zoomed out).</li>
@@ -165,6 +179,7 @@ const TOPICS: Topic[] = [
       <li>When the overdue tasks are done, the goose catches up with the flock and the companions return to their places.</li>
     </ul>
     <p className="hint">Not shown in solo mode, where there is nobody else to help.</p></> },
+  { id: 'holidays', title: 'Holidays and days off', icon: 'calendar', body: <HolidaysHelp /> },
   { id: 'emails', title: 'Emails', icon: 'mail', body: <EmailsHelp /> },
   { id: 'lens', title: 'The Lens and dimensions', icon: 'filter', body: <>
     <p className="lead">The Lens is the filter bar under the top bar. Whatever you pick there filters every screen at once.</p>

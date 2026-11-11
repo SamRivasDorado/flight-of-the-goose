@@ -3,6 +3,7 @@
  * so every screen (and the quarterly legs on Strategy) has something real to show.
  * Dates are relative to today; the pseudo-random choices are fixed, so every reset looks the same.
  */
+import { PRESETS } from '../lib/holidays';
 import type { Repeat } from '../lib/repeat';
 
 type Row = Record<string, unknown>;
@@ -195,6 +196,16 @@ export function makeSeed(myUid: string, myEmail: string): Record<string, Row[]> 
   ho('Send fracture logs to Karim', elena, omar, 'accepted', 26, 'I have the logs open anyway');
   t.task_collaborators.push({ task_id: tid('Send fracture logs to Karim'), member_id: elena });
   ho('Review training videos', elena, sam, 'offered', 4, 'I can take the last two videos');
+  // holidays (the official Madrid lists) and a few days off around the team
+  const hcal = (name: string, color: string, preset: string) => {
+    const id = uid(); t.holiday_calendars.push({ id, workspace_id: ws, name, color, created_at: new Date().toISOString() });
+    for (const [d, n] of Object.values(PRESETS.find(p => p.id === preset)!.years).flat()) t.holidays.push({ id: uid(), workspace_id: ws, calendar_id: id, day: d, end_day: null, name: n });
+  };
+  t.holiday_calendars = []; t.holidays = []; t.days_off = [];
+  hcal('Comunidad de Madrid', '#D0453A', 'es-md');
+  hcal('Madrid city', '#E08A2E', 'madrid-city');
+  const off = (who: string, a: number, b: number, note: string) => t.days_off.push({ id: uid(), workspace_id: ws, member_id: who, start_day: day(a), end_day: day(b), note, created_at: new Date().toISOString() });
+  off(omar, 3, 7, 'EAGE workshop in Paris'); off(lucia, 12, 16, 'Holiday'); off(karim, 1, 1, 'Medical appointment');
   void tTrain; void julia;
   return t;
 }
