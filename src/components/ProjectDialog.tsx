@@ -61,6 +61,7 @@ export function ProjectDialog({ project, kind, count, onClose, onSaved, onDelete
   }, [onClose]);
 
   async function save() {
+    if (busy) return;   // one save at a time (a held Enter repeats)
     if (!d.name.trim()) { setErr('Give the project a name.'); return; }
     if (d.kind === 'fixed' && d.start_date && d.end_date && d.end_date < d.start_date) { setErr('The end date is before the start date.'); return; }
     setBusy(true); setErr(null);
@@ -111,7 +112,7 @@ export function ProjectDialog({ project, kind, count, onClose, onSaved, onDelete
         <div className="mbody">
           <div><label className="lbl" htmlFor="pm-name">Name</label>
             <input id="pm-name" className="field-in" style={{ width: '100%' }} value={d.name} autoFocus placeholder="e.g. Client X reservoir model"
-              onChange={e => { set({ name: e.target.value }); setErr(null); }} onKeyDown={e => { if (e.key === 'Enter') void save(); }} /></div>
+              onChange={e => { set({ name: e.target.value }); setErr(null); }} onKeyDown={e => { if (e.key === 'Enter' && !e.repeat) void save(); }} /></div>
           <div><span className="lbl">Kind</span><div className="kindpick">
             <label className={d.kind === 'fixed' ? 'on' : ''}><input type="radio" name="pkind" checked={d.kind === 'fixed'}
               onChange={() => { const end = new Date(); end.setDate(end.getDate() + 90); set({ kind: 'fixed', end_date: d.end_date ?? todayISO(end) }); }} />

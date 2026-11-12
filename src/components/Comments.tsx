@@ -96,16 +96,19 @@ function Composer({ members, me, initial = '', solo, busy, submitLabel, onSubmit
   onSubmit: (body: string, mentions: string[]) => Promise<boolean>; onCancel?: () => void; autoFocus?: boolean;
 }) {
   const [text, setText] = useState(initial);
+  const sending = useRef(false);   // one comment per send, even with Ctrl+Enter held down
   async function submit() {
-    const body = text.trim(); if (!body || busy) return;
-    if (await onSubmit(body, mentionedIds(body, members, me))) setText('');
+    const body = text.trim(); if (!body || busy || sending.current) return;
+    sending.current = true;
+    try { if (await onSubmit(body, mentionedIds(body, members, me))) setText(''); }
+    finally { sending.current = false; }
   }
   return (
     <div className="ccompose">
       <MentionArea className="notes" rows={2} value={text} onChange={setText} members={members} me={me} solo={solo} autoFocus={autoFocus}
         aria-label="Write a comment" placeholder="Write a comment. Type @ to mention someone."
         onKeyDown={e => {
-          if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); void submit(); }
+          if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); if (!e.repeat) void submit(); }
           if (e.key === 'Escape' && onCancel) { e.stopPropagation(); onCancel(); }
         }} />
       <div className="cfoot"><span className="hint">Ctrl or ⌘ + Enter to send</span><span className="grow" />
