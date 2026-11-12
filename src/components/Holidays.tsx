@@ -122,7 +122,7 @@ export function HolidaysDialog({ data, onClose, onSaved }: { data: DaysOffData; 
               <span className="muted">to</span>
               <input type="date" className="field-in" aria-label="Last day (optional)" value={add.end} min={add.day || undefined} onChange={e => setAdd(a => ({ ...a, end: e.target.value }))} />
               <input className="field-in" style={{ flex: 1, minWidth: 140 }} placeholder="Office closed" value={add.name} maxLength={80} onChange={e => setAdd(a => ({ ...a, name: e.target.value }))}
-                onKeyDown={e => { if (e.key === 'Enter') addDay(); }} />
+                onKeyDown={e => { if (e.key === 'Enter' && !e.repeat) addDay(); }} />
               <button className="btn sm" onClick={addDay}><Icon name="plus" />Add</button></div>
           </div>}
           {admin && <div><button className="btn sm ghost" onClick={() => { setCals(cs => cs.filter(c => c.id !== sel)); setSel(cals.find(c => c.id !== sel)?.id ?? null); }}>
@@ -173,7 +173,7 @@ export function DaysOffDialog({ member, data, canEdit, onClose, onSaved }: { mem
             <span className="muted">to</span>
             <input type="date" className="field-in" aria-label="Last day" value={add.to} min={add.from || undefined} onChange={e => setAdd(a => ({ ...a, to: e.target.value }))} />
             <input className="field-in" style={{ flex: 1, minWidth: 140 }} placeholder="Holiday" value={add.note} maxLength={120} onChange={e => setAdd(a => ({ ...a, note: e.target.value }))}
-              onKeyDown={e => { if (e.key === 'Enter') addOne(); }} />
+              onKeyDown={e => { if (e.key === 'Enter' && !e.repeat) addOne(); }} />
             <button className="btn sm" onClick={addOne}><Icon name="plus" />Add</button></div>
         </div>}
       </>}

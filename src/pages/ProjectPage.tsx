@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSolo } from '../lib/solo';
 import { useWorkspace } from '../auth/session';
 import { addNote, createTask, deleteNote, listMembers, listNoteDates, listNotes, listOpenTaskIds, listProjectsFull, listTasks, setProjectDone, todayISO, updateNote, useLoad } from '../lib/data';
@@ -151,11 +151,17 @@ function Notebook({ p, tasks, members, onTasks }: { p: ProjectFull; tasks: TaskF
     const now = members.filter(m => mentionedIds(after, members, ws.member_id).includes(m.id) && !was.has(m.id));
     void recordMentions(ws.workspace_id, ws.member_id, { note_id: noteId }, now, after).catch(() => undefined);
   };
+  // one entry per save: Ctrl+Enter held down repeats the key, and each repeat used to add the entry again
+  const adding = useRef(false);
   async function add() {
+    if (adding.current) return;
     if (!text.trim()) { setMsg('Write something first.'); return; }
     const body = text.trim();
-    if (await run(async () => { const n = await addNote(ws.workspace_id, ws.member_id, { project_id: p.id, entry_date: date || todayISO(), kind, body }); notify(n.id, '', body); })) {
-      setText(''); setKind('note'); setDate(todayISO()); }
+    adding.current = true;
+    try {
+      if (await run(async () => { const n = await addNote(ws.workspace_id, ws.member_id, { project_id: p.id, entry_date: date || todayISO(), kind, body }); notify(n.id, '', body); })) {
+        setText(''); setKind('note'); setDate(todayISO()); }
+    } finally { adding.current = false; }
   }
   const lineTask = (n: Note, i: number, line: string) =>
     run(() => createTask(ws.workspace_id, ws.member_id, { title: line.trim().replace(/^[-*•]\s*/, ''), project_id: p.id, source_note_id: n.id, source_line: i }));
@@ -172,7 +178,7 @@ function Notebook({ p, tasks, members, onTasks }: { p: ProjectFull; tasks: TaskF
           <div className="composer">
             <MentionArea value={text} onChange={setText} aria-label="New notebook entry" members={members} me={ws.member_id} solo={solo}
               placeholder="What happened? Meeting notes, decisions, parameters, links. Each line can become a task later. Type @ to mention someone."
-              onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) void add(); }} />
+              onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); if (!e.repeat) void add(); } }} />
             <div className="row">
               <input type="date" className="field-in" value={date} onChange={e => setDate(e.target.value)} aria-label="Entry date" />
               <span className="seg" role="group" aria-label="Entry type">{NOTE_KINDS.map(k =>

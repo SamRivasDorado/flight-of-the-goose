@@ -55,6 +55,7 @@ export function TeamDialog({ team, members, count, canDelete, onClose, onSaved }
   });
 
   async function save() {
+    if (busy) return;   // one save at a time (a held Enter repeats)
     if (!d.name.trim()) { setErr('Give the team a name.'); return; }
     setBusy(true);
     try {
@@ -81,7 +82,7 @@ export function TeamDialog({ team, members, count, canDelete, onClose, onSaved }
       <button className="btn primary" disabled={busy} onClick={() => void save()}>{busy ? 'Saving…' : base ? 'Save' : <><Icon name="plus" />Create team</>}</button></>}>
       <div><label className="lbl" htmlFor="te-name">Name</label>
         <input id="te-name" className="field-in" style={{ width: '100%' }} value={d.name} autoFocus placeholder="e.g. Reservoir modelling"
-          onChange={e => set({ name: e.target.value })} onKeyDown={e => { if (e.key === 'Enter') void save(); }} /></div>
+          onChange={e => set({ name: e.target.value })} onKeyDown={e => { if (e.key === 'Enter' && !e.repeat) void save(); }} /></div>
       <div><span className="lbl">Members</span><div className="pplpick">
         {members.map(m => <button key={m.id} type="button" className={`pp ${d.member_ids.includes(m.id) ? 'on' : ''}`} aria-pressed={d.member_ids.includes(m.id)} onClick={() => toggle(m.id)}>
           <Avatar m={m} size="sm" />{m.display_name}</button>)}</div></div>
@@ -118,6 +119,7 @@ export function PersonDialog({ person, teams, count, onClose, onSaved }: {
   const set = (p: Partial<typeof d>) => { setD(cur => ({ ...cur, ...p })); setErr(null); };
 
   async function save() {
+    if (busy) return;   // one save at a time (a held Enter repeats)
     const email = d.email.trim().toLowerCase();
     if (!person && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setErr('Add a valid email address.'); return; }
     if (!d.display_name.trim()) { setErr('Add a name.'); return; }

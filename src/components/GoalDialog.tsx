@@ -41,6 +41,7 @@ export function GoalDialog({ goal, parentId, goals, members, projects, onClose, 
   }, [onClose]);
 
   async function save() {
+    if (busy) return;   // one save at a time (a held Enter repeats)
     if (!d.title.trim()) { setErr('Give the goal a name.'); return; }
     const tag = cleanTag(d.short_name) || suggestTag(d.title);
     if (!d.start_date) { setErr('Choose a start date.'); return; }
@@ -65,7 +66,7 @@ export function GoalDialog({ goal, parentId, goals, members, projects, onClose, 
           {!goal && parentTitle && <div className="hint">Part of <b>{parentTitle}</b>.</div>}
           <div><label className="lbl" htmlFor="gm-title">Goal</label>
             <input id="gm-title" className="field-in" style={{ width: '100%' }} value={d.title} autoFocus placeholder="e.g. Grow our presence in North Africa"
-              onChange={e => set({ title: e.target.value, ...(tagTouched ? {} : { short_name: suggestTag(e.target.value) }) })} onKeyDown={e => { if (e.key === 'Enter') void save(); }} /></div>
+              onChange={e => set({ title: e.target.value, ...(tagTouched ? {} : { short_name: suggestTag(e.target.value) }) })} onKeyDown={e => { if (e.key === 'Enter' && !e.repeat) void save(); }} /></div>
           <div className="row2">
             <div><label className="lbl" htmlFor="gm-tag">Short name</label>
               <input id="gm-tag" className="field-in mono" style={{ width: '100%' }} value={d.short_name} maxLength={TAG_MAX} placeholder={suggestTag(d.title || 'Goal')}

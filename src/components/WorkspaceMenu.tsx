@@ -92,6 +92,7 @@ function NameDialog({ mode, onClose, onDone }: { mode: 'new' | 'rename'; onClose
     addEventListener('keydown', key); return () => removeEventListener('keydown', key);
   }, [onClose]);
   async function submit() {
+    if (busy) return;   // one workspace per click or Enter
     const n = name.trim();
     if (!n) { setErr('Give the workspace a name.'); return; }
     setBusy(true); setErr(null);
@@ -115,7 +116,7 @@ function NameDialog({ mode, onClose, onDone }: { mode: 'new' | 'rename'; onClose
           {mode === 'new' && <div className="hint">A separate space with its own projects, goals, tasks and people, for example one for your company and one for an association. You are its admin, and you can use a different name and picture in it.</div>}
           <div><label className="lbl" htmlFor="ws-name">Name</label>
             <input id="ws-name" className="field-in" style={{ width: '100%' }} value={name} autoFocus maxLength={80} placeholder="e.g. Heritage association"
-              onChange={e => { setName(e.target.value); setErr(null); }} onKeyDown={e => { if (e.key === 'Enter') void submit(); }} /></div>
+              onChange={e => { setName(e.target.value); setErr(null); }} onKeyDown={e => { if (e.key === 'Enter' && !e.repeat) void submit(); }} /></div>
         </div>
         <div className="mfoot">{err && <span className="err">{err}</span>}<span className="grow" />
           <button className="btn" onClick={onClose}>Cancel</button>
