@@ -126,10 +126,9 @@ const TOPICS: Topic[] = [
     <p className="lead">Look back on a week, month or any period, and decide what happens next.</p>
     <ul>
       <li>Pick the <b>period</b> at the top, the same choices as in Insights: this or last week, the last 7, 30 or 90 days, a month, quarter or year, all time, or your own dates. The arrows step to the period before or after.</li>
-      <li><b>Slipped</b>: overdue tasks, each with one-click Done, Next Monday, +1 week or No date.</li>
-      <li><b>Done</b> and <b>Coming up</b> for the period, and <b>Quiet projects</b> where nothing happened.</li>
-      <li><b>Where the time went</b> by goal, project, or any dimension (combine them, for example Region × Priority).</li>
-      <li><b>Summary to share</b>: a ready-written text of the period. Copy it into an email or a message for your manager or client.</li>
+      <li><b>Summary to share</b> comes first. <b>Written</b>: Goose puts the period into a few sentences (what was done and where the time went, how goals and projects moved, what needs attention, what is coming up). <b>List</b>: the same facts as a plain list. You can edit the text before copying it; nothing is sent anywhere. Tick <b>Include coming up</b> to add the next days.</li>
+      <li><b>Goals and projects</b>: each goal with its projects underneath (a project with several goals shows under the first), then projects without a goal. For each: <b>Progress</b> is the share of its tasks done by the end of the period (the same rule for goals and projects; the dot is its status), <b>Gain</b> is how much that share grew during the period (the darker end of the bar), and <b>Time</b> is the hours logged on tasks completed in the period (or how many were completed, if nobody logs hours). A task counts toward every goal its project supports, plus any goal it is linked to directly. <b>Time by</b> splits the time by any dimension; pick several to combine them (for example Region × Client).</li>
+      <li>At the side: <b>Slipped</b> (overdue tasks, each with one-click Done, Next Monday, +1 week or No date), <b>Coming up</b>, <b>Done</b> (the latest five; show all), and <b>Quiet projects</b> where nothing happened.</li>
     </ul>
     <p className="hint">A good habit: open Review every Friday with “This week”.</p></> },
   { id: 'insights', title: 'Insights', icon: 'chart', page: 'insights', go: '#/insights', body: <>
