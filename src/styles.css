@@ -940,3 +940,26 @@ button.brand:hover{background:var(--bar-hi)}
 .holcard .hcl .holrow.past>span{opacity:.55}
 .holcard .hcl .hint{grid-column:1/-1}
 .holcard header b{min-width:0}
+
+/* Review: summary first, goals and projects together, task lists at the side */
+.rv.rv2{grid-template-columns:minmax(0,1.9fr) minmax(300px,1fr)}
+.rvside .rrow .t{min-width:140px}
+.rvside .rrow .acts{flex-basis:100%}
+.rvwritten{font-family:var(--f-body);line-height:1.6}
+.gprow{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(80px,1fr) 44px 44px 64px;gap:10px;align-items:center;font-size:13px;padding:4px 0}
+.gprow.top{border-top:1px solid var(--line);padding-top:8px;margin-top:2px}
+.gprow.top .gpname{font-weight:600}
+.gprow.sub .gpname{padding-left:18px;color:var(--muted)}
+.gphead{font-size:11.5px;color:var(--muted);padding:0}
+.gphead span:nth-child(n+3){text-align:right}
+.gpname{display:flex;align-items:center;gap:7px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:inherit;text-decoration:none}
+.gpname:hover{text-decoration:underline}
+.gpdot{width:8px;height:8px;border-radius:50%;flex:none}
+.gpbar{position:relative;height:10px;border-radius:99px;background:var(--surface-2);overflow:hidden}
+.gpbar i{position:absolute;inset:0 auto 0 0;background:color-mix(in srgb,var(--c) 45%,transparent)}
+.gpbar b{position:absolute;top:0;bottom:0;background:var(--c)}
+.gpn{text-align:right;font-size:12px}
+.gpn.up{color:var(--good,#6B9160);font-weight:600}
+.gpn.down{color:var(--muted);cursor:help}
+.gpsec{font-size:11.5px;font-weight:600;color:var(--muted);padding:10px 0 2px;border-top:1px solid var(--line);margin-top:4px}
+.gpdims{border-top:1px solid var(--line);margin-top:6px;padding-top:8px;display:flex;flex-direction:column;gap:6px}
