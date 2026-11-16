@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useWorkspace } from '../auth/session';
 import { db } from '../lib/supabase';
-import { listMembers, listProjectsFull, listTasks, listTeams, useLoad } from '../lib/data';
-import { ACCESS_DESC, ACCESS_LABEL, canManage, type Member, type ProjectFull, type Task, type Team } from '../lib/types';
+import { listMembers, listProjectsFull, listTasksFull, listTeams, useLoad } from '../lib/data';
+import { ACCESS_DESC, ACCESS_LABEL, canManage, type Member, type ProjectFull, type TaskFull, type Team } from '../lib/types';
 import { useLocalPref, useUI } from '../lib/ui';
 import { diffDays, hrs } from '../lib/format';
 import { Avatar, Icon } from '../components/Logo';
@@ -13,14 +13,13 @@ import { loadDaysOff, type DayOff, type DaysOffData } from '../lib/holidays';
 import { DaysOffDialog, HolidaysDialog, HolidaysOverview } from '../components/Holidays';
 
 type Role = 'owner' | 'member' | 'team';
-const ROLE_LABEL: Record<Role, string> = { owner: 'Owner', member: 'Member', team: 'Through team' };
 
 export function Team() {
   const ws = useWorkspace();
   const ui = useUI();
   const isAdmin = ws.access === 'admin';
   const { data, error, reload } = useLoad(async () => {
-    const [members, teams, projects, tasks, away] = await Promise.all([listMembers(ws.workspace_id), listTeams(ws.workspace_id), listProjectsFull(ws.workspace_id), listTasks(ws.workspace_id),
+    const [members, teams, projects, tasks, away] = await Promise.all([listMembers(ws.workspace_id), listTeams(ws.workspace_id), listProjectsFull(ws.workspace_id), listTasksFull(ws.workspace_id),
       loadDaysOff(ws.workspace_id).catch((): DaysOffData => ({ ready: false, calendars: [], holidays: [], off: [] }))]);
     return { members, teams, projects, tasks, away };
   }, [ws.workspace_id, ui.version]);
@@ -73,7 +72,8 @@ export function Team() {
             ? <Matrix people={people} projects={projects} tasks={tasks} roleIn={roleIn} />
             : <div className="pcgrid">{people.map(m => (
                 <PersonCard key={m.id} m={m} me={m.id === ws.member_id} teams={teams} tasks={tasks} roleIn={roleIn}
-                  projects={projects.filter(p => p.status !== 'closed' && roleIn(p, m.id))}
+                  projects={projects.filter(p => p.status !== 'closed' && (roleIn(p, m.id) || tasks.some(t => t.project_id === p.id && t.status !== 'done'
+                    && (t.assignee_member_id === m.id || t.collaborator_ids.includes(m.id)))))}
                   onTeam={setSel} onEdit={isAdmin ? () => setPersonDlg(m) : undefined}
                   off={away.off.filter(o => o.member_id === m.id)} onDaysOff={away.ready ? () => setOffFor(m) : undefined}
                   onResend={isAdmin && m.status === 'invited' ? () => void resend(m) : undefined} resending={resending === m.id} />))}
@@ -108,7 +108,7 @@ function TeamHero({ t, members, projects, canEdit, onEdit }: { t: Team; members:
 }
 
 function PersonCard({ m, me, teams, tasks, projects, roleIn, onTeam, onEdit, onResend, resending, off, onDaysOff }: {
-  m: Member; me: boolean; teams: Team[]; tasks: Task[]; projects: ProjectFull[]; roleIn: (p: ProjectFull, id: string) => Role | null;
+  m: Member; me: boolean; teams: Team[]; tasks: TaskFull[]; projects: ProjectFull[]; roleIn: (p: ProjectFull, id: string) => Role | null;
   onTeam: (id: string) => void; onEdit?: () => void; onResend?: () => void; resending?: boolean; off: DayOff[]; onDaysOff?: () => void;
 }) {
   const todayK = new Date().toISOString().slice(0, 10);
@@ -118,7 +118,11 @@ function PersonCard({ m, me, teams, tasks, projects, roleIn, onTeam, onEdit, onR
   const mine = tasks.filter(t => t.assignee_member_id === m.id), open = mine.filter(t => t.status !== 'done');
   const d30 = mine.filter(t => t.status === 'done' && t.completed_at && diffDays(t.completed_at) >= -30);
   const overdue = open.filter(t => t.due_date && diffDays(t.due_date) < 0).length;
-  const sorted = [...projects].sort((a, b) => (roleIn(a, m.id) === 'owner' ? 0 : 1) - (roleIn(b, m.id) === 'owner' ? 0 : 1));
+  // open tasks where they collaborate (someone else, or nobody, is the assignee)
+  const helping = tasks.filter(t => t.status !== 'done' && t.assignee_member_id !== m.id && t.collaborator_ids.includes(m.id)).length;
+  // owned projects first, then the ones they are in, then the ones they only work on tasks in
+  const rank = (p: ProjectFull) => { const r = roleIn(p, m.id); return r === 'owner' ? 0 : r ? 1 : 2; };
+  const sorted = [...projects].sort((a, b) => rank(a) - rank(b));
   return (
     <article className="pc">
       <div className="pchead"><Avatar m={m} size="xl" />
@@ -137,18 +141,20 @@ function PersonCard({ m, me, teams, tasks, projects, roleIn, onTeam, onEdit, onR
         <span>{now ? <><b>Away now</b> until {short(now.end_day)}{now.note ? ` · ${now.note}` : ''}</> : next ? <>Next days off: {range(next)}{next.note ? ` · ${next.note}` : ''}</> : <span className="muted">No days off planned</span>}</span>
         <button className="linkbtn" onClick={onDaysOff}>{me ? 'Your days off' : 'Days off'}</button></div>}
       <div className="pcstats">
-        <div><b>{open.length}</b><span>open tasks</span></div><div><b className={overdue ? 'od' : ''}>{overdue}</b><span>overdue</span></div>
+        <div><b>{open.length}</b><span>★ tasks owned</span></div><div><b>{helping}</b><span>○ collaborating</span></div><div><b className={overdue ? 'od' : ''}>{overdue}</b><span>overdue</span></div>
         <div><b>{d30.length}</b><span>done, 30 days</span></div><div><b>{hrs(d30.reduce((s, t) => s + (Number(t.hours) || 0), 0))}</b><span>hours, 30 days</span></div></div>
       <div><div className="h3 gsect">Projects</div><div className="links">
-        {sorted.map(p => { const r = roleIn(p, m.id)!; return (
-          <a key={p.id} href={projectHref(p.id)} title={ROLE_LABEL[r]} style={{ textDecoration: 'none', color: 'inherit' }}>
-            <span className="pchip" style={{ ['--c' as string]: p.color }}><ProjectIcon p={p} />{p.name}
-              {r === 'owner' && <span className="ownstar" aria-label="owner">★</span>}{r === 'team' && <span className="muted"> · team</span>}</span></a>); })}
+        {sorted.map(p => { const r = roleIn(p, m.id);
+          const tip = r === 'owner' ? `${m.display_name} owns this project` : r ? `${m.display_name} is in this project` : `${m.display_name} is not in this project but works on some of its tasks`;
+          return (
+          <a key={p.id} href={projectHref(p.id)} title={tip} style={{ textDecoration: 'none', color: 'inherit' }}>
+            <span className={`pchip ${r ? '' : 'pcout'}`} style={{ ['--c' as string]: p.color }}><ProjectIcon p={p} />{p.name}
+              {r === 'owner' && <span className="muted"> · owner</span>}</span></a>); })}
         {sorted.length === 0 && <span className="hint">Not in any project yet.</span>}</div></div>
     </article>);
 }
 
-function Matrix({ people, projects, tasks, roleIn }: { people: Member[]; projects: ProjectFull[]; tasks: Task[]; roleIn: (p: ProjectFull, id: string) => Role | null }) {
+function Matrix({ people, projects, tasks, roleIn }: { people: Member[]; projects: ProjectFull[]; tasks: TaskFull[]; roleIn: (p: ProjectFull, id: string) => Role | null }) {
   const cols = projects.filter(p => p.status !== 'closed').sort((a, b) => a.name.localeCompare(b.name));
   if (!cols.length || !people.length) return <div className="empty">Nothing to show yet. Create projects and add people to them.</div>;
   return (
@@ -158,13 +164,19 @@ function Matrix({ people, projects, tasks, roleIn }: { people: Member[]; project
         <tbody>{people.map(m => (
           <tr key={m.id}><th className="mxp"><span className="who"><Avatar m={m} size="sm" /><span>{m.display_name}<br /><span className="muted">{m.title}</span></span></span></th>
             {cols.map(p => {
-              const r = roleIn(p, m.id), open = tasks.filter(t => t.project_id === p.id && t.assignee_member_id === m.id && t.status !== 'done').length;
-              if (!r && !open) return <td key={p.id} className="mx-empty" />;
-              return <td key={p.id}><a className={`mxc ${r ?? 'none'}`} href={projectHref(p.id)} style={{ ['--c' as string]: p.color, ['--k' as string]: Math.min(1, open / 5), textDecoration: 'none', color: 'inherit' }}
-                title={`${m.display_name} on ${p.name}: ${r ? ROLE_LABEL[r] : 'Assigned tasks only'}, ${open} open task${open === 1 ? '' : 's'}`}>
-                <span className="mxr">{r === 'owner' ? '★' : r === 'member' ? '●' : r === 'team' ? '◌' : '·'}</span>{open > 0 && <b>{open}</b>}</a></td>;
+              const r = roleIn(p, m.id), here = tasks.filter(t => t.project_id === p.id && t.status !== 'done');
+              const open = here.filter(t => t.assignee_member_id === m.id).length;
+              const helps = here.filter(t => t.assignee_member_id !== m.id && t.collaborator_ids.includes(m.id)).length;
+              if (!r && !open && !helps) return <td key={p.id} className="mx-empty" />;
+              // the cell is about tasks: ★ owned (assigned to them), ○ collaborating; its look says whether they are in the project
+              const where = r === 'owner' ? 'owns the project' : r === 'member' ? 'in the project' : r === 'team' ? 'in the project through a team' : 'not in the project';
+              const tip = `${m.display_name} on ${p.name} (${where}): owns ${open} open task${open === 1 ? '' : 's'}, collaborates on ${helps}`;
+              return <td key={p.id}><a className={`mxc ${r ? 'in' : 'out'} ${r === 'owner' ? 'lead' : ''}`} href={projectHref(p.id)}
+                style={{ ['--c' as string]: p.color, ['--k' as string]: Math.min(1, (open + helps / 2) / 5), textDecoration: 'none', color: 'inherit' }} title={tip} aria-label={tip}>
+                {open > 0 && <span className="mxo">★ {open}</span>}{helps > 0 && <span className="mxk">○ {helps}</span>}</a></td>;
             })}</tr>))}</tbody></table></div>
-      <div className="legend" style={{ marginTop: 10 }}><span><b>★</b> owner</span><span><b>●</b> member</span><span><b>◌</b> member through a team</span>
-        <span><b>·</b> has tasks there without being a member</span><span>The number is open tasks assigned to them; the darker the cell, the more they have.</span></div>
+      <div className="legend" style={{ marginTop: 10 }}><span><b>★ 3</b> open tasks they own</span><span><b>○ 2</b> open tasks they collaborate on</span>
+        <span><i className="mxkey in" /> in the project</span><span><i className="mxkey in lead" /> owns the project</span><span><i className="mxkey out" /> not in the project, but works on its tasks</span>
+        <span>The darker the cell, the busier they are there.</span></div>
     </>);
 }

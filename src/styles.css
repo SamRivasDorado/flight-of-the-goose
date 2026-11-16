@@ -388,7 +388,7 @@ textarea.notes{width:100%;min-height:90px;border:1px solid var(--line);border-ra
 .acc{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;padding:1px 7px;border-radius:5px;border:1px solid var(--line)}
 .acc-admin{color:var(--accent);border-color:var(--accent)}.acc-manager{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 60%,var(--line))}.acc-guest{color:var(--muted);border-style:dashed}
 .tchip{display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:1px 8px;border-radius:99px;background:var(--surface-2);color:var(--fg)}
-.pcstats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:10px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.pcstats{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;padding:10px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
 .pcstats div{display:flex;flex-direction:column}.pcstats b{font-size:19px;font-variant-numeric:tabular-nums}.pcstats b.od{color:var(--danger)}.pcstats span{font-size:11.5px;color:var(--muted)}
 .ownstar{color:var(--warn);margin-left:2px}
 .pcgoals{display:flex;flex-direction:column;gap:4px;align-items:flex-start;font-size:13px}
@@ -400,8 +400,16 @@ textarea.notes{width:100%;min-height:90px;border:1px solid var(--line);border-ra
 .mx thead .mxp{background:var(--surface-2)}
 .mxh{display:flex;flex-direction:column;align-items:center;gap:4px;width:92px;margin:auto;font-size:12px;line-height:1.2}
 .mxc{width:56px;height:34px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;gap:5px;background:color-mix(in srgb,var(--c) calc(12% + var(--k) * 45%),var(--surface));border:1px solid color-mix(in srgb,var(--c) 45%,var(--line))}
-.mxc.none{border-style:dashed}
+.mxc.out{border-style:dashed;background:var(--surface)}
+.mxc.lead{border:2px solid var(--c)}
 .mxc b{font-size:13px}.mxr{font-size:13px;color:var(--fg)}
+.mxo,.mxk{font-size:13px;font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums}
+.mxk{font-weight:500;color:color-mix(in srgb,var(--fg) 75%,transparent)}
+.mxkey{display:inline-block;width:18px;height:12px;border-radius:4px;vertical-align:-2px;margin-right:4px;--c:#8a8c91;border:1px solid color-mix(in srgb,var(--c) 45%,var(--line))}
+.mxkey.in{background:color-mix(in srgb,var(--c) 22%,var(--surface))}
+.mxkey.lead{border:2px solid var(--c)}
+.mxkey.out{border-style:dashed}
+.mxc{width:auto;min-width:56px;padding:0 8px;gap:8px}
 .mxc:hover{outline:2px solid var(--accent);outline-offset:1px}
 .mx-empty{background:transparent}
 .ro [data-act=addTask],.ro .quick,.ro [data-act=lineTask],.ro .composer,.ro [data-act=noteEdit],.ro [data-act=noteDel],.ro [data-act=delTask],.ro [data-act=rvDone],.ro [data-act=rvMove],.ro [data-act=imgFit]{display:none!important}
@@ -963,3 +971,5 @@ button.brand:hover{background:var(--bar-hi)}
 .gpn.down{color:var(--muted);cursor:help}
 .gpsec{font-size:11.5px;font-weight:600;color:var(--muted);padding:10px 0 2px;border-top:1px solid var(--line);margin-top:4px}
 .gpdims{border-top:1px solid var(--line);margin-top:6px;padding-top:8px;display:flex;flex-direction:column;gap:6px}
+
+.pchip.pcout{background:var(--surface);outline:1.5px dashed color-mix(in srgb,var(--c) 60%,var(--line));outline-offset:-1.5px}
