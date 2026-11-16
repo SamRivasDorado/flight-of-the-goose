@@ -131,7 +131,8 @@ function PersonCard({ m, me, teams, tasks, projects, roleIn, onTeam, onEdit, onR
           {m.title && <span className="muted">{m.title}</span>}<span className="muted pcmail">{m.email}</span>
           <div className="pcbadges"><span className={`acc acc-${m.access}`} title={ACCESS_DESC[m.access]}>{ACCESS_LABEL[m.access]}</span>
             {teams.filter(t => t.member_ids.includes(m.id)).map(t => (
-              <button key={t.id} className="tchip" onClick={() => onTeam(t.id)}><TeamAvatar t={t} size="xs" />{t.name}{t.lead_member_id === m.id ? ' · lead' : ''}</button>))}</div>
+              <button key={t.id} className="tchip" title={t.name} onClick={() => onTeam(t.id)}><TeamAvatar t={t} size="xs" /><span className="pcn">{t.name}</span>
+                {t.lead_member_id === m.id && <span className="pcrole">· lead</span>}</button>))}</div>
           {onResend && <div><button className="btn sm" onClick={onResend} disabled={resending} title="Email the invitation to this person again">{resending ? 'Sending…' : 'Send the invitation again'}</button></div>}
         </div>
         {onEdit && <button className="iconbtn" onClick={onEdit} aria-label={`Edit ${m.display_name}`}><Icon name="edit" /></button>}
@@ -145,11 +146,11 @@ function PersonCard({ m, me, teams, tasks, projects, roleIn, onTeam, onEdit, onR
         <div><b>{d30.length}</b><span>done, 30 days</span></div><div><b>{hrs(d30.reduce((s, t) => s + (Number(t.hours) || 0), 0))}</b><span>hours, 30 days</span></div></div>
       <div><div className="h3 gsect">Projects</div><div className="links">
         {sorted.map(p => { const r = roleIn(p, m.id);
-          const tip = r === 'owner' ? `${m.display_name} owns this project` : r ? `${m.display_name} is in this project` : `${m.display_name} is not in this project but works on some of its tasks`;
+          const tip = `${p.name}: ${r === 'owner' ? `${m.display_name} owns this project` : r ? `${m.display_name} is in this project` : `${m.display_name} is not in this project but works on some of its tasks`}`;
           return (
-          <a key={p.id} href={projectHref(p.id)} title={tip} style={{ textDecoration: 'none', color: 'inherit' }}>
-            <span className={`pchip ${r ? '' : 'pcout'}`} style={{ ['--c' as string]: p.color }}><ProjectIcon p={p} />{p.name}
-              {r === 'owner' && <span className="muted"> · owner</span>}</span></a>); })}
+          <a key={p.id} className="pclink" href={projectHref(p.id)} title={tip}>
+            <span className={`pchip ${r ? '' : 'pcout'}`} style={{ ['--c' as string]: p.color }}><ProjectIcon p={p} /><span className="pcn">{p.name}</span>
+              {r === 'owner' && <span className="muted pcrole">· owner</span>}</span></a>); })}
         {sorted.length === 0 && <span className="hint">Not in any project yet.</span>}</div></div>
     </article>);
 }

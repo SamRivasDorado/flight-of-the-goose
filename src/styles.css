@@ -973,3 +973,16 @@ button.brand:hover{background:var(--bar-hi)}
 .gpdims{border-top:1px solid var(--line);margin-top:6px;padding-top:8px;display:flex;flex-direction:column;gap:6px}
 
 .pchip.pcout{background:var(--surface);outline:1.5px dashed color-mix(in srgb,var(--c) 60%,var(--line));outline-offset:-1.5px}
+
+/* Person cards on the Team page: long names, emails, team and project names stay inside the card */
+.pc .pcname b,.pc .pcinfo>.muted{overflow-wrap:anywhere}
+.pc .tchip,.pc .pchip{max-width:100%;min-width:0;overflow:hidden}
+.pc .pcn{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pc .pcrole{flex:none;white-space:nowrap}
+.pc .pchip .picon,.pc .tchip .tav{flex:none}
+.pc .pclink{display:inline-flex;max-width:100%;min-width:0;text-decoration:none;color:inherit}
+.pc{align-items:stretch}
+.pc>.pcoff{align-self:flex-start;max-width:100%}
+.pc .pcstats{grid-template-columns:repeat(auto-fit,minmax(92px,1fr));row-gap:10px}
+.pc .pcstats span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
