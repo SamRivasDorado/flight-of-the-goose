@@ -211,6 +211,19 @@ export interface Profile {
 }
 
 /** A comment on a task or on a notebook entry (migration 20261026200000_comments). */
+/** A file attached to a task (stored in the private task-files bucket). */
+export interface TaskFile {
+  id: string;
+  workspace_id: string;
+  task_id: string;
+  name: string;
+  size: number;
+  mime: string;
+  path: string;
+  uploaded_by: string | null;
+  created_at: string;
+}
+
 export interface Comment {
   id: string;
   workspace_id: string;

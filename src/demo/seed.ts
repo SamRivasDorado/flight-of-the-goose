@@ -196,6 +196,16 @@ export function makeSeed(myUid: string, myEmail: string): Record<string, Row[]> 
   ho('Send fracture logs to Karim', elena, omar, 'accepted', 26, 'I have the logs open anyway');
   t.task_collaborators.push({ task_id: tid('Send fracture logs to Karim'), member_id: elena });
   ho('Review training videos', elena, sam, 'offered', 4, 'I can take the last two videos');
+  // files on tasks (their contents come from seedFiles below)
+  t.task_files = [];
+  const tfile = (task: string, who: string, name: string, mime: string, size: number, hoursAgo: number) => {
+    const id = uid(), task_id = tid(task);
+    t.task_files.push({ id, workspace_id: ws, task_id, name, size, mime, path: `${ws}/${task_id}/${id}/${name}`, uploaded_by: who,
+      created_at: new Date(Date.now() - hoursAgo * 3600e3).toISOString() });
+  };
+  tfile('DFN model v1', elena, 'fracture-sets-rose.svg', 'image/svg+xml', 1460, 28);
+  tfile('DFN model v1', omar, 'intensity-logs.csv', 'text/csv', 312, 6);
+  tfile('Training day 3', lucia, 'day-3-agenda.txt', 'text/plain', 268, 9);
   // holidays (the official Madrid lists) and a few days off around the team
   const hcal = (name: string, color: string, preset: string) => {
     const id = uid(); t.holiday_calendars.push({ id, workspace_id: ws, name, color, created_at: new Date().toISOString() });
@@ -210,4 +220,24 @@ export function makeSeed(myUid: string, myEmail: string): Record<string, Row[]> 
   off(omar, 3, 7, 'EAGE workshop in Paris'); off(lucia, 12, 16, 'Holiday'); off(karim, 1, 1, 'Medical appointment');
   void tTrain; void julia;
   return t;
+}
+
+/** What the sample files contain (kept as data links, like the prototype's pictures). */
+export function seedFiles(tables: Record<string, Row[]>): Record<string, string> {
+  const b64 = (x: string) => btoa(unescape(encodeURIComponent(x)));
+  const petals = [[20, 0.95], [40, 0.6], [110, 0.85], [130, 0.45], [200, 0.95], [220, 0.6], [290, 0.85], [310, 0.45]]
+    .map(([a, r]) => { const k = Math.PI / 180, R = 92 * r, a1 = (a - 9 - 90) * k, a2 = (a + 9 - 90) * k;
+      return `<path d="M120 120 L${(120 + R * Math.cos(a1)).toFixed(1)} ${(120 + R * Math.sin(a1)).toFixed(1)} A${R.toFixed(1)} ${R.toFixed(1)} 0 0 1 ${(120 + R * Math.cos(a2)).toFixed(1)} ${(120 + R * Math.sin(a2)).toFixed(1)}Z" fill="${a % 180 < 90 ? '#4F86C6' : '#3BA39B'}" fill-opacity=".8"/>`; }).join('');
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="240" height="260" viewBox="0 0 240 260"><rect width="240" height="260" fill="#fff"/>`
+    + `<circle cx="120" cy="120" r="92" fill="none" stroke="#bbb"/><circle cx="120" cy="120" r="46" fill="none" stroke="#ddd"/>`
+    + `<path d="M120 24v192M24 120h192" stroke="#ddd"/>${petals}<text x="120" y="18" font-family="sans-serif" font-size="12" text-anchor="middle" fill="#555">N</text>`
+    + `<text x="120" y="250" font-family="sans-serif" font-size="12" text-anchor="middle" fill="#333">Fracture sets, strike (n = 412)</text></svg>`;
+  const csv = 'Well,Top (m MD),Base (m MD),P10 (1/m),Set\nNG-01,2310,2365,0.42,NE-SW\nNG-01,2365,2410,0.31,NW-SE\nNG-03,2290,2348,0.55,NE-SW\nNG-03,2348,2402,0.27,NW-SE\nNG-05,2402,2460,0.38,NE-SW\n';
+  const txt = 'Training day 3 - agenda\n\n09:00  Recap of day 2\n09:30  Fracture modelling workflow\n11:00  Coffee\n11:15  Hands-on: DFN from well data\n13:00  Lunch\n14:00  Upscaling and checks\n16:30  Questions and wrap-up\n';
+  const body: Record<string, string> = {
+    'fracture-sets-rose.svg': `data:image/svg+xml;base64,${b64(svg)}`, 'intensity-logs.csv': `data:text/csv;base64,${b64(csv)}`, 'day-3-agenda.txt': `data:text/plain;base64,${b64(txt)}`,
+  };
+  const out: Record<string, string> = {};
+  for (const f of tables.task_files ?? []) out[`task-files/${f.path}`] = body[String(f.name)];
+  return out;
 }

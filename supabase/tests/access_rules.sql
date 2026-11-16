@@ -568,4 +568,90 @@ insert into days_off (workspace_id, member_id, start_day, end_day) select worksp
 select pg_temp.check((select count(*) from days_off) = 3, 'a guest marks her own days off too');
 reset role;
 
+-- ---------------------------------------------------------------------
+-- Files on tasks: whoever sees the task opens them; guests do not attach; you remove your own
+-- (the task's creator or assignee, admins and managers remove any); paths must match the task.
+set role authenticated;
+select pg_temp.login('00000000-0000-0000-0000-00000000000a');
+create temp table tf as select w,
+  (select id from tasks where title = 't1 in P1') t1, (select id from tasks where title = 't2 in P2') t2,
+  (select id from tasks where title = 't4 in P3') t4, gen_random_uuid() f1, gen_random_uuid() f2, gen_random_uuid() f3, gen_random_uuid() f4 from ids;
+insert into storage.objects (bucket_id, name) select 'task-files', w || '/' || t1 || '/' || f1 || '/plan.pdf' from tf;
+insert into task_files (workspace_id, task_id, name, size, mime, path, uploaded_by)
+  select w, t1, 'plan.pdf', 1000, 'application/pdf', w || '/' || t1 || '/' || f1 || '/plan.pdf', my_member_id(w) from tf;
+insert into storage.objects (bucket_id, name) select 'task-files', w || '/' || t4 || '/' || f2 || '/logs.las' from tf;
+insert into task_files (workspace_id, task_id, name, size, path, uploaded_by)
+  select w, t4, 'logs.las', 2000, w || '/' || t4 || '/' || f2 || '/logs.las', my_member_id(w) from tf;
+select pg_temp.check((select count(*) from task_files) = 2, 'admin attaches files to tasks');
+
+select pg_temp.login('00000000-0000-0000-0000-00000000000b');   -- Omar, member in P1
+select pg_temp.check((select string_agg(name, ',') from task_files) = 'plan.pdf', 'a member sees the files of the tasks he can see, and only those');
+select pg_temp.check((select count(*) from storage.objects where bucket_id = 'task-files') = 1, 'a member can open only the stored files of tasks he can see');
+insert into storage.objects (bucket_id, name) select 'task-files', w || '/' || t1 || '/' || f3 || '/omar.xlsx' from tf;
+insert into task_files (workspace_id, task_id, name, size, path, uploaded_by)
+  select w, t1, 'omar.xlsx', 300, w || '/' || t1 || '/' || f3 || '/omar.xlsx', my_member_id(w) from tf;
+select pg_temp.check((select count(*) from task_files) = 2, 'a member attaches a file to a task he can see');
+do $$ begin
+  begin insert into storage.objects (bucket_id, name) select 'task-files', w || '/' || t2 || '/' || f4 || '/x.txt' from tf;
+    raise exception 'FAILED: a member stored a file on a task he cannot see';
+  exception when insufficient_privilege then raise notice 'ok  no files on tasks you cannot see'; end;
+  begin insert into task_files (workspace_id, task_id, name, path, uploaded_by)
+    select w, t1, 'sneaky', w || '/' || t2 || '/' || f4 || '/x.txt', my_member_id(w) from tf;
+    raise exception 'FAILED: a file row pointing at another task''s folder';
+  exception when insufficient_privilege then raise notice 'ok  a file''s path must belong to its task'; end;
+  begin insert into task_files (workspace_id, task_id, name, path, uploaded_by)
+    select w, t1, 'as Sam', w || '/' || t1 || '/' || f4 || '/y.txt', (select sam from ids) from tf;
+    raise exception 'FAILED: attached a file in someone else''s name';
+  exception when insufficient_privilege then raise notice 'ok  you attach files in your own name only'; end;
+  begin insert into storage.objects (bucket_id, name) select 'task-files', w || '/' || t1 || '/not-a-uuid/z.txt' from tf;
+    raise exception 'FAILED: odd file path accepted';
+  exception when insufficient_privilege then raise notice 'ok  file paths must be workspace/task/file id/name'; end;
+end $$;
+delete from task_files where name = 'plan.pdf';
+delete from storage.objects where bucket_id = 'task-files' and name like '%/plan.pdf';
+select pg_temp.check((select count(*) from task_files) = 2 and (select count(*) from storage.objects where bucket_id = 'task-files') = 2,
+  'a member cannot remove a file someone else attached to a task he does not own');
+
+select pg_temp.login('00000000-0000-0000-0000-00000000000c');   -- Julia, guest in P3
+select pg_temp.check((select string_agg(name, ',') from task_files) = 'logs.las', 'a guest sees the files of the tasks she can see');
+select pg_temp.check((select count(*) from storage.objects where bucket_id = 'task-files') = 1, 'a guest can open those files');
+do $$ begin
+  begin insert into storage.objects (bucket_id, name) select 'task-files', w || '/' || t4 || '/' || f4 || '/guest.txt' from tf;
+    raise exception 'FAILED: a guest attached a file';
+  exception when insufficient_privilege then raise notice 'ok  guests cannot attach files'; end;
+end $$;
+delete from task_files;
+select pg_temp.login('00000000-0000-0000-0000-00000000000a');
+select pg_temp.check((select count(*) from task_files) = 3, 'a guest cannot remove files');
+
+select pg_temp.login('00000000-0000-0000-0000-00000000000e');   -- a stranger
+select pg_temp.check((select count(*) from task_files) = 0 and (select count(*) from storage.objects where bucket_id = 'task-files') = 0, 'strangers see no files');
+
+select pg_temp.login('00000000-0000-0000-0000-00000000000b');
+delete from task_files where name = 'omar.xlsx';
+delete from storage.objects where bucket_id = 'task-files' and name like '%/omar.xlsx';
+select pg_temp.check(not exists (select 1 from task_files where name = 'omar.xlsx') and not exists (select 1 from storage.objects where bucket_id = 'task-files' and name like '%/omar.xlsx'),
+  'a member removes a file he attached (row, then stored file)');
+select pg_temp.login('00000000-0000-0000-0000-00000000000a');
+delete from task_files where name = 'plan.pdf';
+delete from storage.objects where bucket_id = 'task-files' and name like '%/plan.pdf';
+select pg_temp.check((select string_agg(name, ',') from task_files) = 'logs.las' and (select count(*) from storage.objects where bucket_id = 'task-files') = 1,
+  'the task owner removes a file');
+-- deleting the task removes the record; its stored file can then be tidied away
+delete from tasks where title = 't4 in P3';
+select pg_temp.check(not exists (select 1 from task_files), 'a task''s file records go with the task');
+reset role;
+select pg_temp.check((select count(*) from storage.objects where bucket_id = 'task-files') = 1, 'the stored file is still there until the app removes it');
+set role authenticated;
+select pg_temp.login('00000000-0000-0000-0000-00000000000c');   -- a guest may not
+delete from storage.objects where bucket_id = 'task-files';
+reset role;
+select pg_temp.check((select count(*) from storage.objects where bucket_id = 'task-files') = 1, 'guests cannot remove leftover files');
+set role authenticated;
+select pg_temp.login('00000000-0000-0000-0000-00000000000a');
+delete from storage.objects where bucket_id = 'task-files';
+reset role;
+select pg_temp.check((select count(*) from storage.objects where bucket_id = 'task-files') = 0, 'after a task is deleted its leftover files can be removed');
+reset role;
+
 select 'ALL ACCESS TESTS PASSED' as result;
