@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState, type RefObject } from 'react';
 import { useWorkspace } from '../auth/session';
 import { db } from '../lib/supabase';
 import { listMembers, listProjectsFull, listTasksFull, listTeams, useLoad } from '../lib/data';
@@ -8,6 +8,8 @@ import { diffDays, hrs } from '../lib/format';
 import { Avatar, Icon } from '../components/Logo';
 import { ProjectChip, ProjectIcon } from '../components/ProjectChip';
 import { PersonDialog, TeamAvatar, TeamDialog } from '../components/TeamDialogs';
+import { CopyPicture } from '../components/CopyPicture';
+import { snapshot } from '../lib/snapshot';
 import { AvStack, projectHref } from './Projects';
 import { loadDaysOff, type DayOff, type DaysOffData } from '../lib/holidays';
 import { DaysOffDialog, HolidaysDialog, HolidaysOverview } from '../components/Holidays';
@@ -24,6 +26,7 @@ export function Team() {
     return { members, teams, projects, tasks, away };
   }, [ws.workspace_id, ui.version]);
   const [sel, setSel] = useState<string>('all');
+  const mxBox = useRef<HTMLDivElement>(null);
   const [view, setView] = useLocalPref<'people' | 'matrix' | 'holidays'>('teamView', 'people');
   const [teamDlg, setTeamDlg] = useState<Team | 'new' | null>(null);
   const [personDlg, setPersonDlg] = useState<Member | 'new' | null>(null);
@@ -66,10 +69,11 @@ export function Team() {
           <div className="tabs">
             <button className={`tab ${view === 'people' ? 'on' : ''}`} onClick={() => setView('people')}><Icon name="users" />People</button>
             <button className={`tab ${view === 'matrix' ? 'on' : ''}`} onClick={() => setView('matrix')}><Icon name="wall" />Who works on what</button>
-            <button className={`tab ${view === 'holidays' ? 'on' : ''}`} onClick={() => setView('holidays')}><Icon name="calendar" />Holidays</button></div>
+            <button className={`tab ${view === 'holidays' ? 'on' : ''}`} onClick={() => setView('holidays')}><Icon name="calendar" />Holidays</button>
+            {view === 'matrix' && <><span className="grow" /><CopyPicture what="the table" make={() => snapshot(mxBox.current!, { title: `Who works on what · ${team?.name ?? 'Everyone'}`, width: Math.max(560, mxBox.current!.querySelector('table')!.scrollWidth + 2) })} /></>}</div>
           {view === 'holidays' ? <HolidaysOverview data={away} people={people} admin={isAdmin} onEdit={() => setHolOpen(true)} onDaysOff={setOffFor} />
             : view === 'matrix'
-            ? <Matrix people={people} projects={projects} tasks={tasks} roleIn={roleIn} />
+            ? <Matrix people={people} projects={projects} tasks={tasks} roleIn={roleIn} box={mxBox} />
             : <div className="pcgrid">{people.map(m => (
                 <PersonCard key={m.id} m={m} me={m.id === ws.member_id} teams={teams} tasks={tasks} roleIn={roleIn}
                   projects={projects.filter(p => p.status !== 'closed' && (roleIn(p, m.id) || tasks.some(t => t.project_id === p.id && t.status !== 'done'
@@ -78,6 +82,7 @@ export function Team() {
                   off={away.off.filter(o => o.member_id === m.id)} onDaysOff={away.ready ? () => setOffFor(m) : undefined}
                   onResend={isAdmin && m.status === 'invited' ? () => void resend(m) : undefined} resending={resending === m.id} />))}
                 {people.length === 0 && <div className="empty">No one in this team yet.</div>}</div>}
+          {view === 'people' && people.length > 0 && <ProjectLegend />}
         </div>
       </div>
       {teamDlg && <TeamDialog team={teamDlg === 'new' ? null : teamDlg} members={members} count={teams.length} canDelete={isAdmin}
@@ -123,50 +128,78 @@ function PersonCard({ m, me, teams, tasks, projects, roleIn, onTeam, onEdit, onR
   // owned projects first, then the ones they are in, then the ones they only work on tasks in
   const rank = (p: ProjectFull) => { const r = roleIn(p, m.id); return r === 'owner' ? 0 : r ? 1 : 2; };
   const sorted = [...projects].sort((a, b) => rank(a) - rank(b));
+  const card = useRef<HTMLElement>(null);
   return (
-    <article className="pc">
+    <article className="pc" ref={card}>
       <div className="pchead"><Avatar m={m} size="xl" />
         <div className="pcinfo">
           <div className="pcname"><b>{m.display_name}</b>{me && <span className="tag">You</span>}{m.status === 'invited' && <span className="tag invited" title="Has not signed in yet">Invited</span>}</div>
           {m.title && <span className="muted">{m.title}</span>}<span className="muted pcmail">{m.email}</span>
           <div className="pcbadges"><span className={`acc acc-${m.access}`} title={ACCESS_DESC[m.access]}>{ACCESS_LABEL[m.access]}</span>
             {teams.filter(t => t.member_ids.includes(m.id)).map(t => (
-              <button key={t.id} className="tchip" onClick={() => onTeam(t.id)}><TeamAvatar t={t} size="xs" />{t.name}{t.lead_member_id === m.id ? ' · lead' : ''}</button>))}</div>
-          {onResend && <div><button className="btn sm" onClick={onResend} disabled={resending} title="Email the invitation to this person again">{resending ? 'Sending…' : 'Send the invitation again'}</button></div>}
+              <button key={t.id} className="tchip" title={t.name} onClick={() => onTeam(t.id)}><TeamAvatar t={t} size="xs" /><span className="pcn">{t.name}</span>
+                {t.lead_member_id === m.id && <span className="pcrole">· lead</span>}</button>))}</div>
+          {onResend && <div className="nosnap"><button className="btn sm" onClick={onResend} disabled={resending} title="Email the invitation to this person again">{resending ? 'Sending…' : 'Send the invitation again'}</button></div>}
         </div>
-        {onEdit && <button className="iconbtn" onClick={onEdit} aria-label={`Edit ${m.display_name}`}><Icon name="edit" /></button>}
+        <div className="pctools nosnap">
+          <CopyPicture what="this card" make={() => snapshot(card.current!, { width: card.current!.getBoundingClientRect().width })} />
+          {onEdit && <button className="iconbtn" onClick={onEdit} aria-label={`Edit ${m.display_name}`}><Icon name="edit" /></button>}</div>
       </div>
       {onDaysOff && <div className="pcoff">
         <Icon name="calendar" />
         <span>{now ? <><b>Away now</b> until {short(now.end_day)}{now.note ? ` · ${now.note}` : ''}</> : next ? <>Next days off: {range(next)}{next.note ? ` · ${next.note}` : ''}</> : <span className="muted">No days off planned</span>}</span>
-        <button className="linkbtn" onClick={onDaysOff}>{me ? 'Your days off' : 'Days off'}</button></div>}
+        <button className="linkbtn nosnap" onClick={onDaysOff}>{me ? 'Your days off' : 'Days off'}</button></div>}
       <div className="pcstats">
         <div><b>{open.length}</b><span>★ tasks owned</span></div><div><b>{helping}</b><span>○ collaborating</span></div><div><b className={overdue ? 'od' : ''}>{overdue}</b><span>overdue</span></div>
         <div><b>{d30.length}</b><span>done, 30 days</span></div><div><b>{hrs(d30.reduce((s, t) => s + (Number(t.hours) || 0), 0))}</b><span>hours, 30 days</span></div></div>
       <div><div className="h3 gsect">Projects</div><div className="links">
-        {sorted.map(p => { const r = roleIn(p, m.id);
-          const tip = r === 'owner' ? `${m.display_name} owns this project` : r ? `${m.display_name} is in this project` : `${m.display_name} is not in this project but works on some of its tasks`;
+        {sorted.map(p => {
+          // the same look and numbers as this person's cell in "Who works on what"
+          const r = roleIn(p, m.id), here = tasks.filter(t => t.project_id === p.id && t.status !== 'done');
+          const own = here.filter(t => t.assignee_member_id === m.id).length;
+          const helps = here.filter(t => t.assignee_member_id !== m.id && t.collaborator_ids.includes(m.id)).length;
+          const where = r === 'owner' ? 'owns the project' : r === 'member' ? 'in the project' : r === 'team' ? 'in the project through a team' : 'not in the project, but works on its tasks';
+          const tip = `${p.name}: ${m.display_name} ${where}; owns ${own} open task${own === 1 ? '' : 's'}, collaborates on ${helps}`;
           return (
-          <a key={p.id} href={projectHref(p.id)} title={tip} style={{ textDecoration: 'none', color: 'inherit' }}>
-            <span className={`pchip ${r ? '' : 'pcout'}`} style={{ ['--c' as string]: p.color }}><ProjectIcon p={p} />{p.name}
-              {r === 'owner' && <span className="muted"> · owner</span>}</span></a>); })}
+          <a key={p.id} className="pclink" href={projectHref(p.id)} title={tip} aria-label={tip}>
+            <span className={`pchip ${r ? 'pcin' : 'pcout'} ${r === 'owner' ? 'pclead' : ''}`} style={{ ['--c' as string]: p.color }}><ProjectIcon p={p} /><span className="pcn">{p.name}</span>
+              {(own > 0 || helps > 0) && <span className="pccount">{own > 0 && <span>★ {own}</span>}{helps > 0 && <span>○ {helps}</span>}</span>}</span></a>); })}
         {sorted.length === 0 && <span className="hint">Not in any project yet.</span>}</div></div>
     </article>);
 }
 
-function Matrix({ people, projects, tasks, roleIn }: { people: Member[]; projects: ProjectFull[]; tasks: TaskFull[]; roleIn: (p: ProjectFull, id: string) => Role | null }) {
+/** What the project looks and ★/○ numbers mean; the same under the person cards and under "Who works on what". */
+function ProjectLegend({ extra }: { extra?: string }) {
+  return (
+    <div className="legend" style={{ marginTop: 10 }}><span><b>★ 3</b> open tasks they own</span><span><b>○ 2</b> open tasks they collaborate on</span>
+      <span><i className="mxkey in lead" /> owns the project</span><span><i className="mxkey in" /> in the project</span><span><i className="mxkey out" /> not in the project, but works on its tasks</span>
+      {extra && <span>{extra}</span>}</div>);
+}
+
+const Count = ({ own, helps }: { own: number; helps: number }) => <>{own > 0 && <span className="mxo">★ {own}</span>}{helps > 0 && <span className="mxk">○ {helps}</span>}{!own && !helps && <span className="muted">0</span>}</>;
+
+function Matrix({ people, projects, tasks, roleIn, box }: {
+  people: Member[]; projects: ProjectFull[]; tasks: TaskFull[]; roleIn: (p: ProjectFull, id: string) => Role | null; box: RefObject<HTMLDivElement>;
+}) {
   const cols = projects.filter(p => p.status !== 'closed').sort((a, b) => a.name.localeCompare(b.name));
   if (!cols.length || !people.length) return <div className="empty">Nothing to show yet. Create projects and add people to them.</div>;
+  // ★ open tasks they own, ○ open tasks they collaborate on, per person and project
+  const cell = (m: Member, p: ProjectFull) => {
+    const here = tasks.filter(t => t.project_id === p.id && t.status !== 'done');
+    return { own: here.filter(t => t.assignee_member_id === m.id).length, helps: here.filter(t => t.assignee_member_id !== m.id && t.collaborator_ids.includes(m.id)).length };
+  };
+  const grid = people.map(m => cols.map(p => cell(m, p)));
+  const sum = (xs: { own: number; helps: number }[]) => xs.reduce((a, x) => ({ own: a.own + x.own, helps: a.helps + x.helps }), { own: 0, helps: 0 });
+  const rowTot = grid.map(sum), colTot = cols.map((_, j) => sum(grid.map(r => r[j]))), all = sum(rowTot);
   return (
-    <>
+    <div ref={box} className="mxbox">
       <div className="mxwrap"><table className="mx">
-        <thead><tr><th className="mxp">Person</th>{cols.map(p => <th key={p.id}><a href={projectHref(p.id)} className="mxh" style={{ textDecoration: 'none', color: 'inherit' }}><ProjectIcon p={p} /><span>{p.name}</span></a></th>)}</tr></thead>
-        <tbody>{people.map(m => (
+        <thead><tr><th className="mxp">Person</th>{cols.map(p => <th key={p.id}><a href={projectHref(p.id)} className="mxh" style={{ textDecoration: 'none', color: 'inherit' }}><ProjectIcon p={p} /><span>{p.name}</span></a></th>)}
+          <th className="mxtot">Total</th></tr></thead>
+        <tbody>{people.map((m, i) => (
           <tr key={m.id}><th className="mxp"><span className="who"><Avatar m={m} size="sm" /><span>{m.display_name}<br /><span className="muted">{m.title}</span></span></span></th>
-            {cols.map(p => {
-              const r = roleIn(p, m.id), here = tasks.filter(t => t.project_id === p.id && t.status !== 'done');
-              const open = here.filter(t => t.assignee_member_id === m.id).length;
-              const helps = here.filter(t => t.assignee_member_id !== m.id && t.collaborator_ids.includes(m.id)).length;
+            {cols.map((p, j) => {
+              const r = roleIn(p, m.id), { own: open, helps } = grid[i][j];
               if (!r && !open && !helps) return <td key={p.id} className="mx-empty" />;
               // the cell is about tasks: ★ owned (assigned to them), ○ collaborating; its look says whether they are in the project
               const where = r === 'owner' ? 'owns the project' : r === 'member' ? 'in the project' : r === 'team' ? 'in the project through a team' : 'not in the project';
@@ -174,9 +207,11 @@ function Matrix({ people, projects, tasks, roleIn }: { people: Member[]; project
               return <td key={p.id}><a className={`mxc ${r ? 'in' : 'out'} ${r === 'owner' ? 'lead' : ''}`} href={projectHref(p.id)}
                 style={{ ['--c' as string]: p.color, ['--k' as string]: Math.min(1, (open + helps / 2) / 5), textDecoration: 'none', color: 'inherit' }} title={tip} aria-label={tip}>
                 {open > 0 && <span className="mxo">★ {open}</span>}{helps > 0 && <span className="mxk">○ {helps}</span>}</a></td>;
-            })}</tr>))}</tbody></table></div>
-      <div className="legend" style={{ marginTop: 10 }}><span><b>★ 3</b> open tasks they own</span><span><b>○ 2</b> open tasks they collaborate on</span>
-        <span><i className="mxkey in" /> in the project</span><span><i className="mxkey in lead" /> owns the project</span><span><i className="mxkey out" /> not in the project, but works on its tasks</span>
-        <span>The darker the cell, the busier they are there.</span></div>
-    </>);
+            })}
+            <td className="mxtot" title={`${m.display_name}, in these projects: owns ${rowTot[i].own} open tasks, collaborates on ${rowTot[i].helps}`}><Count {...rowTot[i]} /></td></tr>))}</tbody>
+        <tfoot><tr><th className="mxp mxtot">Total</th>
+          {cols.map((p, j) => <td key={p.id} className="mxtot" title={`${p.name}: the people shown own ${colTot[j].own} open tasks and collaborate on ${colTot[j].helps}`}><Count {...colTot[j]} /></td>)}
+          <td className="mxtot mxall"><Count {...all} /></td></tr></tfoot></table></div>
+      <ProjectLegend extra="The darker the cell, the busier they are there. Totals add up the cells of each row and column." />
+    </div>);
 }

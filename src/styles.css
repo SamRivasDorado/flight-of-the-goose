@@ -973,3 +973,44 @@ button.brand:hover{background:var(--bar-hi)}
 .gpdims{border-top:1px solid var(--line);margin-top:6px;padding-top:8px;display:flex;flex-direction:column;gap:6px}
 
 .pchip.pcout{background:var(--surface);outline:1.5px dashed color-mix(in srgb,var(--c) 60%,var(--line));outline-offset:-1.5px}
+
+/* Person cards on the Team page: long names, emails, team and project names stay inside the card */
+.pc .pcname b,.pc .pcinfo>.muted{overflow-wrap:anywhere}
+.pc .tchip,.pc .pchip{max-width:100%;min-width:0;overflow:hidden}
+.pc .pcn{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pc .pcrole{flex:none;white-space:nowrap}
+.pc .pchip .picon,.pc .tchip .tav{flex:none}
+.pc .pclink{display:inline-flex;max-width:100%;min-width:0;text-decoration:none;color:inherit}
+.pc{align-items:stretch}
+.pc>.pcoff{align-self:flex-start;max-width:100%}
+.pc{container-type:inline-size}
+.pc .pcstats{grid-template-columns:repeat(3,1fr);row-gap:10px}
+@container (min-width:500px){.pc .pcstats{grid-template-columns:repeat(5,1fr)}}
+.pc .pcstats span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* project chips on person cards look like this person's cells in "Who works on what":
+   coloured = in the project, bold outline = owns it, dashed = not in it but works on its tasks; ★ owned / ○ collaborating */
+.pc .pchip{border:1px solid color-mix(in srgb,var(--c) 45%,var(--line));padding:1px 7px 1px 2px}
+.pc .pchip.pclead{border:2px solid var(--c);padding:0 6px 0 1px}
+.pc .pchip.pcout{background:var(--surface);border-style:dashed;outline:0}
+.pc .pccount{flex:none;display:inline-flex;gap:6px;margin-left:2px;font-size:12px;font-variant-numeric:tabular-nums;color:var(--muted)}
+.pc .pclead .pccount,.pc .pcin .pccount{color:var(--fg)}
+
+/* "Who works on what": totals per person (last column) and per project (last row) */
+.mx .mxtot{font-size:12.5px;font-variant-numeric:tabular-nums;white-space:nowrap;background:var(--surface-2)}
+.mx .mxtot .mxo,.mx .mxtot .mxk{margin:0 3px}
+.mx thead .mxtot{font-weight:600}
+.mx tfoot th,.mx tfoot td{border-bottom:0;border-top:1px solid var(--line)}
+.mx tfoot .mxp{background:var(--surface-2);font-weight:600}
+.mx .mxall{font-weight:600}
+.pctools{display:flex;gap:2px;flex:none}
+
+/* pictures of the screen (lib/snapshot.ts): built off screen, on white, the whole element */
+.snapholder{position:fixed;left:-100000px;top:0;z-index:-1;pointer-events:none}
+.snapshot{width:max-content;padding:24px;background:#fff;color:var(--fg);font-family:var(--f-content)}
+.snapshot .snaphead{margin-bottom:14px}
+.snapshot .snaptitle{font-size:20px;font-weight:600}
+.snapshot .snapdate{font-size:13px;color:var(--muted);margin-top:2px}
+.snapshot .mxwrap{overflow:visible}
+.snapshot .mx .mxp{position:static}
+.snapshot .pc{box-shadow:none}
+
