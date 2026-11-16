@@ -78,6 +78,7 @@ export function Team() {
                   off={away.off.filter(o => o.member_id === m.id)} onDaysOff={away.ready ? () => setOffFor(m) : undefined}
                   onResend={isAdmin && m.status === 'invited' ? () => void resend(m) : undefined} resending={resending === m.id} />))}
                 {people.length === 0 && <div className="empty">No one in this team yet.</div>}</div>}
+          {view === 'people' && people.length > 0 && <ProjectLegend />}
         </div>
       </div>
       {teamDlg && <TeamDialog team={teamDlg === 'new' ? null : teamDlg} members={members} count={teams.length} canDelete={isAdmin}
@@ -145,14 +146,27 @@ function PersonCard({ m, me, teams, tasks, projects, roleIn, onTeam, onEdit, onR
         <div><b>{open.length}</b><span>★ tasks owned</span></div><div><b>{helping}</b><span>○ collaborating</span></div><div><b className={overdue ? 'od' : ''}>{overdue}</b><span>overdue</span></div>
         <div><b>{d30.length}</b><span>done, 30 days</span></div><div><b>{hrs(d30.reduce((s, t) => s + (Number(t.hours) || 0), 0))}</b><span>hours, 30 days</span></div></div>
       <div><div className="h3 gsect">Projects</div><div className="links">
-        {sorted.map(p => { const r = roleIn(p, m.id);
-          const tip = `${p.name}: ${r === 'owner' ? `${m.display_name} owns this project` : r ? `${m.display_name} is in this project` : `${m.display_name} is not in this project but works on some of its tasks`}`;
+        {sorted.map(p => {
+          // the same look and numbers as this person's cell in "Who works on what"
+          const r = roleIn(p, m.id), here = tasks.filter(t => t.project_id === p.id && t.status !== 'done');
+          const own = here.filter(t => t.assignee_member_id === m.id).length;
+          const helps = here.filter(t => t.assignee_member_id !== m.id && t.collaborator_ids.includes(m.id)).length;
+          const where = r === 'owner' ? 'owns the project' : r === 'member' ? 'in the project' : r === 'team' ? 'in the project through a team' : 'not in the project, but works on its tasks';
+          const tip = `${p.name}: ${m.display_name} ${where}; owns ${own} open task${own === 1 ? '' : 's'}, collaborates on ${helps}`;
           return (
-          <a key={p.id} className="pclink" href={projectHref(p.id)} title={tip}>
-            <span className={`pchip ${r ? '' : 'pcout'}`} style={{ ['--c' as string]: p.color }}><ProjectIcon p={p} /><span className="pcn">{p.name}</span>
-              {r === 'owner' && <span className="muted pcrole">· owner</span>}</span></a>); })}
+          <a key={p.id} className="pclink" href={projectHref(p.id)} title={tip} aria-label={tip}>
+            <span className={`pchip ${r ? 'pcin' : 'pcout'} ${r === 'owner' ? 'pclead' : ''}`} style={{ ['--c' as string]: p.color }}><ProjectIcon p={p} /><span className="pcn">{p.name}</span>
+              {(own > 0 || helps > 0) && <span className="pccount">{own > 0 && <span>★ {own}</span>}{helps > 0 && <span>○ {helps}</span>}</span>}</span></a>); })}
         {sorted.length === 0 && <span className="hint">Not in any project yet.</span>}</div></div>
     </article>);
+}
+
+/** What the project looks and ★/○ numbers mean; the same under the person cards and under "Who works on what". */
+function ProjectLegend({ extra }: { extra?: string }) {
+  return (
+    <div className="legend" style={{ marginTop: 10 }}><span><b>★ 3</b> open tasks they own</span><span><b>○ 2</b> open tasks they collaborate on</span>
+      <span><i className="mxkey in lead" /> owns the project</span><span><i className="mxkey in" /> in the project</span><span><i className="mxkey out" /> not in the project, but works on its tasks</span>
+      {extra && <span>{extra}</span>}</div>);
 }
 
 function Matrix({ people, projects, tasks, roleIn }: { people: Member[]; projects: ProjectFull[]; tasks: TaskFull[]; roleIn: (p: ProjectFull, id: string) => Role | null }) {
@@ -176,8 +190,6 @@ function Matrix({ people, projects, tasks, roleIn }: { people: Member[]; project
                 style={{ ['--c' as string]: p.color, ['--k' as string]: Math.min(1, (open + helps / 2) / 5), textDecoration: 'none', color: 'inherit' }} title={tip} aria-label={tip}>
                 {open > 0 && <span className="mxo">★ {open}</span>}{helps > 0 && <span className="mxk">○ {helps}</span>}</a></td>;
             })}</tr>))}</tbody></table></div>
-      <div className="legend" style={{ marginTop: 10 }}><span><b>★ 3</b> open tasks they own</span><span><b>○ 2</b> open tasks they collaborate on</span>
-        <span><i className="mxkey in" /> in the project</span><span><i className="mxkey in lead" /> owns the project</span><span><i className="mxkey out" /> not in the project, but works on its tasks</span>
-        <span>The darker the cell, the busier they are there.</span></div>
+      <ProjectLegend extra="The darker the cell, the busier they are there." />
     </>);
 }

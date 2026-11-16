@@ -983,6 +983,15 @@ button.brand:hover{background:var(--bar-hi)}
 .pc .pclink{display:inline-flex;max-width:100%;min-width:0;text-decoration:none;color:inherit}
 .pc{align-items:stretch}
 .pc>.pcoff{align-self:flex-start;max-width:100%}
-.pc .pcstats{grid-template-columns:repeat(auto-fit,minmax(92px,1fr));row-gap:10px}
+.pc{container-type:inline-size}
+.pc .pcstats{grid-template-columns:repeat(3,1fr);row-gap:10px}
+@container (min-width:500px){.pc .pcstats{grid-template-columns:repeat(5,1fr)}}
 .pc .pcstats span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* project chips on person cards look like this person's cells in "Who works on what":
+   coloured = in the project, bold outline = owns it, dashed = not in it but works on its tasks; ★ owned / ○ collaborating */
+.pc .pchip{border:1px solid color-mix(in srgb,var(--c) 45%,var(--line));padding:1px 7px 1px 2px}
+.pc .pchip.pclead{border:2px solid var(--c);padding:0 6px 0 1px}
+.pc .pchip.pcout{background:var(--surface);border-style:dashed;outline:0}
+.pc .pccount{flex:none;display:inline-flex;gap:6px;margin-left:2px;font-size:12px;font-variant-numeric:tabular-nums;color:var(--muted)}
+.pc .pclead .pccount,.pc .pcin .pccount{color:var(--fg)}
 
