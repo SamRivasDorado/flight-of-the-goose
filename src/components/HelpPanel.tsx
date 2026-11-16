@@ -144,31 +144,29 @@ const TOPICS: Topic[] = [
     </ul></> },
   { id: 'team', title: 'Team and sharing', icon: 'users', page: 'team', go: '#/team', team: true, body: <>
     <p className="lead">Work together, while each person sees only what they are part of.</p>
-    <h3 className="hh">People and access</h3>
     <ul>
-      <li><b>Admin</b>: everything, including inviting people.</li>
-      <li><b>Manager</b>: sees everything, creates goals and projects, reviews anyone.</li>
-      <li><b>Member</b>: works on the projects they are in and reviews their own tasks.</li>
-      <li><b>Guest</b>: can look but not change anything, for example a client.</li>
-    </ul>
-    <p><b>Invite a person</b> with their email address; they join when they sign in with it.</p>
-    <h3 className="hh">Teams</h3>
-    <p>Teams group people. Share a project with a team (Project settings) and everyone in the team is in the project, including people who join the team later. The team lead can change who is in the team.</p>
-    <h3 className="hh">Who works on what</h3>
-    <p>A table of people against projects. In each cell:</p>
-    <ul>
-      <li><b>★ 3</b>: open tasks they own (assigned to them).</li>
-      <li><b>○ 2</b>: open tasks they collaborate on.</li>
-      <li><b>Bold outline</b>: they own the project.</li>
-      <li><b>Coloured</b>: they are in the project (added directly, or through one of their teams).</li>
-      <li><b>Dashed</b>: they are not in the project, but work on some of its tasks.</li>
-    </ul>
-    <p>The darker the cell, the busier they are there. The <b>Total</b> column and row add up each person's and each project's cells; tasks without a project are not in the table, but the person's card counts them.</p>
-    <h3 className="hh">Person cards</h3>
-    <p>Each card counts the person's tasks owned (★), collaborating (○), overdue, and done and hours in the last 30 days. Their projects look exactly like their row in Who works on what, with the same ★ and ○: owned first, then the ones they are in, then the ones where they only work on tasks. Hover over a project for the details in words.</p>
-    <h3 className="hh">Copy as a picture</h3>
-    <p>The copy button at the right of the tabs copies the whole Who works on what table, even the part you would have to scroll to; the one on a person card copies that card. Paste it into an email, document or slide. The picture is always on white with today's date, and it is made in your browser: nothing is sent anywhere.</p>
-    <p>Working alone? Switch on <b>solo mode</b> in Your profile (your picture, top right) to hide everything about people and teams.</p></> },
+      <li><b>Access levels</b>:
+        <ul>
+          <li><i>Admin</i>: everything, including inviting people.</li>
+          <li><i>Manager</i>: sees everything, creates goals and projects, reviews anyone.</li>
+          <li><i>Member</i>: works on the projects they are in and reviews their own tasks.</li>
+          <li><i>Guest</i>: can look but not change anything, for example a client.</li>
+        </ul></li>
+      <li><b>Invite a person</b> with their email address; they join when they sign in with it.</li>
+      <li><b>Teams</b> group people. Share a project with a team (Project settings) and everyone in the team is in the project, including people who join it later. The team lead can change who is in the team.</li>
+      <li><b>Who works on what</b> shows people against projects. In each cell:
+        <ul>
+          <li><b>★ 3</b>: open tasks they own (assigned to them).</li>
+          <li><b>○ 2</b>: open tasks they collaborate on.</li>
+          <li><i>Bold outline</i>: they own the project.</li>
+          <li><i>Coloured</i>: they are in the project (added directly, or through one of their teams).</li>
+          <li><i>Dashed</i>: they are not in the project, but work on some of its tasks.</li>
+        </ul>
+        The darker the cell, the busier they are there. <b>Total</b> adds up each row and column; tasks without a project are not in the table, but the person's card counts them.</li>
+      <li><b>Person cards</b> count each person's tasks owned (★), collaborating (○), overdue, and done and hours in the last 30 days. Their projects look exactly like their row in Who works on what. Hover over a project for the details in words.</li>
+      <li><b>Copy as a picture</b> with the copy button at the right of the tabs (the whole Who works on what table, even the part you would have to scroll to) or on a person card. Paste it into an email, document or slide. The picture is on white with today's date and is made in your browser: nothing is sent anywhere.</li>
+      <li>Working alone? Switch on <b>solo mode</b> in Your profile (your picture, top right) to hide everything about people and teams.</li>
+    </ul></> },
   { id: 'help', title: 'No goose flies alone', icon: 'lifebuoy', team: true, body: <>
     <p className="lead">When a goose is hurt or tired, two others drop out of the formation and stay with it until it can fly again. Goose does the same for people who fall behind.</p>
     <h3 className="hh">Who is behind</h3>
