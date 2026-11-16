@@ -148,7 +148,7 @@ const TOPICS: Topic[] = [
       <li><b>Access levels.</b> <i>Admin</i>: everything, including inviting people. <i>Manager</i>: sees everything, creates goals and projects, reviews anyone. <i>Member</i>: works on the projects they belong to and reviews their own tasks. <i>Guest</i>: can look but not change anything, for example a client.</li>
       <li><b>Invite a person</b> with their email address; they join when they sign in with it.</li>
       <li><b>Teams</b> group people. Share a project with a team (Project settings) and everyone in it becomes a member, including people who join the team later. The team lead can change its members.</li>
-      <li><b>Who works on what</b> shows people against projects, with their open tasks.</li>
+      <li><b>Who works on what</b> shows people against projects: their role (owner, member, member through a team), the open tasks assigned to them (the number) and the open tasks they collaborate on (<b>+n</b>, in a dashed box). Each person's card also counts the open tasks they are <b>helping on</b> as a collaborator.</li>
       <li>Working alone? Switch on <b>solo mode</b> in Your profile (your picture, top right) to hide everything about people and teams.</li>
     </ul></> },
   { id: 'help', title: 'No goose flies alone', icon: 'lifebuoy', team: true, body: <>

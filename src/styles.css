@@ -388,7 +388,7 @@ textarea.notes{width:100%;min-height:90px;border:1px solid var(--line);border-ra
 .acc{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;padding:1px 7px;border-radius:5px;border:1px solid var(--line)}
 .acc-admin{color:var(--accent);border-color:var(--accent)}.acc-manager{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 60%,var(--line))}.acc-guest{color:var(--muted);border-style:dashed}
 .tchip{display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:1px 8px;border-radius:99px;background:var(--surface-2);color:var(--fg)}
-.pcstats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:10px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.pcstats{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;padding:10px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
 .pcstats div{display:flex;flex-direction:column}.pcstats b{font-size:19px;font-variant-numeric:tabular-nums}.pcstats b.od{color:var(--danger)}.pcstats span{font-size:11.5px;color:var(--muted)}
 .ownstar{color:var(--warn);margin-left:2px}
 .pcgoals{display:flex;flex-direction:column;gap:4px;align-items:flex-start;font-size:13px}
@@ -402,6 +402,8 @@ textarea.notes{width:100%;min-height:90px;border:1px solid var(--line);border-ra
 .mxc{width:56px;height:34px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;gap:5px;background:color-mix(in srgb,var(--c) calc(12% + var(--k) * 45%),var(--surface));border:1px solid color-mix(in srgb,var(--c) 45%,var(--line))}
 .mxc.none{border-style:dashed}
 .mxc b{font-size:13px}.mxr{font-size:13px;color:var(--fg)}
+.mxhelp{font-style:normal;font-size:11px;font-weight:600;padding:0 4px;border-radius:6px;border:1px dashed color-mix(in srgb,var(--fg) 45%,transparent);line-height:15px}
+.mxc{width:auto;min-width:56px;padding:0 6px}
 .mxc:hover{outline:2px solid var(--accent);outline-offset:1px}
 .mx-empty{background:transparent}
 .ro [data-act=addTask],.ro .quick,.ro [data-act=lineTask],.ro .composer,.ro [data-act=noteEdit],.ro [data-act=noteDel],.ro [data-act=delTask],.ro [data-act=rvDone],.ro [data-act=rvMove],.ro [data-act=imgFit]{display:none!important}
