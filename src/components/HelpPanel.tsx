@@ -150,45 +150,25 @@ const TOPICS: Topic[] = [
       <li><b>Manager</b>: sees everything, creates goals and projects, reviews anyone.</li>
       <li><b>Member</b>: works on the projects they are in and reviews their own tasks.</li>
       <li><b>Guest</b>: can look but not change anything, for example a client.</li>
-      <li><b>Invite a person</b> with their email address; they join when they sign in with it.</li>
     </ul>
+    <p><b>Invite a person</b> with their email address; they join when they sign in with it.</p>
     <h3 className="hh">Teams</h3>
-    <ul>
-      <li>Teams group people.</li>
-      <li>Share a project with a team (Project settings) and everyone in the team is in the project, including people who join the team later.</li>
-      <li>The team lead can change who is in the team.</li>
-    </ul>
+    <p>Teams group people. Share a project with a team (Project settings) and everyone in the team is in the project, including people who join the team later. The team lead can change who is in the team.</p>
     <h3 className="hh">Who works on what</h3>
+    <p>A table of people against projects. In each cell:</p>
     <ul>
-      <li>A table of people against projects.</li>
       <li><b>★ 3</b>: open tasks they own (assigned to them).</li>
       <li><b>○ 2</b>: open tasks they collaborate on.</li>
-      <li>The look of a cell says where they stand in the project:
-        <ul>
-          <li><b>bold outline</b>: they own the project;</li>
-          <li><b>coloured</b>: they are in it (added directly, or through one of their teams);</li>
-          <li><b>dashed</b>: they are not in it, but work on some of its tasks.</li>
-        </ul></li>
-      <li>The darker the cell, the busier they are there.</li>
-      <li><b>Total</b> (last column and last row) adds up each person's and each project's cells. Tasks without a project are not in the table; the person's card counts them.</li>
+      <li><b>Bold outline</b>: they own the project.</li>
+      <li><b>Coloured</b>: they are in the project (added directly, or through one of their teams).</li>
+      <li><b>Dashed</b>: they are not in the project, but work on some of its tasks.</li>
     </ul>
+    <p>The darker the cell, the busier they are there. The <b>Total</b> column and row add up each person's and each project's cells; tasks without a project are not in the table, but the person's card counts them.</p>
     <h3 className="hh">Person cards</h3>
-    <ul>
-      <li>Totals for the person: <b>tasks owned</b> (★), <b>collaborating</b> (○), overdue, done and hours in the last 30 days.</li>
-      <li>Their projects look exactly like their row in Who works on what: owned first (bold outline), then the ones they are in (coloured), then the ones where they only work on tasks (dashed), each with its ★ and ○.</li>
-      <li>Hover over a project for the details in words.</li>
-    </ul>
+    <p>Each card counts the person's tasks owned (★), collaborating (○), overdue, and done and hours in the last 30 days. Their projects look exactly like their row in Who works on what, with the same ★ and ○: owned first, then the ones they are in, then the ones where they only work on tasks. Hover over a project for the details in words.</p>
     <h3 className="hh">Copy as a picture</h3>
-    <ul>
-      <li>The copy button at the right of the tabs copies the whole Who works on what table, even the part you would have to scroll to.</li>
-      <li>The copy button on a person card copies that card.</li>
-      <li>Paste it into an email, document or slide. The picture is always on white, with today's date.</li>
-      <li>It is made in your browser: nothing is sent anywhere.</li>
-    </ul>
-    <h3 className="hh">Working alone?</h3>
-    <ul>
-      <li>Switch on <b>solo mode</b> in Your profile (your picture, top right) to hide everything about people and teams.</li>
-    </ul></> },
+    <p>The copy button at the right of the tabs copies the whole Who works on what table, even the part you would have to scroll to; the one on a person card copies that card. Paste it into an email, document or slide. The picture is always on white with today's date, and it is made in your browser: nothing is sent anywhere.</p>
+    <p>Working alone? Switch on <b>solo mode</b> in Your profile (your picture, top right) to hide everything about people and teams.</p></> },
   { id: 'help', title: 'No goose flies alone', icon: 'lifebuoy', team: true, body: <>
     <p className="lead">When a goose is hurt or tired, two others drop out of the formation and stay with it until it can fly again. Goose does the same for people who fall behind.</p>
     <h3 className="hh">Who is behind</h3>
