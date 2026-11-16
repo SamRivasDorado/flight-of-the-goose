@@ -13,7 +13,6 @@ import { loadDaysOff, type DayOff, type DaysOffData } from '../lib/holidays';
 import { DaysOffDialog, HolidaysDialog, HolidaysOverview } from '../components/Holidays';
 
 type Role = 'owner' | 'member' | 'team';
-const ROLE_LABEL: Record<Role, string> = { owner: 'Owner', member: 'Member', team: 'Through team' };
 
 export function Team() {
   const ws = useWorkspace();
@@ -73,7 +72,8 @@ export function Team() {
             ? <Matrix people={people} projects={projects} tasks={tasks} roleIn={roleIn} />
             : <div className="pcgrid">{people.map(m => (
                 <PersonCard key={m.id} m={m} me={m.id === ws.member_id} teams={teams} tasks={tasks} roleIn={roleIn}
-                  projects={projects.filter(p => p.status !== 'closed' && roleIn(p, m.id))}
+                  projects={projects.filter(p => p.status !== 'closed' && (roleIn(p, m.id) || tasks.some(t => t.project_id === p.id && t.status !== 'done'
+                    && (t.assignee_member_id === m.id || t.collaborator_ids.includes(m.id)))))}
                   onTeam={setSel} onEdit={isAdmin ? () => setPersonDlg(m) : undefined}
                   off={away.off.filter(o => o.member_id === m.id)} onDaysOff={away.ready ? () => setOffFor(m) : undefined}
                   onResend={isAdmin && m.status === 'invited' ? () => void resend(m) : undefined} resending={resending === m.id} />))}
@@ -120,7 +120,9 @@ function PersonCard({ m, me, teams, tasks, projects, roleIn, onTeam, onEdit, onR
   const overdue = open.filter(t => t.due_date && diffDays(t.due_date) < 0).length;
   // open tasks where they collaborate (someone else, or nobody, is the assignee)
   const helping = tasks.filter(t => t.status !== 'done' && t.assignee_member_id !== m.id && t.collaborator_ids.includes(m.id)).length;
-  const sorted = [...projects].sort((a, b) => (roleIn(a, m.id) === 'owner' ? 0 : 1) - (roleIn(b, m.id) === 'owner' ? 0 : 1));
+  // owned projects first, then the ones they are in, then the ones they only work on tasks in
+  const rank = (p: ProjectFull) => { const r = roleIn(p, m.id); return r === 'owner' ? 0 : r ? 1 : 2; };
+  const sorted = [...projects].sort((a, b) => rank(a) - rank(b));
   return (
     <article className="pc">
       <div className="pchead"><Avatar m={m} size="xl" />
@@ -142,10 +144,12 @@ function PersonCard({ m, me, teams, tasks, projects, roleIn, onTeam, onEdit, onR
         <div><b>{open.length}</b><span>★ tasks owned</span></div><div><b>{helping}</b><span>○ collaborating</span></div><div><b className={overdue ? 'od' : ''}>{overdue}</b><span>overdue</span></div>
         <div><b>{d30.length}</b><span>done, 30 days</span></div><div><b>{hrs(d30.reduce((s, t) => s + (Number(t.hours) || 0), 0))}</b><span>hours, 30 days</span></div></div>
       <div><div className="h3 gsect">Projects</div><div className="links">
-        {sorted.map(p => { const r = roleIn(p, m.id)!; return (
-          <a key={p.id} href={projectHref(p.id)} title={ROLE_LABEL[r]} style={{ textDecoration: 'none', color: 'inherit' }}>
-            <span className="pchip" style={{ ['--c' as string]: p.color }}><ProjectIcon p={p} />{p.name}
-              {r === 'owner' && <span className="muted"> · owner</span>}{r === 'team' && <span className="muted"> · team</span>}</span></a>); })}
+        {sorted.map(p => { const r = roleIn(p, m.id);
+          const tip = r === 'owner' ? `${m.display_name} owns this project` : r ? `${m.display_name} is in this project` : `${m.display_name} is not in this project but works on some of its tasks`;
+          return (
+          <a key={p.id} href={projectHref(p.id)} title={tip} style={{ textDecoration: 'none', color: 'inherit' }}>
+            <span className={`pchip ${r ? '' : 'pcout'}`} style={{ ['--c' as string]: p.color }}><ProjectIcon p={p} />{p.name}
+              {r === 'owner' && <span className="muted"> · owner</span>}</span></a>); })}
         {sorted.length === 0 && <span className="hint">Not in any project yet.</span>}</div></div>
     </article>);
 }
