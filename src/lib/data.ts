@@ -167,13 +167,7 @@ export async function createTask(ws: string, me: string, t: Partial<Task>): Prom
 }
 
 export async function deleteTask(id: string) {
-  // note the task's attached files first; once the task is gone, their stored copies are tidied away
-  const files = await db().from('task_files').select('path').eq('task_id', id);
-  const r = await db().from('tasks').delete().eq('id', id).select('id');
-  check(r);
-  if (!r.data?.length) throw new Error('Only the person who created this task, its assignee, managers and admins can delete it.');
-  const paths = (files.data ?? []).map(x => (x as { path: string }).path);
-  if (paths.length) await db().storage.from('task-files').remove(paths).catch(() => undefined);
+  check(await db().from('tasks').delete().eq('id', id));
 }
 
 export async function addSubtask(taskId: string, title: string, position: number): Promise<Subtask> {

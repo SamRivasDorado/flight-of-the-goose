@@ -8,14 +8,14 @@
  */
 import { nextDue, type Repeat } from '../lib/repeat';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { makeSeed, seedFiles } from './seed';
+import { makeSeed } from './seed';
 
 type Row = Record<string, unknown>;
 type Store = { tables: Record<string, Row[]>; files: Record<string, string> };
 
 export const DEMO_UID = '00000000-0000-4000-8000-000000000001';
 export const DEMO_EMAIL = 'sam@example.com';
-const KEY = 'goose.demo.v13';
+const KEY = 'goose.demo.v12';
 
 const PK: Record<string, string[]> = {
   team_members: ['team_id', 'member_id'], project_members: ['project_id', 'member_id'], project_teams: ['project_id', 'team_id'],
@@ -49,7 +49,6 @@ const DEFAULTS: Record<string, () => Row> = {
   holiday_calendars: () => ({ color: '#D0453A', created_at: now() }),
   holidays: () => ({ end_day: null, name: '' }),
   days_off: () => ({ note: '', created_at: now() }),
-  task_files: () => ({ size: 0, mime: '', uploaded_by: null, created_at: now() }),
   profiles: () => ({ full_name: '', title: '', color: null, avatar_url: null, setup_done: false, created_at: now() }),
 };
 
@@ -57,10 +56,10 @@ const DEFAULTS: Record<string, () => Row> = {
 const ON_DELETE: Record<string, [string, string, 'cascade' | 'null'][]> = {
   workspaces: [['workspace_members', 'workspace_id', 'cascade'], ['teams', 'workspace_id', 'cascade'], ['fields', 'workspace_id', 'cascade'], ['goals', 'workspace_id', 'cascade'],
     ['projects', 'workspace_id', 'cascade'], ['notes', 'workspace_id', 'cascade'], ['tasks', 'workspace_id', 'cascade'], ['comments', 'workspace_id', 'cascade'], ['mention_events', 'workspace_id', 'cascade'], ['help_offers', 'workspace_id', 'cascade'],
-    ['holiday_calendars', 'workspace_id', 'cascade'], ['holidays', 'workspace_id', 'cascade'], ['days_off', 'workspace_id', 'cascade'], ['task_files', 'workspace_id', 'cascade']],
+    ['holiday_calendars', 'workspace_id', 'cascade'], ['holidays', 'workspace_id', 'cascade'], ['days_off', 'workspace_id', 'cascade']],
   workspace_members: [['team_members', 'member_id', 'cascade'], ['project_members', 'member_id', 'cascade'], ['task_collaborators', 'member_id', 'cascade'],
     ['member_settings', 'member_id', 'cascade'], ['teams', 'lead_member_id', 'null'], ['goals', 'owner_member_id', 'null'], ['projects', 'owner_member_id', 'null'],
-    ['notes', 'created_by_member', 'null'], ['comments', 'author_member_id', 'null'], ['mention_events', 'member_id', 'cascade'], ['mention_events', 'author_member_id', 'null'], ['help_offers', 'helper_member_id', 'cascade'], ['help_offers', 'helped_member_id', 'cascade'], ['tasks', 'assignee_member_id', 'null'], ['tasks', 'created_by_member', 'null'], ['workspace_members', 'invited_by', 'null'], ['days_off', 'member_id', 'cascade'], ['task_files', 'uploaded_by', 'null']],
+    ['notes', 'created_by_member', 'null'], ['comments', 'author_member_id', 'null'], ['mention_events', 'member_id', 'cascade'], ['mention_events', 'author_member_id', 'null'], ['help_offers', 'helper_member_id', 'cascade'], ['help_offers', 'helped_member_id', 'cascade'], ['tasks', 'assignee_member_id', 'null'], ['tasks', 'created_by_member', 'null'], ['workspace_members', 'invited_by', 'null'], ['days_off', 'member_id', 'cascade']],
   holiday_calendars: [['holidays', 'calendar_id', 'cascade']],
   teams: [['team_members', 'team_id', 'cascade'], ['project_teams', 'team_id', 'cascade']],
   fields: [['field_options', 'field_id', 'cascade'], ['project_defaults', 'field_id', 'cascade'], ['project_fields', 'field_id', 'cascade'], ['task_values', 'field_id', 'cascade']],
@@ -69,7 +68,7 @@ const ON_DELETE: Record<string, [string, string, 'cascade' | 'null'][]> = {
   projects: [['project_members', 'project_id', 'cascade'], ['project_teams', 'project_id', 'cascade'], ['goal_projects', 'project_id', 'cascade'],
     ['project_defaults', 'project_id', 'cascade'], ['project_fields', 'project_id', 'cascade'], ['notes', 'project_id', 'cascade'], ['tasks', 'project_id', 'null']],
   notes: [['tasks', 'source_note_id', 'null'], ['comments', 'note_id', 'cascade'], ['mention_events', 'note_id', 'cascade']],
-  tasks: [['subtasks', 'task_id', 'cascade'], ['task_collaborators', 'task_id', 'cascade'], ['task_values', 'task_id', 'cascade'], ['comments', 'task_id', 'cascade'], ['mention_events', 'task_id', 'cascade'], ['help_offers', 'task_id', 'cascade'], ['task_files', 'task_id', 'cascade']],
+  tasks: [['subtasks', 'task_id', 'cascade'], ['task_collaborators', 'task_id', 'cascade'], ['task_values', 'task_id', 'cascade'], ['comments', 'task_id', 'cascade'], ['mention_events', 'task_id', 'cascade'], ['help_offers', 'task_id', 'cascade']],
 };
 
 // ---------------------------------------------------------------- the stored data
@@ -77,8 +76,7 @@ const ON_DELETE: Record<string, [string, string, 'cascade' | 'null'][]> = {
 let S: Store;
 function load(): Store {
   try { const raw = localStorage.getItem(KEY); if (raw) { const s = JSON.parse(raw) as Store; if (s?.tables) return s; } } catch { /* no storage */ }
-  const tables = makeSeed(DEMO_UID, DEMO_EMAIL);
-  return { tables, files: seedFiles(tables) };
+  return { tables: makeSeed(DEMO_UID, DEMO_EMAIL), files: {} };
 }
 function persist() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch { /* full or blocked: keeps working in memory */ } }
 const T = (t: string) => (S.tables[t] ??= []);
@@ -309,17 +307,6 @@ async function toDataUrl(body: unknown, type: string): Promise<string> {
   return await new Promise(res => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.readAsDataURL(blob); });
 }
 
-const blobs = new Map<string, string>();
-function blobLink(dataUrl: string) {
-  let b = blobs.get(dataUrl);
-  if (!b) {
-    const [head, body] = dataUrl.split(','), type = /data:([^;]+)/.exec(head)?.[1] ?? 'application/octet-stream';
-    const bytes = head.includes(';base64') ? Uint8Array.from(atob(body), c => c.charCodeAt(0)) : new TextEncoder().encode(decodeURIComponent(body));
-    b = URL.createObjectURL(new Blob([bytes], { type })); blobs.set(dataUrl, b);
-  }
-  return b;
-}
-
 export function createDemoClient(): SupabaseClient {
   S = load();
   persist();
@@ -342,13 +329,6 @@ export function createDemoClient(): SupabaseClient {
           return { data: { path }, error: null };
         },
         getPublicUrl: (path: string) => ({ data: { publicUrl: S.files[`${bucket}/${path}`] ?? '' } }),
-        // private files: a link made in this browser (data links cannot be opened in a new tab, blob links can)
-        createSignedUrl: async (path: string, _s: number, o?: { download?: string }) => {
-          const u = S.files[`${bucket}/${path}`];
-          if (!u) return { data: null, error: { message: 'Object not found' } };
-          void o; return { data: { signedUrl: blobLink(u) }, error: null };
-        },
-        createSignedUrls: async (paths: string[]) => ({ data: paths.map(p => { const u = S.files[`${bucket}/${p}`]; return { path: p, signedUrl: u ? blobLink(u) : null, error: u ? null : 'not found' }; }), error: null }),
         remove: async (paths: string[]) => { paths.forEach(p => delete S.files[`${bucket}/${p}`]); persist(); return { data: null, error: null }; },
       }),
     },

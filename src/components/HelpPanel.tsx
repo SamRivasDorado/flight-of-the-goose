@@ -118,7 +118,6 @@ const TOPICS: Topic[] = [
       <li>A task in a project <b>counts towards that project's goals</b> by itself: the task panel shows them as <b>Goal: … (from project)</b>, and the Goal column of the list shows a dashed tag. Pick a goal in the panel only to link the task to a goal of its own.</li>
       <li>Log <b>Time spent</b> on each task: Review and Insights use it to show where your time went.</li>
       <li>An overdue task assigned to someone else shows <b>Offer help</b> at the top of its panel (see <i>No goose flies alone</i>).</li>
-      <li><b>Files</b>: attach documents, pictures, spreadsheets or any other file to a task with <b>Attach files</b> in the task panel, or drop them onto its Files section (up to 25 MB each; on a new task they are saved with <b>Create task</b>). Click a file to open it: pictures, PDFs and plain text open in a new tab, other files download. Everyone who can see the task can open its files, and everyone but guests can attach them. A file can be removed by whoever attached it, the task’s creator or assignee, managers and admins. Files are private: they have no public link.</li>
       <li><b>Comments</b> sit at the bottom of the task panel, and under each notebook entry. Type <b>@</b> to mention someone, there and also in task descriptions and notebook entries. The <b>bell</b> in the top bar collects what is for you: mentions, comments on your tasks, and replies where you commented; they can also come by email (see <i>Emails</i>). Everyone who can see the task reads its comments; guests read but do not write.</li>
       <li>Finishing a task sends a goose across the screen; finishing a project or reaching a goal sends a whole V. Switch them off in Your profile (your picture, top right).</li>
       <li>Coloured labels such as <b>Priority</b> are dimensions. A dashed label comes from the project’s default; a filled one is set on the task itself.</li>
@@ -194,7 +193,7 @@ const TOPICS: Topic[] = [
     <ul>
       <li><b>Export</b> an Excel workbook (Goals, Projects and Tasks sheets) or CSV files, for reports or to edit in bulk.</li>
       <li><b>Import</b> that workbook back, or CSV files: rows keep their ID, so edits update the right items and rows without an ID are added. You see what will change before anything is saved, and importing never deletes.</li>
-      <li><b>Full backup</b> saves the whole workspace, including notebooks, dimensions and teams, as one file. Restoring it creates a new workspace, so it never overwrites the one you have. Files attached to tasks are not in exports or backups; keep your own copies of important ones.</li>
+      <li><b>Full backup</b> saves the whole workspace, including notebooks, dimensions and teams, as one file. Restoring it creates a new workspace, so it never overwrites the one you have.</li>
     </ul></> },
 ];
 

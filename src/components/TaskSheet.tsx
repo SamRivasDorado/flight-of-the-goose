@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
+import { useEffect, useState, type KeyboardEvent } from 'react';
 import { useSolo } from '../lib/solo';
 import { useWorkspace } from '../auth/session';
 import {
@@ -15,8 +15,6 @@ import { Avatar, Icon } from './Logo';
 import { ProjectChip } from './ProjectChip';
 import { CommentThread, MentionArea, mentionedIds } from './Comments';
 import { TaskHelp } from './OfferHelp';
-import { TaskFiles } from './TaskFiles';
-import { fileSize, MAX_FILE_MB, uploadTaskFile } from '../lib/files';
 
 /** The task details panel that slides up from the bottom (as in the prototype).
     A new task is a draft until Create task is pressed; an existing one saves as you edit. */
@@ -25,19 +23,17 @@ export function TaskSheet() {
   if (!openTaskId) return null;
   const isNew = openTaskId.startsWith('new:');
   return <Sheet key={openTaskId} id={isNew ? null : openTaskId} defaults={isNew ? draft ?? {} : null}
-                close={() => openTask(null)} reopen={x => openTask(x)} changed={changed} />;
+                close={() => openTask(null)} changed={changed} />;
 }
 
 interface SheetProps {
   id: string | null;
   defaults: Partial<Task> | null;
   close: () => void;
-  /** Opens a (just created) task in the panel. */
-  reopen: (id: string) => void;
   changed: () => void;
 }
 
-function Sheet({ id, defaults, close, reopen, changed }: SheetProps) {
+function Sheet({ id, defaults, close, changed }: SheetProps) {
   const ws = useWorkspace();
   const isNew = id == null;
   const editable = canEdit(ws.access);
@@ -55,11 +51,8 @@ function Sheet({ id, defaults, close, reopen, changed }: SheetProps) {
   const [desc, setDesc] = useState('');
   const [hours, setHours] = useState('');
   const [subDraft, setSubDraft] = useState('');
-  /** Files picked for a new task; uploaded once Create task has saved it. */
-  const [draftFiles, setDraftFiles] = useState<File[]>([]);
   const [confirmDel, setConfirmDel] = useState(false);
   const [busy, setBusy] = useState(false);
-  const createdId = useRef<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
@@ -96,7 +89,6 @@ function Sheet({ id, defaults, close, reopen, changed }: SheetProps) {
   async function create() {
     if (!t) return;
     if (!title.trim()) { setErr('Give the task a name.'); return; }
-    if (busy) return;
     setBusy(true);
     const ok = await run(async () => {
       const saved = await createTask(ws.workspace_id, ws.member_id, {
@@ -105,19 +97,12 @@ function Sheet({ id, defaults, close, reopen, changed }: SheetProps) {
         ...(t.status === 'done' ? { completed_at: new Date().toISOString().slice(0, 10) } : {}),
       });
       for (const [i, s] of t.subtasks.entries()) { const x = await addSubtask(saved.id, s.title, i); if (s.done) await updateSubtask(x.id, { done: true }); }
-      createdId.current = saved.id;
       for (const m of t.collaborator_ids) await setCollaborator(saved.id, m, true);
       for (const [f, o] of Object.entries(dimOwn)) if (o) await setTaskValue(saved.id, f, o);
       notifyDesc(saved.id, '', desc);
-      return saved.id;
     });
-    // the task is saved; now its files (one failing does not undo the task, so show the saved task instead)
-    let filesOk = true;
-    if (ok && createdId.current) for (const f of draftFiles) {
-      try { await uploadTaskFile(ws.workspace_id, ws.member_id, createdId.current, f); } catch { filesOk = false; }
-    }
     setBusy(false);
-    if (ok) { if (filesOk) close(); else reopen(createdId.current!); }
+    if (ok) close();
   }
 
   /** Existing task: save anything still being typed, then close. */
@@ -133,7 +118,7 @@ function Sheet({ id, defaults, close, reopen, changed }: SheetProps) {
     close();
   }
 
-  const dirtyDraft = isNew && (title.trim() || desc.trim() || (t?.subtasks.length ?? 0) > 0 || draftFiles.length > 0);
+  const dirtyDraft = isNew && (title.trim() || desc.trim() || (t?.subtasks.length ?? 0) > 0);
   useEffect(() => {
     const onKey = (e: globalThis.KeyboardEvent) => {
       if (e.key !== 'Escape') return;
@@ -214,12 +199,6 @@ function Sheet({ id, defaults, close, reopen, changed }: SheetProps) {
                 <input placeholder="Add a subtask and press Enter" aria-label="Add subtask" value={subDraft} onChange={e => setSubDraft(e.target.value)} onKeyDown={addSub} /></div>}
             </div>
           </div>
-          <TaskFiles task={isNew ? null : t} members={lists.members} editable={editable} draft={draftFiles}
-            setDraft={f => {
-              const big = f.filter(x => x.size > MAX_FILE_MB * 1024 * 1024);
-              setErr(big.length ? big.map(x => `“${x.name}” is ${fileSize(x.size)}; files can be up to ${MAX_FILE_MB} MB.`).join(' ') : null);
-              setDraftFiles(f.filter(x => !big.includes(x)));
-            }} />
           {!isNew && <div><div className="h3">Comments</div><div style={{ marginTop: 6 }}><CommentThread target={{ task_id: t.id }} /></div></div>}
         </div>
         <div className="right">
