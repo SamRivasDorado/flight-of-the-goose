@@ -1014,3 +1014,6 @@ button.brand:hover{background:var(--bar-hi)}
 .snapshot .mx .mxp{position:static}
 .snapshot .pc{box-shadow:none}
 
+
+/* Help: a short list inside a point (roles, what symbols mean) */
+.helptext li>ul{margin:5px 0 6px;gap:3px}
