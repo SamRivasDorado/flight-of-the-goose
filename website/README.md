@@ -9,3 +9,5 @@ The public website for Goose: one page with five tabs (Overview, Features, Why G
 ## How it is published
 
 The workflow `.github/workflows/pages.yml` puts this folder at the root of https://flightofthegoose.com and the built app under `/app/` (the "Sign in" links go there; "Request access" is the form in the website itself, which saves the request in Supabase). It also writes the `CNAME` file for the domain.
+
+When you retake the screenshots in img/app, bump the date in `?v=` (and `SHOTS_V` in the script) in index.html, so browsers fetch the new pictures instead of their saved copies.
