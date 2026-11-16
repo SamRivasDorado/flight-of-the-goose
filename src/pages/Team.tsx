@@ -139,13 +139,13 @@ function PersonCard({ m, me, teams, tasks, projects, roleIn, onTeam, onEdit, onR
         <span>{now ? <><b>Away now</b> until {short(now.end_day)}{now.note ? ` · ${now.note}` : ''}</> : next ? <>Next days off: {range(next)}{next.note ? ` · ${next.note}` : ''}</> : <span className="muted">No days off planned</span>}</span>
         <button className="linkbtn" onClick={onDaysOff}>{me ? 'Your days off' : 'Days off'}</button></div>}
       <div className="pcstats">
-        <div><b>{open.length}</b><span>open tasks</span></div><div><b>{helping}</b><span>helping on</span></div><div><b className={overdue ? 'od' : ''}>{overdue}</b><span>overdue</span></div>
+        <div><b>{open.length}</b><span>★ tasks owned</span></div><div><b>{helping}</b><span>○ collaborating</span></div><div><b className={overdue ? 'od' : ''}>{overdue}</b><span>overdue</span></div>
         <div><b>{d30.length}</b><span>done, 30 days</span></div><div><b>{hrs(d30.reduce((s, t) => s + (Number(t.hours) || 0), 0))}</b><span>hours, 30 days</span></div></div>
       <div><div className="h3 gsect">Projects</div><div className="links">
         {sorted.map(p => { const r = roleIn(p, m.id)!; return (
           <a key={p.id} href={projectHref(p.id)} title={ROLE_LABEL[r]} style={{ textDecoration: 'none', color: 'inherit' }}>
             <span className="pchip" style={{ ['--c' as string]: p.color }}><ProjectIcon p={p} />{p.name}
-              {r === 'owner' && <span className="ownstar" aria-label="owner">★</span>}{r === 'team' && <span className="muted"> · team</span>}</span></a>); })}
+              {r === 'owner' && <span className="muted"> · owner</span>}{r === 'team' && <span className="muted"> · team</span>}</span></a>); })}
         {sorted.length === 0 && <span className="hint">Not in any project yet.</span>}</div></div>
     </article>);
 }
@@ -164,13 +164,15 @@ function Matrix({ people, projects, tasks, roleIn }: { people: Member[]; project
               const open = here.filter(t => t.assignee_member_id === m.id).length;
               const helps = here.filter(t => t.assignee_member_id !== m.id && t.collaborator_ids.includes(m.id)).length;
               if (!r && !open && !helps) return <td key={p.id} className="mx-empty" />;
-              const tip = [`${m.display_name} on ${p.name}: ${r ? ROLE_LABEL[r] : 'not a member, works on tasks there'}`,
-                `${open} open task${open === 1 ? '' : 's'} assigned`, ...(helps ? [`collaborating on ${helps} more`] : [])].join(', ');
-              return <td key={p.id}><a className={`mxc ${r ?? 'none'}`} href={projectHref(p.id)} style={{ ['--c' as string]: p.color, ['--k' as string]: Math.min(1, (open + helps / 2) / 5), textDecoration: 'none', color: 'inherit' }}
-                title={tip} aria-label={tip}>
-                <span className="mxr">{r === 'owner' ? '★' : r === 'member' ? '●' : r === 'team' ? '◌' : '·'}</span>{open > 0 && <b>{open}</b>}{helps > 0 && <i className="mxhelp">+{helps}</i>}</a></td>;
+              // the cell is about tasks: ★ owned (assigned to them), ○ collaborating; its look says whether they are in the project
+              const where = r === 'owner' ? 'owns the project' : r === 'member' ? 'in the project' : r === 'team' ? 'in the project through a team' : 'not in the project';
+              const tip = `${m.display_name} on ${p.name} (${where}): owns ${open} open task${open === 1 ? '' : 's'}, collaborates on ${helps}`;
+              return <td key={p.id}><a className={`mxc ${r ? 'in' : 'out'} ${r === 'owner' ? 'lead' : ''}`} href={projectHref(p.id)}
+                style={{ ['--c' as string]: p.color, ['--k' as string]: Math.min(1, (open + helps / 2) / 5), textDecoration: 'none', color: 'inherit' }} title={tip} aria-label={tip}>
+                {open > 0 && <span className="mxo">★ {open}</span>}{helps > 0 && <span className="mxk">○ {helps}</span>}</a></td>;
             })}</tr>))}</tbody></table></div>
-      <div className="legend" style={{ marginTop: 10 }}><span><b>★</b> owner</span><span><b>●</b> member</span><span><b>◌</b> member through a team</span>
-        <span><b>·</b> works on tasks there without being a member</span><span><b>3</b> open tasks assigned to them</span><span><i className="mxhelp">+2</i> open tasks they collaborate on</span><span>The darker the cell, the more they have.</span></div>
+      <div className="legend" style={{ marginTop: 10 }}><span><b>★ 3</b> open tasks they own</span><span><b>○ 2</b> open tasks they collaborate on</span>
+        <span><i className="mxkey in" /> in the project</span><span><i className="mxkey in lead" /> owns the project</span><span><i className="mxkey out" /> not in the project, but works on its tasks</span>
+        <span>The darker the cell, the busier they are there.</span></div>
     </>);
 }
