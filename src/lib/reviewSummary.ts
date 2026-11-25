@@ -14,6 +14,7 @@ export interface SummaryFacts {
   worried: { name: string; label: string }[];               // goals at risk / off track
   slipped: { title: string; project?: string }[];
   quiet: string[];
+  paused: { name: string; pct: number }[];                // paused projects and how far they got
   upcoming: { title: string; project?: string; when: string }[] | null;
   upRange: string;
 }
@@ -53,6 +54,7 @@ export function writeSummary(f: SummaryFacts): string {
     ...grew.map(m => `${m.name} moved from ${m.from}% to ${m.to}%`),
   ];
   if (prog.length) out.push(`Progress: ${list(prog, 4)}.`);
+  if (f.paused.length) out.push(`Paused: ${list(f.paused.map(x => `${x.name} (${x.pct}% done)`), 4)}.`);
 
   // what needs attention
   const watch: string[] = [];

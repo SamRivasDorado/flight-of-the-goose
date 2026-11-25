@@ -107,12 +107,16 @@ export function Review() {
       <span className="mono">{useH ? `${hrs(r.h)} h` : `${r.n} task${r.n > 1 ? 's' : ''}`}{total ? ` · ${Math.round(metric(r) / total * 100)}%` : ''}</span></div>)); };
 
   const range = fmtRange(a, b);
+  // paused projects (under the Lens), with the share of their tasks done
+  const pausedP = data.projects.filter(p => p.status === 'paused' && lens.project(p, data.tasks)).sort((x, y) => x.name.localeCompare(y.name));
+  const pctDone = (id: string) => { const ts = data.tasks.filter(t => t.project_id === id); return ts.length ? Math.round(ts.filter(isDone).length / ts.length * 100) : 0; };
   const pn = (t: Task) => proj(t.project_id) ? ` (${proj(t.project_id)!.name})` : '';
   const line = (r: Row) => `- ${r.label}: ${r.n} task${r.n > 1 ? 's' : ''}${r.h ? `, ${hrs(r.h)} h` : ''}`;
   const summary = [`${presetName}: ${range}`, `${done.length} task${done.length === 1 ? '' : 's'} completed, ${hrs(hoursDone)} h logged.`,
     ...(goalRows.length ? ['', 'By goal:', ...goalRows.map(line)] : []),
     ...(projRows.length ? ['', 'By project:', ...projRows.map(line)] : []),
     ...(dimRows.length ? ['', `By ${bdDims.map(d => d.name.toLowerCase()).join(' × ')}:`, ...dimRows.map(line)] : []),
+    ...(pausedP.length ? ['', 'Paused:', ...pausedP.map(p => `- ${p.name}: ${pctDone(p.id)}% done`)] : []),
     ...(done.length ? ['', 'Completed:', ...done.map(t => `- ${t.title}${pn(t)}`)] : []),
     ...(slipped.length ? ['', `Open and overdue (${slipped.length}):`, ...slipped.map(t => `- ${t.title}${pn(t)}, due ${fmtDate(t.due_date!, { day: 'numeric', month: 'short', year: 'numeric' })}`)] : []),
     ...(incUp && upcoming.length ? ['', `Coming up, ${fmtRange(upStart, upEnd)}:`, ...upcoming.map(t => `- ${t.title}${pn(t)}, ${fmtDate(t.due_date!, { weekday: 'short', day: 'numeric', month: 'short' })}`)] : [])].join('\n');
@@ -124,13 +128,14 @@ export function Review() {
   const endDay = b < today ? b : today, dayBefore = iso(addDays(parseISO(a), -1));
   const prog = (ts: Task[], fallback: number) => { const e = shareAt(ts, endDay), st = shareAt(ts, dayBefore);
     return e == null ? { end: fallback, gain: 0 } : { end: e, gain: st == null ? e : e - st }; };
-  type GP = { key: string; name: string; href: string; color: string; dot: string; status: string; end: number; gain: number; h: number; n: number; sub: boolean };
+  type GP = { key: string; name: string; href: string; color: string; dot: string; status: string; end: number; gain: number; h: number; n: number; sub: boolean; paused?: boolean };
   const tops = data.goals.filter(g => !g.parent_id);
   const firstTop = (p: ProjectFull) => p.goal_ids.map(topOf).find(id => !!id && tops.some(t => t.id === id)) ?? null;
-  const listed = data.projects.filter(p => (p.status === 'active' && lens.project(p, data.tasks)) || byProj.has(p.id));
+  const listed = data.projects.filter(p => (p.status !== 'closed' && lens.project(p, data.tasks)) || byProj.has(p.id));
   const pRow = (p: ProjectFull): GP => { const hl = health(p, data.tasks, data.noteDates), t = byProj.get(p.id);
-    return { key: p.id, name: p.name, href: projectHref(p.id), color: p.color, dot: hl.color, status: hl.label, ...prog(data.tasks.filter(x => x.project_id === p.id), 0), h: t?.h ?? 0, n: t?.n ?? 0, sub: true }; };
-  const byTime = (x: GP, y: GP) => y.h - x.h || y.n - x.n || x.name.localeCompare(y.name);
+    return { key: p.id, name: p.name, href: projectHref(p.id), color: p.color, dot: hl.color, status: hl.label, ...prog(data.tasks.filter(x => x.project_id === p.id), 0), h: t?.h ?? 0, n: t?.n ?? 0, sub: true, paused: p.status === 'paused' }; };
+  // paused projects go last in their group
+  const byTime = (x: GP, y: GP) => Number(!!x.paused) - Number(!!y.paused) || y.h - x.h || y.n - x.n || x.name.localeCompare(y.name);
   const gpRows: GP[] = [];
   for (const g of tops) {
     const ps = listed.filter(p => firstTop(p) === g.id).map(pRow).sort(byTime), t = byGoal.get(g.id), st = goalStatus(g.status);
@@ -156,18 +161,20 @@ export function Review() {
   const written = writeSummary({
     period: presetName, range,
     done: done.map(t => ({ title: t.title || 'Untitled task', project: proj(t.project_id)?.name })), hours: hoursDone, time: projRows,
-    moved: gpRows.filter(r => r.gain > 0).filter(r => !r.sub || !gpRows.some(g => !g.sub && g.gain > 0)).slice(0, 6).map(r => ({ name: r.name, from: Math.max(0, r.end - r.gain), to: r.end })),
+    moved: gpRows.filter(r => r.gain > 0 && !r.paused).filter(r => !r.sub || !gpRows.some(g => !g.sub && g.gain > 0)).slice(0, 6).map(r => ({ name: r.name, from: Math.max(0, r.end - r.gain), to: r.end })),
     worried: tops.filter(g => ['warn', 'bad'].includes(goalStatus(g.status).tone)).map(g => ({ name: g.title, label: goalStatus(g.status).label })),
     slipped: slipped.map(t => ({ title: t.title || 'Untitled task', project: proj(t.project_id)?.name })),
     quiet: quiet.map(p => p.name),
+    paused: [...gpRows, ...noGoal].filter(r => r.paused).map(r => ({ name: r.name, pct: r.end })),
     upcoming: incUp ? upcoming.map(t => ({ title: t.title || 'Untitled task', project: proj(t.project_id)?.name, when: fmtDate(t.due_date!, { weekday: 'short', day: 'numeric', month: 'short' }) })) : null,
     upRange: fmtRange(upStart, upEnd),
   });
   const timeOf = (r: { h: number; n: number }) => (useH ? (r.h ? `${hrs(r.h)} h` : '–') : (r.n ? plural(r.n) : '–'));
   const gpLine = (r: GP) => (
     <div key={r.key} className={`gprow ${r.sub ? 'sub' : 'top'}`}>
-      <a className="gpname" href={r.href} title={`${r.name} · ${r.status}`}><span className="gpdot" style={{ background: r.dot }} />{r.name}</a>
-      <span className="gpbar" title={`${r.end}% of its tasks done${r.gain > 0 ? `, +${r.gain} points in this period` : ''}`} style={{ ['--c' as string]: r.color }}>
+      <a className="gpname" href={r.href} title={`${r.name} · ${r.status}`}><span className="gpdot" style={{ background: r.dot }} /><span className="gpnm">{r.name}</span>
+        {r.paused && <span className="gptag">Paused</span>}</a>
+      <span className={`gpbar ${r.paused ? 'gppaused' : ''}`} title={`${r.end}% of its tasks done${r.paused ? ' when it was paused' : ''}${r.gain > 0 ? `, +${r.gain} points in this period` : ''}`} style={{ ['--c' as string]: r.color }}>
         <i style={{ width: `${Math.max(0, r.end - Math.max(0, r.gain))}%` }} />{r.gain > 0 && <b style={{ left: `${r.end - r.gain}%`, width: `${r.gain}%` }} />}</span>
       <span className="mono gpn">{r.end}%</span>
       <span className={`mono gpn ${r.gain > 0 ? 'up' : r.gain < 0 ? 'down' : ''}`} title={r.gain < 0 ? 'New tasks were added in this period, so the share done went down' : undefined}>{r.gain > 0 ? `+${r.gain}` : r.gain < 0 ? `−${-r.gain}` : '–'}</span>
