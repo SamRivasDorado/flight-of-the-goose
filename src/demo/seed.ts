@@ -63,9 +63,9 @@ export function makeSeed(myUid: string, myEmail: string): Record<string, Row[]> 
   // ---- projects
   type Proj = { id: string; start: number; end: number | null; owner: string; people: string[] };
   const proj = (name: string, o: { color: string; icon: string; kind: 'fixed' | 'ongoing'; start: number; end?: number; owner: string; members?: string[]; teams?: string[];
-    closed?: number; region?: string; client?: string; prio?: string }): Proj => {
+    closed?: number; paused?: boolean; region?: string; client?: string; prio?: string }): Proj => {
     const id = uid();
-    t.projects.push({ id, workspace_id: ws, name, color: o.color, icon: o.icon, image_path: null, image_fit: 'fit', kind: o.kind, status: o.closed != null ? 'closed' : 'active',
+    t.projects.push({ id, workspace_id: ws, name, color: o.color, icon: o.icon, image_path: null, image_fit: 'fit', kind: o.kind, status: o.closed != null ? 'closed' : o.paused ? 'paused' : 'active',
       start_date: day(o.start), end_date: o.kind === 'fixed' && o.end != null ? day(o.end) : null, owner_member_id: o.owner, created_at: stamp(o.start),
       completed_at: o.closed != null ? day(o.closed) : null });
     (o.members ?? []).forEach(m => t.project_members.push({ project_id: id, member_id: m }));
@@ -85,6 +85,7 @@ export function makeSeed(myUid: string, myEmail: string): Record<string, Row[]> 
   const tnav = proj('Improving tNavigator workflows', { color: '#F2C230', icon: 'flask', kind: 'ongoing', start: -300, owner: sam, teams: [tGeo], region: 'Europe', client: 'Internal' });
   const enagas = proj('ENAGAS training', { color: '#6FA65A', icon: 'book', kind: 'fixed', start: -40, end: 50, owner: lucia, members: [sam, julia], region: 'Europe', client: 'ENAGAS' });
   const eage = proj('EAGE Annual 2027', { color: '#D46A8C', icon: 'mic', kind: 'fixed', start: -20, end: 240, owner: sam, region: 'Europe' });
+  const tunis = proj('Tunis pilot study', { color: '#B07A4F', icon: 'derrick', kind: 'fixed', start: -60, end: 90, owner: sam, members: [omar], paused: true, region: 'North Africa', client: 'ETAP' });
   const nafbd = proj('North Africa business development', { color: '#F28C28', icon: 'briefcase', kind: 'ongoing', start: -200, owner: karim, teams: [tNaf], region: 'North Africa' });
 
   // ---- tasks: finished ones spread over the project's past, open ones ahead (a few overdue)
@@ -135,6 +136,7 @@ export function makeSeed(myUid: string, myEmail: string): Record<string, Row[]> 
   task(eage, 'Poster', { due: 200, who: elena });
   task(eage, 'Book travel', { due: 160, who: sam });
   history(nafbd, ['Meeting with Mauritania Corporation', 'Proposal draft', 'Follow-up email', 'Visit to Alexandria', 'Market notes'], -195, -4, 15);
+  task(tunis, 'Data review for the pilot', { done: -3, who: omar, hours: 3 });
   task(nafbd, 'Meeting in Alexandria', { due: 3, who: karim, prio: 'High' });
   task(nafbd, 'Proposal for ONHYM', { due: 18, who: karim });
   task(nafbd, 'Price list 2027', { due: -5, who: lucia });
@@ -147,7 +149,7 @@ export function makeSeed(myUid: string, myEmail: string): Record<string, Row[]> 
     (o.projects ?? []).forEach(p => t.goal_projects.push({ goal_id: id, project_id: p.id }));
     return id;
   };
-  const gNaf = goal('Grow our presence in North Africa', { tag: 'NA-GROW', icon: 'globe', scene: 'dunes', start: -200, end: 250, status: 'on_track', owner: karim, projects: [neag, nafbd] });
+  const gNaf = goal('Grow our presence in North Africa', { tag: 'NA-GROW', icon: 'globe', scene: 'dunes', start: -200, end: 250, status: 'on_track', owner: karim, projects: [neag, nafbd, tunis] });
   goal('Present at EAGE Morocco', { tag: 'EAGE-MA', icon: 'mic', start: -20, end: 230, status: 'on_track', owner: sam, parent: gNaf, projects: [eage] });
   goal('Sign two new North African clients', { tag: 'NA-SIGN', icon: 'briefcase', start: -200, end: 250, status: 'at_risk', owner: karim, parent: gNaf, manual: 20 });
   goal('Make tNavigator workflows easier for European clients', { tag: 'TNAV-EU', icon: 'layers', scene: 'city', start: -300, end: null, status: 'at_risk', owner: sam, projects: [tnav, enagas, support],

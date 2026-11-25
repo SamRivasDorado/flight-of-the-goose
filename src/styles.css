@@ -1017,3 +1017,9 @@ button.brand:hover{background:var(--bar-hi)}
 
 /* Help: a short list inside a point (roles, what symbols mean) */
 .helptext li>ul{margin:5px 0 6px;gap:3px}
+
+/* Review → Goals and projects: paused projects keep their % but read as on hold */
+.gpname .gpnm{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.gptag{flex:none;font-size:11px;font-weight:500;line-height:16px;padding:0 7px;border-radius:99px;border:1px solid var(--line);color:var(--muted);background:var(--surface-2)}
+.gpbar.gppaused i{background:repeating-linear-gradient(135deg,color-mix(in srgb,var(--c) 40%,transparent) 0 5px,color-mix(in srgb,var(--c) 14%,transparent) 5px 10px)}
+.gpbar.gppaused b{opacity:.45}
