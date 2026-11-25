@@ -6,6 +6,7 @@ import { copyTask, createTask, listMembers, listProjects, listTasksFull, setTask
 import { canEdit, STATUSES, type Member, type Project, type Task, type TaskFull } from '../lib/types';
 import { useLocalPref, useUI } from '../lib/ui';
 import { useLens } from '../lib/lens';
+import { forgetDrill, peekDrill, type Drill } from '../lib/drill';
 import { OptPill } from '../components/Lens';
 import { byDue, diffDays, dueLabel, firstName, hrs, parseISO } from '../lib/format';
 import { Avatar, Icon, type IconName } from '../components/Logo';
@@ -31,6 +32,8 @@ interface Ctx {
   lens: ReturnType<typeof useLens>;
   /** Solo mode: no assignee column or avatars. */
   solo: boolean;
+  /** Showing the tasks behind a chart in Insights: no quick add (a new task would not be in the list). */
+  drilled?: boolean;
   open: (id: string) => void;
   save: (id: string, patch: Partial<Task>) => Promise<void>;
   /** Sets a task's own value for a dimension (null: back to the project's default). */
@@ -39,7 +42,7 @@ interface Ctx {
 }
 
 /** Loads tasks (optionally for one project), applies the top-bar search, and builds what the views need. */
-export function useTaskViews(projectId: string | null = null) {
+export function useTaskViews(projectId: string | null = null, drill: Drill | null = null) {
   const ws = useWorkspace();
   const ui = useUI();
   const lens = useLens();
@@ -52,9 +55,12 @@ export function useTaskViews(projectId: string | null = null) {
   const [showDone, setShowDone] = useLocalPref('showDone', false);
   const [msg, setMsg] = useState<string | null>(null);
   const q = ui.q.trim().toLowerCase();
-  const tasks = (data?.tasks ?? []).filter(t => (!projectId || t.project_id === projectId) && (!q || t.title.toLowerCase().includes(q)) && lens.task(t));
+  // from a chart in Insights: exactly the tasks behind that slice (the Lens and search are set aside, so the list matches the chart)
+  const drillIds = drill ? new Set(drill.ids) : null;
+  const tasks = (data?.tasks ?? []).filter(t => drillIds ? drillIds.has(t.id)
+    : (!projectId || t.project_id === projectId) && (!q || t.title.toLowerCase().includes(q)) && lens.task(t));
   const c: Ctx = {
-    tasks, projects: data?.projects ?? [], members: data?.members ?? [], editable, me: ws.member_id, showDone, projectId, lens, solo,
+    tasks, projects: data?.projects ?? [], members: data?.members ?? [], editable, me: ws.member_id, showDone: showDone || !!drill, projectId, lens, solo, drilled: !!drill,
     open: id => ui.openTask(id),
     save: async (id, patch) => {
       try { setMsg(null); await updateTask(id, patch); await reload(); ui.changed(); }
@@ -73,7 +79,7 @@ export function useTaskViews(projectId: string | null = null) {
       catch (e) { setMsg(e instanceof Error ? e.message : String(e)); }
     },
   };
-  const toggle = <label className="chk"><input type="checkbox" checked={showDone} onChange={e => setShowDone(e.target.checked)} />Show completed</label>;
+  const toggle = drill ? null : <label className="chk"><input type="checkbox" checked={showDone} onChange={e => setShowDone(e.target.checked)} />Show completed</label>;
   return { c, loaded: !!data, error: error || msg, toggle, q: ui.q };
 }
 
@@ -90,8 +96,12 @@ export function TaskViews({ tab, v }: { tab: 'list' | 'board' | 'calendar'; v: R
 }
 
 export function Tasks() {
-  const v = useTaskViews(null);
-  const [tab, setTab] = useLocalPref<Tab>('tasksTab', 'list');
+  // tasks handed over by a chart in Insights; taken once, so the next visit shows all tasks again
+  const [drill, setDrill] = useState<Drill | null>(() => peekDrill());
+  useEffect(() => { forgetDrill(); }, []);
+  const v = useTaskViews(null, drill);
+  const [tabPref, setTab] = useLocalPref<Tab>('tasksTab', 'list');
+  const tab = drill ? 'list' : tabPref;
   const open = v.c.tasks.filter(t => t.status !== 'done');
   const tabBtn = (id: Tab, ic: IconName, label: string) =>
     <button className={`tab ${tab === id ? 'on' : ''}`} onClick={() => setTab(id)}><Icon name={ic} />{label}</button>;
@@ -99,7 +109,11 @@ export function Tasks() {
     <>
       <div className="ph"><h1>Tasks</h1>{v.loaded && <span className="sub mono">{open.length} open · {v.c.tasks.length - open.length} done</span>}
         {v.q.trim() && <span className="tag">Search: {v.q}</span>}</div>
-      <div className="tabs">{tabBtn('list', 'list', 'List')}{tabBtn('board', 'board', 'Board')}{tabBtn('calendar', 'calendar', 'Calendar')}</div>
+      {drill ? <div className="drillbar"><Icon name="chart" /><div className="grow"><b>From Insights: {drill.title}</b>
+          <span className="muted">{drill.sub} · {drill.total}</span></div>
+          <button className="btn sm" onClick={() => { window.location.hash = '#/insights'; }}>Back to Insights</button>
+          <button className="btn sm" onClick={() => setDrill(null)}>Show all tasks</button></div>
+        : <div className="tabs">{tabBtn('list', 'list', 'List')}{tabBtn('board', 'board', 'Board')}{tabBtn('calendar', 'calendar', 'Calendar')}</div>}
       <TaskViews tab={tab} v={v} />
     </>
   );
@@ -168,7 +182,7 @@ function ListView({ c, tools }: { c: Ctx; tools: React.ReactNode }) {
             {groups.length === 0 && <tr><td colSpan={cols} className="muted" style={{ padding: 20 }}>{c.tasks.length ? 'No open tasks match.' : 'No tasks yet. Add one below.'}</td></tr>}
           </tbody>
         </table>
-        {c.editable && <div className="quick"><Icon name="plus" /><input placeholder="Add a task and press Enter" aria-label="Quick add task"
+        {c.editable && !c.drilled && <div className="quick"><Icon name="plus" /><input placeholder="Add a task and press Enter" aria-label="Quick add task"
           value={draft} onChange={e => setDraft(e.target.value)} onKeyDown={quickAdd} /></div>}
       </div>
     </>

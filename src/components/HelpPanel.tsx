@@ -149,6 +149,7 @@ const TOPICS: Topic[] = [
       <li>Tip: <b>hours</b> by project says where the time went more honestly than counting tasks, because a quick email and a three-day calculation no longer weigh the same. Group by Priority or another dimension to see where effort goes.</li>
       <li>The <b>copy</b> icon on each chart puts it on the clipboard as a picture, with its title, dates and legend, ready to paste into a document, slide or email.</li>
       <li><b>Save to dashboard</b> keeps a chart; it updates by itself as tasks change, follows the period you pick and follows you to any computer.</li>
+      <li><b>See the tasks behind a chart</b>: click a slice, a bar or a row of its legend. Tasks opens with exactly those tasks (the same period, projects and filter as the chart), and a bar on top says where they came from. <b>Back to Insights</b> returns to your chart; <b>Show all tasks</b> clears it.</li>
     </ul></> },
   { id: 'team', title: 'Team and sharing', icon: 'users', page: 'team', go: '#/team', team: true, body: <>
     <p className="lead">Work together, while each person sees only what they are part of.</p>

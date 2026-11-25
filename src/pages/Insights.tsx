@@ -11,11 +11,13 @@ import { colorOf, tagOf, taskGoals } from '../lib/goaltag';
 import { diffDays, hrs, parseISO } from '../lib/format';
 import { Icon } from '../components/Logo';
 import { NO_PROJECT_COLOR } from '../components/ProjectChip';
+import { openDrill } from '../lib/drill';
 
 type By = string; // 'project' | 'status' | 'month' | a dimension id
 type ChartType = 'doughnut' | 'pie' | 'bar' | 'hbar';
 interface Cfg { id?: string; by: By; filter: 'all' | 'open' | 'done'; measure: 'count' | 'hours'; scope: string; type: ChartType }
-interface Datum { label: string; color: string; value: number; order?: string }
+/** One slice or bar; ids = the tasks behind it (for the click-through to Tasks). */
+interface Datum { label: string; color: string; value: number; order?: string; ids?: string[] }
 
 const GROUPS: [By, string][] = [['goal', 'Goal'], ['project', 'Project'], ['status', 'Status'], ['month', 'Due month']];
 const DEFAULT: Cfg = { by: 'project', filter: 'all', measure: 'hours', scope: 'all', type: 'doughnut' };
@@ -25,7 +27,7 @@ function aggregate(cfg: Cfg, tasks: Task[], projects: Project[], lens: ReturnTyp
   if (cfg.filter === 'open') ts = ts.filter(t => t.status !== 'done'); else if (cfg.filter === 'done') ts = ts.filter(t => t.status === 'done');
   const val = (t: Task) => cfg.measure === 'count' ? 1 : Number(t.hours) || 0;
   const m = new Map<string, Datum>();
-  const add = (k: string, label: string, color: string, t: Task, order?: string) => { if (!m.has(k)) m.set(k, { label, color, value: 0, order }); m.get(k)!.value += val(t); };
+  const add = (k: string, label: string, color: string, t: Task, order?: string) => { if (!m.has(k)) m.set(k, { label, color, value: 0, order, ids: [] }); const d = m.get(k)!; d.value += val(t); if (val(t) > 0) d.ids!.push(t.id); };
   ts.forEach(t => {
     if (cfg.by === 'project') { const p = projects.find(x => x.id === t.project_id); add(p ? p.id : '_', p ? p.name : 'No project', p ? p.color : NO_PROJECT_COLOR, t); }
     // each task counts once: under its own goal, or else the first goal of its project (as in the task list)
@@ -47,12 +49,16 @@ function title(c: Cfg, groups: [string, string][] = GROUPS) {
 
 interface Look { fg: string; grid: string; surf: string }
 /** The Chart.js settings for a chart, in the given colours (the page's, or light ones for a copied picture). */
-function chartConfig(data: Datum[], type: ChartType, look: Look, still = false) {
+function chartConfig(data: Datum[], type: ChartType, look: Look, still = false, onPick?: (i: number) => void) {
   const pie = type === 'pie' || type === 'doughnut', tot = data.reduce((s, d) => s + d.value, 0) || 1;
   return {
     type: type === 'hbar' ? 'bar' : type,
     data: { labels: data.map(d => d.label), datasets: [{ data: data.map(d => d.value), backgroundColor: data.map(d => d.color), borderColor: pie ? look.surf : 'transparent', borderWidth: pie ? 2 : 0, borderRadius: pie ? 0 : 5, maxBarThickness: 42 }] },
     options: {
+      ...(onPick ? {
+        onClick: (_e: unknown, els: { index: number }[]) => { if (els.length) onPick(els[0].index); },
+        onHover: (e: { native?: { target?: HTMLElement } }, els: unknown[]) => { if (e.native?.target) e.native.target.style.cursor = els.length ? 'pointer' : 'default'; },
+      } : {}),
       indexAxis: type === 'hbar' ? 'y' : 'x', maintainAspectRatio: false, animation: still ? false : { duration: 300 }, ...(still ? { responsive: false, devicePixelRatio: 2 } : {}),
       ...(type === 'doughnut' ? { cutout: '58%' } : {}),
       plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c: { raw: unknown }) => ` ${hrs(Number(c.raw))} (${Math.round(Number(c.raw) / tot * 100)}%)` } } },
@@ -64,7 +70,8 @@ function chartConfig(data: Datum[], type: ChartType, look: Look, still = false) 
 }
 
 /** A Chart.js chart that redraws when its data or type changes (the library loads on first use). */
-function ChartBox({ data, type, label }: { data: Datum[]; type: ChartType; label: string }) {
+function ChartBox({ data, type, label, onPick }: { data: Datum[]; type: ChartType; label: string; onPick?: (i: number) => void }) {
+  const pick = useRef(onPick); pick.current = onPick;
   const ref = useRef<HTMLCanvasElement>(null);
   const key = JSON.stringify([data, type]) + (document.documentElement.dataset.palette ?? '');
   useEffect(() => {
@@ -74,7 +81,7 @@ function ChartBox({ data, type, label }: { data: Datum[]; type: ChartType; label
       const css = getComputedStyle(document.documentElement);
       const fg = css.getPropertyValue('--muted').trim(), grid = css.getPropertyValue('--line').trim(), surf = css.getPropertyValue('--surface').trim();
       Chart.defaults.font.family = css.getPropertyValue('--f-content');
-      chart = new Chart(ref.current, chartConfig(data, type, { fg, grid, surf }));
+      chart = new Chart(ref.current, chartConfig(data, type, { fg, grid, surf }, false, onPick ? i => pick.current?.(i) : undefined));
     });
     return () => { live = false; chart?.destroy(); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -86,14 +93,17 @@ function ChartCard({ c, tasks, projects, onRemove, plain, when }: { c: Cfg; task
   const lens = useLens(), groups: [string, string][] = [...GROUPS, ...lens.dims.map(d => [d.id, d.name] as [string, string])];
   const data = aggregate(c, tasks, projects, lens), tot = data.reduce((s, d) => s + d.value, 0) || 1, unit = c.measure === 'hours' ? ' h' : '';
   const scope = c.scope === 'all' ? 'All projects' : projects.find(p => p.id === c.scope)?.name ?? 'Deleted project';
+  // click a slice, bar or legend row: see exactly those tasks on the Tasks page
+  const drill = (d: Datum) => { const n = d.ids?.length ?? 0;
+    openDrill({ ids: d.ids ?? [], title: `${title(c, groups)} · ${d.label}`, sub: `${scope} · ${when}`, total: `${n} task${n === 1 ? '' : 's'}${c.measure === 'hours' ? `, ${hrs(d.value)} h` : ''}` }); };
   return (
     <div className="ccard" style={plain ? { border: 0, padding: 0 } : undefined}>
       <h3><span>{title(c, groups)}</span>{data.length > 0 && <CopyChart title={title(c, groups)} sub={`${scope} · ${when}`} data={data} type={c.type} unit={unit} legend />}
         {onRemove && <button className="iconbtn" onClick={onRemove} aria-label="Remove chart" title="Remove chart"><Icon name="x" /></button>}</h3>
       <div className="sub2">{scope} · {when}</div>
       {data.length ? <div className="cbody">
-        <ChartBox data={data} type={c.type} label={title(c, groups)} />
-        <table className="ltab"><tbody>{data.map(d => <tr key={d.label}><td><span className="sw2" style={{ ['--c' as string]: d.color }} />{d.label}</td>
+        <ChartBox data={data} type={c.type} label={title(c, groups)} onPick={i => drill(data[i])} />
+        <table className="ltab"><tbody>{data.map(d => <tr key={d.label} className="ltpick" onClick={() => drill(d)} title="See these tasks"><td><button className="ltname" onClick={e => { e.stopPropagation(); drill(d); }}><span className="sw2" style={{ ['--c' as string]: d.color }} />{d.label}</button></td>
           <td>{hrs(d.value)}{unit}</td><td>{Math.round(d.value / tot * 100)}%</td></tr>)}</tbody></table>
       </div> : <div className="empty">{c.measure === 'hours' ? 'No hours logged on matching tasks yet.' : 'No matching tasks.'}</div>}
     </div>);
@@ -101,10 +111,11 @@ function ChartCard({ c, tasks, projects, onRemove, plain, when }: { c: Cfg; task
 
 /** "Tasks completed per week/month" over the period. */
 function OverTime({ data, name, when }: { data: Datum[]; name: string; when: string }) {
+  const drill = (d: Datum) => { const n = d.ids?.length ?? 0; openDrill({ ids: d.ids ?? [], title: `${name} · ${d.label}`, sub: when, total: `${n} task${n === 1 ? '' : 's'}` }); };
   return (
     <div className="ccard">
       <h3><span>{name}</span><CopyChart title={name} sub={when} data={data} type="bar" unit="" legend={false} /></h3><div className="sub2">{when}</div>
-      <div className="cbody fill"><ChartBox data={data} type="bar" label={name} /></div></div>);
+      <div className="cbody fill"><ChartBox data={data} type="bar" label={name} onPick={i => drill(data[i])} /></div></div>);
 }
 
 /** Copies a chart to the clipboard as a picture for documents, slides and emails: drawn afresh on white, whatever the
@@ -164,7 +175,7 @@ export function Insights() {
     const [tasks, projects, settings] = await Promise.all([listTasks(ws.workspace_id), listProjects(ws.workspace_id), getMySettings(ws.member_id)]);
     return { tasks, projects, dash: (settings.dash as Cfg[] | undefined) ?? [] };
   }, [ws.workspace_id, ui.version]);
-  const [cfg, setCfg] = useState<Cfg>(DEFAULT);
+  const [cfg, setCfg] = useLocalPref<Cfg>('insightsChart', DEFAULT);
   const [dash, setDash] = useState<Cfg[] | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [period, setPeriod] = useLocalPref<Period>('insightsPeriod', { kind: 'last30' });
@@ -194,7 +205,7 @@ export function Insights() {
     <select className="field-in" value={cfg[k] as string} onChange={e => setCfg({ ...cfg, [k]: e.target.value })}>
       {opts.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>);
   const bs = buckets(r), perWeek = byWeek(r);
-  const overTime = bs.map(b => ({ label: b.label, value: doneIn.filter(t => inRange(taskDay(t), b)).length, color: '#6B9160' }));
+  const overTime = bs.map(b => { const ts = doneIn.filter(t => inRange(taskDay(t), b)); return { label: b.label, value: ts.length, color: '#6B9160', ids: ts.map(t => t.id) }; });
 
 
   return (
